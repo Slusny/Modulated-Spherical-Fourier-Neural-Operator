@@ -3,8 +3,8 @@ import os
 import numpy as np
 import sys
 
-path = sys.argv[0] #"/mnt/ssd2/Master/S2S_on_SFNO/outputs/sfno/"
-file = sys.argv[1] #"era5_"
+path = sys.argv[1] #"/mnt/ssd2/Master/S2S_on_SFNO/outputs/sfno/"
+file = sys.argv[2] #"20231108.grib"
 
 file_path = os.path.join(path,file)
 print('file_path: ', file_path)

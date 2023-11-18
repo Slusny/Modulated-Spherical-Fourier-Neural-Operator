@@ -160,7 +160,7 @@ cython_debug/
 #.idea/
 
 # Outputs
-S2S_on_SFNO/outputs/
+S2S_on_SFNO/outputs/*
 !S2S_on_SFNO/outputs/__init__.py
 
 
