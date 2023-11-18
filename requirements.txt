@@ -7,3 +7,4 @@ climetlab
 eccodes
 torch_harmonics
 ruamel.yaml
+gitpython

@@ -1,0 +1,30 @@
+# singularity image based on ubuntu docker container
+# functioning version
+# how to build: 
+Bootstrap: docker
+From: continuumio/miniconda3
+
+%setup
+#cp -r /home/lenny/Downloads/laser-hockey-env ${SINGULARITY_ROOTFS}/laser-hockey-env
+
+%files
+    environment_model.yml
+
+%environment
+
+
+%post
+    /opt/conda/bin/conda env create -f environment_model.yml
+
+# not installed pynio
+
+%test
+
+%runscript
+#    exec /opt/conda/envs/$(head -n 1 environment.yml | cut -f 2 -d ' ')/bin/"$@"
+    exec /opt/conda/envs/model/bin/python
+
+# running with weather
+# singularity exec --nv --bind /mnt/ssd2/Master/Singularity/ plot_libraries.sif /opt/conda/envs/weather/bin/python test.py
+# running with model
+# singularity exec --nv --bind /mnt/ssd2/Master/Singularity/ model_libraries.sif /opt/conda/envs/model/bin/python test.py

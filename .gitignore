@@ -160,8 +160,12 @@ cython_debug/
 #.idea/
 
 # Outputs
-S2S_on_SFNO/output/
+S2S_on_SFNO/outputs/
+!S2S_on_SFNO/outputs/__init__.py
 
 
 # Assets
 S2S_on_SFNO/Assets/
+
+#Singularity
+*.sif

@@ -149,7 +149,7 @@ def _main():
 
     parser.add_argument(
         "--path",
-        help="Path where to write the output of the model. Default: Output/{model}/{date:%Y%m%d}.grib",
+        help="Path where to write the output of the model. Default: S2S_on_SFNO/outputs/{model}/{YYYYmmdd}.grib",
     )
 
     parser.add_argument(
@@ -231,7 +231,7 @@ def _main():
     # Format Output path
     timestr = time.strftime("%Y%m%d-%H%M")
     if args.path is None:
-        args.path = os.path.join(Path(".").absolute(),"Output",args.model,timestr+".grib")
+        args.path = os.path.join(Path(".").absolute(),"S2S_on_SFNO/outputs",args.model,timestr+".grib")
     else:
         args.path = os.path.join(args.path,timestr+".grib")
     if not os.path.exists(args.path):
@@ -302,7 +302,8 @@ def _main():
 
     if args.dump_provenance:
         with Timer("Collect provenance information"):
-            with open(args.dump_provenance, "w") as f:
+            file = os.path.join(args.dump_provenance, "provenance_" + timestr + ".json")
+            with open(file, "w") as f:
                 prov = model.provenance()
                 import json  # import here so it is not listed in provenance
 
