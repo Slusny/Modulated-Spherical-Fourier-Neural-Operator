@@ -1,20 +1,25 @@
 name: model
 channels:
   - pytorch
-  - conda-forge
   - nvidia
+  - conda-forge
   - defaults
 dependencies:
-  - _libgcc_mutex=0.1=main
-  - _openmp_mutex=5.1=1_gnu
+  - _libgcc_mutex=0.1=conda_forge
+  - _openmp_mutex=4.5=2_kmp_llvm
+  - attrs=23.1.0=py39h06a4308_0
   - blas=1.0=mkl
+  - blosc=1.21.5=h0f2a231_0
+  - bottleneck=1.3.5=py39h7deecbd_0
   - brotli-python=1.0.9=py39h6a678d5_7
   - bzip2=1.0.8=h7b6447c_0
   - c-ares=1.19.1=h5eee18b_0
   - ca-certificates=2023.08.22=h06a4308_0
   - certifi=2023.7.22=py39h06a4308_0
   - cffi=1.16.0=py39h5eee18b_0
+  - cfgrib=0.9.10.4=pyhd8ed1ab_0
   - charset-normalizer=2.0.4=pyhd3eb1b0_0
+  - click=8.1.7=py39h06a4308_0
   - cryptography=41.0.3=py39hdda0065_0
   - cuda=11.6.1=0
   - cuda-cccl=11.6.55=hf6102b2_0
@@ -51,25 +56,29 @@ dependencies:
   - einops=0.7.0=pyhd8ed1ab_1
   - expat=2.5.0=h6a678d5_0
   - filelock=3.9.0=py39h06a4308_0
+  - findlibs=0.0.5=pyhd8ed1ab_0
+  - freeglut=3.2.2=hac7e632_2
   - freetype=2.12.1=h4a9f257_0
   - fsspec=2023.9.2=py39h06a4308_0
   - future=0.18.3=py39h06a4308_0
   - gdbm=1.18=hd4cb3f1_4
   - gds-tools=1.5.0.59=0
-  - gettext=0.21.0=h39681ba_1
-  - giflib=5.2.1=h5eee18b_3
+  - gettext=0.21.1=h27087fc_0
   - git=2.40.1=pl5340h36fbf9e_1
   - gitdb=4.0.7=pyhd3eb1b0_0
   - gitpython=3.1.37=py39h06a4308_0
+  - hdf4=4.2.15=h2a13503_7
+  - hdf5=1.14.2=nompi_h4f84152_100
   - huggingface_hub=0.17.3=py39h06a4308_0
-  - icu=73.1=h6a678d5_0
+  - icu=73.2=h59595ed_0
   - idna=3.4=py39h06a4308_0
   - intel-openmp=2023.1.0=hdb19cb5_46306
-  - jpeg=9e=h5eee18b_1
+  - jasper=4.1.0=he6dfbbe_0
   - krb5=1.20.1=h143b758_1
-  - lcms2=2.12=h3be6417_0
+  - lcms2=2.15=hb7c19ff_3
   - ld_impl_linux-64=2.38=h1181459_1
-  - lerc=3.0=h295c915_0
+  - lerc=4.0.0=h27087fc_0
+  - libaec=1.1.2=h59595ed_1
   - libcublas=11.9.2.110=h5e84587_0
   - libcublas-dev=11.9.2.110=h5c901ab_0
   - libcufft=10.7.1.112=hf425ae0_0
@@ -82,14 +91,17 @@ dependencies:
   - libcusolver=11.3.4.124=h33c3c4e_0
   - libcusparse=11.7.2.124=h7538f96_0
   - libcusparse-dev=11.7.2.124=hbbe9722_0
-  - libdeflate=1.17=h5eee18b_1
+  - libdeflate=1.19=hd590300_0
   - libedit=3.1.20221030=h5eee18b_0
   - libev=4.33=h7f8727e_1
   - libffi=3.4.4=h6a678d5_0
-  - libgcc-ng=11.2.0=h1234567_1
-  - libgfortran-ng=11.2.0=h00389a5_1
-  - libgfortran5=11.2.0=h1234567_1
-  - libgomp=11.2.0=h1234567_1
+  - libgcc-ng=13.2.0=h807b86a_3
+  - libgfortran-ng=13.2.0=h69a702a_3
+  - libgfortran5=13.2.0=ha4646dd_3
+  - libglu=9.0.0=hf484d3e_1
+  - libiconv=1.17=h166bdaf_0
+  - libjpeg-turbo=3.0.0=hd590300_1
+  - libnetcdf=4.9.2=nompi_h80fb2b6_112
   - libnghttp2=1.57.0=h2d74bed_0
   - libnpp=11.6.3.124=hd2722f0_0
   - libnpp-dev=11.6.3.124=h3c42840_0
@@ -98,11 +110,14 @@ dependencies:
   - libpng=1.6.39=h5eee18b_0
   - libprotobuf=3.20.3=he621ea3_0
   - libssh2=1.10.0=hdbd6064_2
-  - libstdcxx-ng=11.2.0=h1234567_1
-  - libtiff=4.5.1=h6a678d5_0
-  - libwebp=1.3.2=h11a3e52_0
+  - libstdcxx-ng=13.2.0=h7e041cc_3
+  - libtiff=4.6.0=ha9c0a0a_2
   - libwebp-base=1.3.2=h5eee18b_0
-  - libxml2=2.10.4=hf1b16e4_1
+  - libxcb=1.15=h7f8727e_0
+  - libxml2=2.11.6=h232c23b_0
+  - libzip=1.10.1=h2629f0a_3
+  - libzlib=1.2.13=hd590300_5
+  - llvm-openmp=14.0.6=h9e868ea_0
   - lz4-c=1.9.4=h6a678d5_0
   - mkl=2023.1.0=h213fc3f_46344
   - mkl-service=2.4.0=py39h5eee18b_1
@@ -112,22 +127,27 @@ dependencies:
   - ninja=1.10.2=h06a4308_5
   - ninja-base=1.10.2=hd09550d_5
   - nsight-compute=2022.4.0.15=0
+  - numexpr=2.8.7=py39h85018f9_0
   - numpy=1.26.0=py39h5f9d8c6_0
   - numpy-base=1.26.0=py39hb5e798b_0
-  - openjpeg=2.4.0=h3ad879b_0
-  - openssl=3.0.12=h7f8727e_0
+  - openjpeg=2.5.0=h488ebb8_3
+  - openssl=3.1.4=hd590300_0
   - packaging=23.1=py39h06a4308_0
   - pcre2=10.42=hebb0a14_0
   - perl=5.34.0=h5eee18b_2
-  - pillow=10.0.1=py39ha6cbd5a_0
+  - pillow=10.1.0=py39had0adad_0
   - pip=23.3=py39h06a4308_0
   - pycparser=2.21=pyhd3eb1b0_0
   - pyopenssl=23.2.0=py39h06a4308_0
   - pysocks=1.7.1=py39h06a4308_0
   - python=3.9.18=h955ad1f_0
-  - pytorch=1.13.1=cpu_py39ha02dd7b_1
-  - pytorch-cuda=11.6=h867d48c_1
+  - python-dateutil=2.8.2=pyhd3eb1b0_0
+  - python-eccodes=1.6.1=py39h44dd56e_1
+  - python-tzdata=2023.3=pyhd3eb1b0_0
+  - python_abi=3.9=2_cp39
+  - pytorch-cuda=11.6
   - pytorch-mutex=1.0=cuda
+  - pytz=2023.3.post1=py39h06a4308_0
   - pyyaml=6.0.1=py39h5eee18b_0
   - readline=8.2=h5eee18b_0
   - requests=2.31.0=py39h06a4308_0
@@ -136,30 +156,39 @@ dependencies:
   - setuptools=68.0.0=py39h06a4308_0
   - six=1.16.0=pyhd3eb1b0_1
   - smmap=4.0.0=pyhd3eb1b0_0
+  - snappy=1.1.10=h9fff704_0
   - sqlite=3.41.2=h5eee18b_0
   - tbb=2021.8.0=hdb19cb5_0
   - timm=0.9.10=pyhd8ed1ab_0
-  - tk=8.6.12=h1ccaba5_0
+  - tk=8.6.13=noxft_h4845f30_101
   - torchaudio=0.13.1=py39_cu116
-  - torchvision=0.15.2=cpu_py39h83e0c9b_0
+  - torchvision=0.15.2=cpu_py39hefdcf12_2
   - tqdm=4.65.0=py39hb070fc8_0
   - typing-extensions=4.7.1=py39h06a4308_0
   - typing_extensions=4.7.1=py39h06a4308_0
+  - tzdata=2023c=h04d1e81_0
   - urllib3=1.26.18=py39h06a4308_0
   - wheel=0.41.2=py39h06a4308_0
+  - xorg-fixesproto=5.0=h7f98852_1002
+  - xorg-inputproto=2.3.2=h7f98852_1002
+  - xorg-kbproto=1.0.7=h7f98852_1002
+  - xorg-libx11=1.8.7=h8ee46fc_0
+  - xorg-libxau=1.0.11=hd590300_0
+  - xorg-libxext=1.3.4=h0b41bf4_2
+  - xorg-libxfixes=5.0.3=h7f98852_1004
+  - xorg-libxi=1.7.10=h7f98852_0
+  - xorg-xextproto=7.3.0=h0b41bf4_1003
+  - xorg-xproto=7.0.31=h27cfd23_1007
   - xz=5.4.2=h5eee18b_0
   - yaml=0.2.5=h7b6447c_0
-  - zlib=1.2.13=h5eee18b_0
+  - zlib=1.2.13=hd590300_5
   - zstd=1.5.5=hc292b87_0
   - pip:
       - ai-models==0.2.15
       - atmodata==0.2
-      - attrs==23.1.0
       - branca==0.7.0
       - cdsapi==0.6.1
-      - cfgrib==0.9.10.4
       - cftime==1.6.3
-      - click==8.1.7
       - climetlab==0.18.6
       - cloudpickle==3.0.0
       - dask==2023.10.1
@@ -168,7 +197,6 @@ dependencies:
       - ecmwf-opendata==0.2.0
       - ecmwflibs==0.5.6
       - entrypoints==0.4
-      - findlibs==0.0.5
       - gputil==1.4.0
       - imageio==2.32.0
       - importlib-metadata==6.8.0
@@ -199,8 +227,6 @@ dependencies:
       - partd==1.4.1
       - pdbufr==0.11.0
       - pyodc==1.3.0
-      - python-dateutil==2.8.2
-      - pytz==2023.3.post1
       - ruamel-yaml==0.18.5
       - ruamel-yaml-clib==0.2.8
       - sympy==1.12
@@ -210,7 +236,6 @@ dependencies:
       - torch-harmonics==0.6.2
       - torchdata==0.7.1
       - triton==2.1.0
-      - tzdata==2023.3
       - xarray==2023.10.1
       - zipp==3.17.0
 prefix: /home/lenny/miniconda3/envs/fourcastnet

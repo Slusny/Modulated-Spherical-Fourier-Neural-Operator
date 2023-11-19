@@ -15,7 +15,6 @@ from collections import defaultdict
 from functools import cached_property
 from pathlib import Path
 
-import entrypoints
 from climetlab.utils.humanize import seconds
 from multiurl import download
 

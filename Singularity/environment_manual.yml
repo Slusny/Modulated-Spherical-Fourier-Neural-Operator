@@ -1,0 +1,46 @@
+name: model
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  # xarray
+  - dask
+  - bottleneck
+  - cfgrib
+  - hdf5
+  - packaging
+  - pandas
+  - scipy
+
+  # pytorch
+  - pytorch-cuda=11.8
+  - torchvision-cuda=11.8
+  - pytorch
+  - timm
+  - torchdata               # (atomdata)
+
+  # ai-models
+
+  
+  # general utility
+  - einops
+  - git
+  - gitpython
+  - pillow
+  - pip
+  - python-dateutil
+  - setuptools
+  - six
+  - tqdm
+  - wheel
+  - yaml
+  - gputil
+
+  - pip:
+      - atmodata
+      - torch-harmonics
+      - nvsmi                 # (ai-models, provenance, gpu) 
+
+# may needed trition
