@@ -16,13 +16,12 @@ dependencies:
 
   # pytorch
   - pytorch-cuda=11.8
-  - torchvision-cuda=11.8
   - pytorch
   - timm
   - torchdata               # (atomdata)
 
   # ai-models
-
+  - ruamel.yaml
   
   # general utility
   - einops
@@ -42,5 +41,7 @@ dependencies:
       - atmodata
       - torch-harmonics
       - nvsmi                 # (ai-models, provenance, gpu) 
+      - ecmwflibs             # (ai-models)
+      - climetlab             # (ai-models)
 
 # may needed trition

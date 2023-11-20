@@ -5,16 +5,15 @@ Bootstrap: docker
 From: continuumio/miniconda3
 
 %setup
-#cp -r /home/lenny/Downloads/laser-hockey-env ${SINGULARITY_ROOTFS}/laser-hockey-env
 
 %files
-    environment_model.yml
+    environment_manual.yml
 
 %environment
 
 
 %post
-    /opt/conda/bin/conda env create -f environment_model.yml
+    /opt/conda/bin/conda env create -f environment_manual.yml
 
 # not installed pynio
 
