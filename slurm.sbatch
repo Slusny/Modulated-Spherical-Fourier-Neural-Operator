@@ -9,10 +9,10 @@
 
 #SBATCH -n 1
 
-#SBATCH --cpus-per-task=1
+#SBATCH --cpus-per-task=0
 # the job can use and see 4 CPUs (from max 24).
 
-#SBATCH --partition=gpu-test
+#SBATCH --partition=cpu-short
 # the slurm partition the job is queued to.
 # exits: gpu-2080ti , gpu-v100 ... see sinfo
 
