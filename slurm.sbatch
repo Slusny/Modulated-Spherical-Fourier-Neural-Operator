@@ -11,6 +11,7 @@
 
 #SBATCH --cpus-per-task=1
 # the job can use and see 4 CPUs (from max 24).
+# needet task count -n, maybe there is a better way to specify cores
 
 #SBATCH --partition=cpu-short
 # the slurm partition the job is queued to.
