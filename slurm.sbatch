@@ -7,10 +7,10 @@
 
 #resources:
 
+#SBATCH --num-tasks=1
+
 #SBATCH --cpus-per-task=1
 # the job can use and see 4 CPUs (from max 24).
-
-#SBATCH --num-tasks=1
 
 #SBATCH --partition=test
 # the slurm partition the job is queued to.
