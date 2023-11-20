@@ -12,8 +12,9 @@
 #SBATCH --cpus-per-task=1
 # the job can use and see 4 CPUs (from max 24).
 
-#SBATCH --partition=test
+#SBATCH --partition=gpu-test
 # the slurm partition the job is queued to.
+# exits: gpu-2080ti , gpu-v100 ... see sinfo
 
 #SBATCH --mem-per-cpu=8G
 # the job will need 12GB of memory equally distributed on 4 cpus.(251GB are available in total on one node)
