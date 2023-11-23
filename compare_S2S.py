@@ -1,5 +1,4 @@
 import xarray as xr
-import matplotlib.pyplot as plt
 from atmodata.utils import SequentialTransform
 from atmodata.datasets import ERA5
 from atmodata.builder import AtmodataPipeBuilder
