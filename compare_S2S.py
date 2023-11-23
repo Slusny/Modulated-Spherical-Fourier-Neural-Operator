@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 
 path = "/mnt/qb/goswami/data/era5"
 variables = ['z500', 't500']
-years = [2022]
+years = [2021]
 era5 = ERA5(path,variables,years)
 
 task = SequentialTransform(
