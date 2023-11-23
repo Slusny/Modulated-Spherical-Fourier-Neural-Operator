@@ -36,6 +36,7 @@ dependencies:
   - wheel
   - yaml
   - gputil
+  - matplotlib
 
   - pip:
       - atmodata

@@ -52,7 +52,7 @@
 #d) Write your checkpoints to your home directory, so that you still have them if your job fails
 ####
 
-singularity exec --nv /mnt/qb/work2/goswami0/gkd965/sfno_packages.sif /opt/conda/envs/model/bin/python compare_S2S.py
+singularity exec --nv /mnt/qb/work2/goswami0/gkd965/sfno_packages2.sif /opt/conda/envs/model/bin/python compare_S2S.py
 
 
 
