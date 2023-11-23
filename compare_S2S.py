@@ -1,6 +1,9 @@
 import xarray as xr
 import matplotlib.pyplot as plt
+from atmodata.utils import SequentialTransform
 from atmodata.datasets import ERA5
+from atmodata.builder import AtmodataPipeBuilder
+from atmodata.tasks import ForecastingTask
 from torch.utils.data import DataLoader
 # import metview as mv
 
@@ -13,7 +16,27 @@ path = "/mnt/qb/goswami/data/era5"
 variables = ['z500', 't500']
 years = [2022]
 era5 = ERA5(path,variables,years)
-data = DataLoader(dataset=era5, batch_size=1, shuffle=False)
-first = next(iter(data))
+
+task = SequentialTransform(
+    ForecastingTask(
+        1,
+        1
+    )
+)
+
+builder = AtmodataPipeBuilder(
+        era5,
+        task,
+        batch_size=1,
+        num_parallel_shards=3,
+        dataloading_prefetch_cnt=3,
+        device_prefetch_cnt=2,
+    )
+# if args.cuda:
+#     builder.transfer_to_device('cuda')
+workers=3
+dataloader = builder.multiprocess(workers).build_dataloader()
+
+first = next(iter(dataloader))
 print(first)
 print(first.shape)
