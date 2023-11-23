@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 
 # ds = xr.load_dataset("/mnt/ssd2/Master/S2S_on_SFNO/outputs/sfno/SFNO_HalfYearForecast_20231116-1441.grib", engine="cfgrib")
 # print(ds.info())
-
+print("start")
 path = "/mnt/qb/goswami/data/era5"
 variables = ['z500', 't500']
 years = [2021]
@@ -39,3 +39,4 @@ dataloader = builder.multiprocess(workers).build_dataloader()
 first = next(iter(dataloader))
 print(first)
 print(first.shape)
+print("end")
