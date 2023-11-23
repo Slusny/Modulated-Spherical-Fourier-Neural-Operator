@@ -27,10 +27,10 @@
 # the maximum time the scripts needs to run
 # "minutes:seconds", "hours:minutes:seconds", "days-hours","days-hours:minutes" and "days-hours:minutes:seconds"
 
-#SBATCH --error=jobs/job.%J.err
+#SBATCH --error=/home/goswami0/gkd965/jobs/job.%J.err
 # write the error output to job.*jobID*.err
 
-#SBATCH --output=jobs/job.%J.out
+#SBATCH --output=/home/goswami0/gkd965/jobs/job.%J.out
 # write the standard output to job.*jobID*.out
 
 #SBATCH --mail-type=ALL
