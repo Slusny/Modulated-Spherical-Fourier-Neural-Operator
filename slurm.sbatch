@@ -27,10 +27,10 @@
 # the maximum time the scripts needs to run
 # "minutes:seconds", "hours:minutes:seconds", "days-hours","days-hours:minutes" and "days-hours:minutes:seconds"
 
-#SBATCH --error=jobs/job.%J.err
+#SBATCH --error=/home/goswami/gkd965/jobs/job.%J.err
 # write the error output to job.*jobID*.err
 
-#SBATCH --output=jobs/job.%J.out
+#SBATCH --output=/home/goswami/gkd965/jobs/job.%J.out
 # write the standard output to job.*jobID*.out
 
 #SBATCH --mail-type=ALL
@@ -52,7 +52,7 @@
 #d) Write your checkpoints to your home directory, so that you still have them if your job fails
 ####
 
-singularity exec --nv /mnt/qb/work2/goswami0/gkd965/sfno_packages.sif /opt/conda/envs/model/bin/python compare_S2S.py
+singularity exec --bind /mnt/qb/goswami/data/era5 --nv /mnt/qb/work2/goswami0/gkd965/sfno_packages2.sif /opt/conda/envs/model/bin/python compare_S2S.py
 
 
 
