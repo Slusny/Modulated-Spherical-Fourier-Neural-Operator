@@ -54,7 +54,13 @@
 
 singularity exec --nv --bind /mnt/qb/goswami/data/era5 /mnt/qb/work2/goswami0/gkd965/sfno_packages2.sif /opt/conda/envs/model/bin/python calculate_climatology.py
 
-# juptyer server
-# /opt/conda/envs/model/bin/juptyer lab
+## juptyer server
+# srun --pty bash
+# hostname
+# singularity shell --bind /mnt/qb/goswami/data/era5 /mnt/qb/work2/goswami0/gkd965/sfno_packages3.sif
+# /opt/conda/envs/model/bin/jupyter lab
+## new terminal
+# ssh -AtL $B_PORT:localhost:$B_PORT gkd965@134.2.168.72 "ssh -AtL $B_PORT:localhost:8888 gkd965@bg-slurmb-bm-3 bash"
+# don't use the "novalocal" in the hostname, eg. bg-slurmb-bm-3.novalocal
 
 echo DONE!
