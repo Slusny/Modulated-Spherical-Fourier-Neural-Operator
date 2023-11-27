@@ -76,7 +76,8 @@ ds_hourofyear = ds.groupby("hourofyear")
 mean_temps = ds_hourofyear.mean()
 
 print("current working directory: ", os.getcwd())
-savepath = "/mnt/qb/work2/goswami0/gkd965/climate/t2m_1959-2021_hourofyear_mean.nc"
+# savepath = "/mnt/qb/work2/goswami0/gkd965/climate/t2m_1959-2021_hourofyear_mean.nc"
+savepath = "/home/goswami/gkd965/t2m_1959-2021_hourofyear_mean.nc"
 mean_temps.to_netcdf(savepath)
 
 
