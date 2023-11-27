@@ -54,7 +54,7 @@
 #d) Write your checkpoints to your home directory, so that you still have them if your job fails
 ####
 
-singularity exec --nv --bind /mnt/qb/goswami/data/era5 /mnt/qb/work2/goswami0/gkd965/sfno_packages2.sif /opt/conda/envs/model/bin/python calculate_climatology.py
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages2.sif /opt/conda/envs/model/bin/python calculate_climatology.py
 
 ## juptyer server
 # srun --pty bash
@@ -63,6 +63,6 @@ singularity exec --nv --bind /mnt/qb/goswami/data/era5 /mnt/qb/work2/goswami0/gk
 # /opt/conda/envs/model/bin/jupyter lab
 ## new terminal
 # ssh -AtL $B_PORT:localhost:$B_PORT gkd965@134.2.168.72 "ssh -AtL $B_PORT:localhost:8888 gkd965@bg-slurmb-bm-3 bash"
-# don't use the "novalocal" in the hostname, eg. bg-slurmb-bm-3.novalocal
+# don't use the "novalocal" in the hostname, eg. bg-slurmb-bm-3.novalocalssh -AtL $B_PORT:localhost:$B_PORT gkd965@134.2.168.72 "ssh -AtL $B_PORT:localhost:8888 gkd965@bg-slurmb-bm-3 bash"
 
 echo DONE!

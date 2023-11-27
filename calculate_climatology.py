@@ -66,10 +66,11 @@ paths = []
 
 # sfc = "2m_temperature/2m_temperature_sfc_1959_2021.nc"
 # path = os.path.join(basePath, 'single_pressure_level', sfc)
-
-ds = xr.open_mfdataset(os.path.join(basePath, 'single_pressure_level', '2m_temperature', "2m_temperature_????.nc")) 
+print("loading data")
+ds = xr.open_mfdataset(os.path.join(basePath, 'single_pressure_level', '2m_temperature', "2m_temperature_????.nc"),parallel=True)#, concat_dim="time", combine="nested", preprocess=partial_func)) 
 print("ds: ")
 print(ds.info())
+print("fin loading")
 
 ds['hourofyear'] = xr.DataArray(ds.time.dt.strftime('%m-%d %H'), coords=ds.time.coords)
 ds_hourofyear = ds.groupby("hourofyear")
