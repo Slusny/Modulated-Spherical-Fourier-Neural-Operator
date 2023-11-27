@@ -67,7 +67,7 @@ paths = []
 # sfc = "2m_temperature/2m_temperature_sfc_1959_2021.nc"
 # path = os.path.join(basePath, 'single_pressure_level', sfc)
 
-ds = xr.open_mfdataset(os.path.join(basePath, 'single_pressure_level', '2m_temperature', "2m_temperature_????.nc"), concat_dim="time") 
+ds = xr.open_mfdataset(os.path.join(basePath, 'single_pressure_level', '2m_temperature', "2m_temperature_????.nc")) 
 print("ds: ")
 print(ds.info())
 
