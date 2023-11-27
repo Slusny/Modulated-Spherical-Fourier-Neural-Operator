@@ -68,9 +68,16 @@ paths = []
 # path = os.path.join(basePath, 'single_pressure_level', sfc)
 
 ds = xr.open_mfdataset(os.path.join(basePath, 'single_pressure_level', '2m_temperature', "2m_temperature_????.nc"), concat_dim="time") 
+print("ds: ")
 print(ds.info())
-ds_grouped = ds.resample(time='6H').groupby("time.dayofyear")
+
+ds_grouped = ds.groupby("time.dayofyear")
+print("\nds_grouped: ")
 print(ds_grouped.info())
+
+ds_resampled = ds_grouped.resample(time='6H')
+print("\nds_resampled: ")
+print(ds_resampled.info())
 
 # ds_grouped = ds.groupby("time.month").mean(dim="time")
 
