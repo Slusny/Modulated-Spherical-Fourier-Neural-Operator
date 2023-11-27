@@ -54,6 +54,7 @@
 
 singularity exec --bind /mnt/qb/goswami/data/era5 --nv /mnt/qb/work2/goswami0/gkd965/sfno_packages2.sif /opt/conda/envs/model/bin/python calculate_climatology.py
 
-
+# juptyer server
+# /opt/conda/envs/model/bin/juptyer lab
 
 echo DONE!

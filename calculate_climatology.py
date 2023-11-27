@@ -64,10 +64,14 @@ paths = []
 #     paths.append(os.path.join(basePath, 'single_pressure_level', sfc, "*.nc"))
 # ds = xr.open_mfdataset(paths, concat_dim="time", preprocess=partial_func) 
 
-sfc = "2m_temperature/2m_temperature_sfc_1959_2021.nc"
-path = os.path.join(basePath, 'single_pressure_level', sfc)
-ds = xr.open_dataset(path)
+# sfc = "2m_temperature/2m_temperature_sfc_1959_2021.nc"
+# path = os.path.join(basePath, 'single_pressure_level', sfc)
+
+ds = xr.open_mfdataset(os.path.join(basePath, 'single_pressure_level', '2m_temperature', "2m_temperature_????.nc"), concat_dim="time") 
 print(ds.info())
+ds_grouped = ds.resample(time='6H').groupby("time.dayofyear")
+print(ds_grouped.info())
+
 # ds_grouped = ds.groupby("time.month").mean(dim="time")
 
 
