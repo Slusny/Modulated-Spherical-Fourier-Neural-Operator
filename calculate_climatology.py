@@ -73,7 +73,8 @@ print(ds.info())
 
 ds_grouped = ds.groupby("time.dayofyear")
 print("\nds_grouped: ")
-print(ds_grouped.info())
+print(ds_grouped.groups)
+print(list(ds_grouped))
 
 ds_resampled = ds_grouped.resample(time='6H')
 print("\nds_resampled: ")
