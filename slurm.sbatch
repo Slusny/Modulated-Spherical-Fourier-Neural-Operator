@@ -7,7 +7,9 @@
 
 #resources:
 
-#SBATCH -n 64
+#SBATCH --ntasks=1 
+
+#SBATCH --nodes=1
 
 #SBATCH --cpus-per-task=64
 # the job can use and see 4 CPUs (from max 24).
