@@ -59,7 +59,7 @@ singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gk
 ## juptyer server
 # srun --pty bash
 # hostname
-# singularity shell --bind /mnt/qb/goswami/data/era5 /mnt/qb/work2/goswami0/gkd965/sfno_packages3.sif
+# singularity shell --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages3.sif
 # /opt/conda/envs/model/bin/jupyter lab
 ## new terminal
 # ssh -AtL $B_PORT:localhost:$B_PORT gkd965@134.2.168.72 "ssh -AtL $B_PORT:localhost:8888 gkd965@bg-slurmb-bm-3 bash"
