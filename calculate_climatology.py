@@ -72,13 +72,14 @@ ds = xr.open_mfdataset(os.path.join(basePath, 'single_pressure_level', '10m_v_co
 print("ds: ")
 print(ds.info())
 print("fin loading")
-
-ds['hourofyear'] = xr.DataArray(ds.time.dt.strftime('%m-%d %H'), coords=ds.time.coords)
-ds_hourofyear = ds.groupby("hourofyear")
+# ds_resample = ds.resample(time="6h")
+ds_resample = ds
+ds_resample['hourofyear'] = xr.DataArray(ds_resample.time.dt.strftime('%m-%d %H'), coords=ds_resample.time.coords)
+ds_hourofyear = ds_resample.groupby("hourofyear")
 mean_temps = ds_hourofyear.mean()
 
 print("current working directory: ", os.getcwd())
-savepath = "/mnt/qb/work2/goswami0/gkd965/climate/t2m_1959-2021_hourofyear_mean.nc"
+savepath = "/mnt/qb/work2/goswami0/gkd965/climate/10m_v_1959-2021_hourofyear_mean.nc"
 # savepath = "/home/goswami/gkd965/t2m_1959-2021_hourofyear_mean.nc"
 mean_temps.to_netcdf(savepath)
 
