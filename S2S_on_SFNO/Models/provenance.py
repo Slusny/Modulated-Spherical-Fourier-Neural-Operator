@@ -49,6 +49,9 @@ def system_monitor():
     #         sleep(0.5)
 
 
+    # you can also use:
+    # sacct -u <user>
+
 
 def lookup_git_repo(path):
     from git import InvalidGitRepositoryError, Repo

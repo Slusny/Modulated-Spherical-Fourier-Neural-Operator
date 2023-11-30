@@ -66,3 +66,46 @@ singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gk
 # don't use the "novalocal" in the hostname, eg. bg-slurmb-bm-3.novalocalssh -AtL $B_PORT:localhost:$B_PORT gkd965@134.2.168.72 "ssh -AtL $B_PORT:localhost:8888 gkd965@bg-slurmb-bm-3 bash"
 
 echo DONE!
+
+#QOS: long-10d-jobs,normal
+# Name|Priority|GraceTime|Preempt|PreemptExemptTime|PreemptMode|Flags|UsageThres|UsageFactor|GrpTRES|GrpTRESMins|GrpTRESRunMins|GrpJobs|GrpSubmit|GrpWall|MaxTRES|MaxTRESPerNode|MaxTRESMins|MaxWall|MaxTRESPU|MaxJobsPU|MaxSubmitPU|MaxTRESPA|MaxJobsPA|MaxSubmitPA|MinTRES|
+# normal|0|00:00:00|||cluster|||1.000000||||||||||||||||||
+# long-10d-jobs|0|00:00:00|||cluster|DenyOnLimit,PartitionTimeLimit||1.000000|node=12|||||||||10-00:00:00|cpu=72,gres/gpu:rtx2080ti=8,gres/gpu:v100=0,gres/gpu=8,mem=354550M|2|20||4|100||
+
+
+# NodeName=slurm-bm-06 CoresPerSocket=18 
+#    CPUAlloc=0 CPUTot=72 CPULoad=N/A
+#    AvailableFeatures=nodata,nvidia_v515,qb_v2.44.1
+#    ActiveFeatures=nodata,nvidia_v515,qb_v2.44.1
+#    Gres=gpu:rtx2080ti:8
+#    NodeAddr=192.168.212.190 NodeHostName=slurm-bm-06 
+#    RealMemory=354566 AllocMem=0 FreeMem=N/A Sockets=2 Boards=1
+#    State=DOWN*+DRAIN ThreadsPerCore=2 TmpDisk=0 Weight=100 Owner=N/A MCS_label=N/A
+#    Partitions=gpu-2080ti,gpu-2080ti-dev,gpu-2080ti-interactive,gpu-2080ti-large,gpu-2080ti-preemptable,service 
+#    BootTime=None SlurmdStartTime=None
+#    CfgTRES=cpu=72,mem=354566M,billing=40,gres/gpu=8,gres/gpu:rtx2080ti=8
+#    AllocTRES=
+#    CapWatts=n/a
+#    CurrentWatts=0 AveWatts=0
+#    ExtSensorsJoules=n/s ExtSensorsWatts=0 ExtSensorsTemp=n/s
+#    Reason=Pathfinder [centos@2023-10-25T11:05:35]
+#    Comment=(null)
+
+
+# NodeName=slurm-cpu-hm-1 CoresPerSocket=16
+#    CPUAlloc=0 CPUTot=64 CPULoad=N/A
+#    AvailableFeatures=nodata,qb_v2.44.1
+#    ActiveFeatures=nodata,qb_v2.44.1
+#    Gres=(null)
+#    NodeAddr=192.168.212.224 NodeHostName=slurm-cpu-hm-1
+#    RealMemory=1138967 AllocMem=0 FreeMem=N/A Sockets=2 Boards=1
+#    State=DOWN*+DRAIN ThreadsPerCore=2 TmpDisk=0 Weight=100 Owner=N/A MCS_label=N/A
+#    Partitions=cpu-long,cpu-preemptable,cpu-short
+#    BootTime=None SlurmdStartTime=None
+#    CfgTRES=cpu=64,mem=1138967M,billing=14
+#    AllocTRES=
+#    CapWatts=n/a
+#    CurrentWatts=0 AveWatts=0
+#    ExtSensorsJoules=n/s ExtSensorsWatts=0 ExtSensorsTemp=n/s
+#    Reason=Moved-to-Galvani-CN [centos@2023-11-21T13:31:02]
+#    Comment=(null)

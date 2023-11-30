@@ -67,7 +67,8 @@ paths = []
 # sfc = "2m_temperature/2m_temperature_sfc_1959_2021.nc"
 # path = os.path.join(basePath, 'single_pressure_level', sfc)
 print("loading data")
-ds = xr.open_mfdataset(os.path.join(basePath, 'single_pressure_level', '2m_temperature', "2m_temperature_????.nc"),parallel=True)#, concat_dim="time", combine="nested", preprocess=partial_func)) 
+# ds = xr.open_mfdataset(os.path.join(basePath, 'single_pressure_level', '2m_temperature', "2m_temperature_????.nc"),parallel=True)#, concat_dim="time", combine="nested", preprocess=partial_func)) 
+ds = xr.open_mfdataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_????.nc"),parallel=True)
 print("ds: ")
 print(ds.info())
 print("fin loading")
@@ -77,8 +78,8 @@ ds_hourofyear = ds.groupby("hourofyear")
 mean_temps = ds_hourofyear.mean()
 
 print("current working directory: ", os.getcwd())
-# savepath = "/mnt/qb/work2/goswami0/gkd965/climate/t2m_1959-2021_hourofyear_mean.nc"
-savepath = "/home/goswami/gkd965/t2m_1959-2021_hourofyear_mean.nc"
+savepath = "/mnt/qb/work2/goswami0/gkd965/climate/t2m_1959-2021_hourofyear_mean.nc"
+# savepath = "/home/goswami/gkd965/t2m_1959-2021_hourofyear_mean.nc"
 mean_temps.to_netcdf(savepath)
 
 
