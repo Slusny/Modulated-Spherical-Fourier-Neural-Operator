@@ -20,13 +20,34 @@ def system_monitor():
     print('    Used (GB):', psutil.virtual_memory()[3]/1000000000)
     print('    Total available (GB):', psutil.virtual_memory()[1]/1000000000)
     # use memory_profiler  for line by line memory analysis, add @profile above function
+    # Ram for certain process:
+    pid = os.getpid()
+    python_process = psutil.Process(pid)
+    memoryUse = python_process.memory_info()[0]/2.**30  # memory use in GB...I think
+    print('    Process memory used (GB):', memoryUse)
+    print("    Process memory used : ", python_process.memory_percent())
+
     print("CPU:")
     cores = os.cpu_count()
     print("    available cores: ",cores)
     print("    util: ",psutil.cpu_percent())
-    load = psutil.getloadavg()
-    cpu_usage = (load/cores) * 100
+    loads = psutil.getloadavg()
+    cpu_usage = [load/cores* 100 for l in loads]
     print("    averge load over 1, 5 ,15 min: ",cpu_usage)
+
+    # # Realtime monotoring bar needs multiprocessing
+    # from tqdm import tqdm
+    # from time import sleep
+    # import psutil
+
+    # with tqdm(total=100, desc='cpu%', position=1) as cpubar, tqdm(total=100, desc='ram%', position=0) as rambar:
+    #     while True:
+    #         rambar.n=psutil.virtual_memory().percent
+    #         cpubar.n=psutil.cpu_percent()
+    #         rambar.refresh()
+    #         cpubar.refresh()
+    #         sleep(0.5)
+
 
 
 def lookup_git_repo(path):
