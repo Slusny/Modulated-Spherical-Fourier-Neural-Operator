@@ -10,6 +10,23 @@ import json
 import os
 import sys
 import sysconfig
+import psutil
+
+def system_monitor():
+    # Getting % usage of virtual_memory ( 3rd field)
+    print("RAM:")
+    print('    memory % used:', psutil.virtual_memory()[2])
+    # Getting usage of virtual_memory in GB ( 4th field)
+    print('    Used (GB):', psutil.virtual_memory()[3]/1000000000)
+    print('    Total available (GB):', psutil.virtual_memory()[1]/1000000000)
+    # use memory_profiler  for line by line memory analysis, add @profile above function
+    print("CPU:")
+    cores = os.cpu_count()
+    print("    available cores: ",cores)
+    print("    util: ",psutil.cpu_percent())
+    load = psutil.getloadavg()
+    cpu_usage = (load/cores) * 100
+    print("    averge load over 1, 5 ,15 min: ",cpu_usage)
 
 
 def lookup_git_repo(path):

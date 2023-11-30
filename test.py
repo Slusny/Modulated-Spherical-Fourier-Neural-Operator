@@ -1,3 +1,5 @@
-from S2S_on_SFNO.Models.provenance import gather_provenance_info
+from S2S_on_SFNO.Models.provenance import gather_provenance_info, system_monitor
+from pprint import pprint
 
-print(gather_provenance_info())
+pprint(gather_provenance_info())
+system_monitor()
