@@ -186,12 +186,11 @@ def assets_info(paths):
 
 
 # returns information about the environment and assets (the model you try to execute)
-def gather_provenance_info(assets):
+def gather_provenance_info(assets=False):
     executable = sys.executable
 
     versions, git_versions = module_versions()
-
-    return dict(
+    prov = dict(
         time=datetime.datetime.utcnow().isoformat(),
         executable=executable,
         args=sys.argv,
@@ -201,5 +200,8 @@ def gather_provenance_info(assets):
         git_versions=git_versions,
         platform=platform_info(),
         gpus=gpu_info(),
-        assets=assets_info(assets),
     )
+    if (assets):
+        prov["assets"] = assets_info(assets)
+        return prov
+    else: return prov
