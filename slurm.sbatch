@@ -19,7 +19,7 @@
 # the slurm partition the job is queued to.
 # exits: gpu-2080ti , gpu-v100 ... see sinfo
 
-#SBATCH --mem-per-cpu=64G
+#SBATCH --mem-per-cpu=128G
 # the job will need 12GB of memory equally distributed on 4 cpus.(251GB are available in total on one node)
 
 # #SBATCH --gres=gpu:0
@@ -54,7 +54,7 @@
 #d) Write your checkpoints to your home directory, so that you still have them if your job fails
 ####
 
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages2.sif /opt/conda/envs/model/bin/python calculate_climatology.py
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages2.sif /opt/conda/envs/model/bin/python test.py
 
 ## juptyer server
 # srun --pty bash
