@@ -11,7 +11,7 @@
 
 ##SBATCH --nodes=1
 
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=14 # 14 is max for cpu-short
 # the job can use and see 4 CPUs (from max 24).
 # needet task count -n, maybe there is a better way to specify cores
 
@@ -19,7 +19,7 @@
 # the slurm partition the job is queued to.
 # exits: gpu-2080ti , gpu-v100 ... see sinfo
 
-#SBATCH --mem-per-cpu=150G
+#SBATCH --mem-per-cpu=50G
 # the job will need 12GB of memory equally distributed on 4 cpus.(251GB are available in total on one node)
 
 # #SBATCH --gres=gpu:0
@@ -54,7 +54,7 @@
 #d) Write your checkpoints to your home directory, so that you still have them if your job fails
 ####
 
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages2.sif /opt/conda/envs/model/bin/python test.py
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages2.sif /opt/conda/envs/model/bin/python calculate_climatology.py
 
 ## juptyer server
 # srun --pty bash
@@ -68,10 +68,11 @@ singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gk
 echo DONE!
 
 #QOS: long-10d-jobs,normal
-# Name|Priority|GraceTime|Preempt|PreemptExemptTime|PreemptMode|Flags|UsageThres|UsageFactor|GrpTRES|GrpTRESMins|GrpTRESRunMins|GrpJobs|GrpSubmit|GrpWall|MaxTRES|MaxTRESPerNode|MaxTRESMins|MaxWall|MaxTRESPU|MaxJobsPU|MaxSubmitPU|MaxTRESPA|MaxJobsPA|MaxSubmitPA|MinTRES|
-# normal|0|00:00:00|||cluster|||1.000000||||||||||||||||||
-# long-10d-jobs|0|00:00:00|||cluster|DenyOnLimit,PartitionTimeLimit||1.000000|node=12|||||||||10-00:00:00|cpu=72,gres/gpu:rtx2080ti=8,gres/gpu:v100=0,gres/gpu=8,mem=354550M|2|20||4|100||
+# Name         |Priority|GraceTime|Preempt|PreemptExemptTime|PreemptMode|Flags                         |UsageFactor|GrpTRES|MaxWall    |MaxTRESPU                                                         |MaxJobsPU|MaxSubmitPU|MaxTRESPA|MaxJobsPA|MaxSubmitPA|MinTRES|
+# normal       |0       |00:00:00 |       |                 |cluster    |                              |1.000000   |       |           ||||||||
+# long-10d-jobs|0       |00:00:00 |       |                 |cluster    |DenyOnLimit,PartitionTimeLimit|1.000000   |node=12|10-00:00:00|cpu=72,gres/gpu:rtx2080ti=8,gres/gpu:v100=0,gres/gpu=8,mem=354550M|2|20||4|100||
 
+#scontrol show nodes
 
 # NodeName=slurm-bm-06 CoresPerSocket=18 
 #    CPUAlloc=0 CPUTot=72 CPULoad=N/A
