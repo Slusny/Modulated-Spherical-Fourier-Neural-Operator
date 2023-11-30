@@ -49,8 +49,23 @@ def system_monitor():
     #         sleep(0.5)
 
 
-    # you can also use:
-    # sacct -u <user>
+    # you can also use:C
+    # sacct -u <user> # sact -e -j <jobid> to see possibilites:: For Ram and CPU:
+    # sacct -j ... --format="MaxRSS"
+    # or use seff <jobid>
+    # -> Job ID: 4610868
+        # Cluster: slurmtest
+        # User/Group: gkd965/goswami
+        # State: RUNNING
+        # Nodes: 1
+        # Cores per node: 14
+        # CPU Utilized: 00:00:00
+        # CPU Efficiency: 0.00% of 01:35:40 core-walltime
+        # Job Wall-clock time: 00:06:50
+        # Memory Utilized: 0.00 MB (estimated maximum)
+        # Memory Efficiency: 0.00% of 700.00 GB (50.00 GB/core)
+        # WARNING: Efficiency statistics may be misleading for RUNNING jobs.
+
 
 
 def lookup_git_repo(path):

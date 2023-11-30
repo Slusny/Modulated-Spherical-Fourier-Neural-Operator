@@ -13,6 +13,10 @@ dependencies:
   - packaging
   - pandas
   - scipy
+  # acceleration
+  - numba
+  - numbagg
+  - flox
 
   # pytorch
   - pytorch-cuda=11.8
@@ -37,6 +41,12 @@ dependencies:
   - yaml
   - gputil
   - matplotlib
+  - cartopy
+  - nc-time-axis
+  - seaborn
+  - jupyter
+  - jupyter_server>=2.0.0
+  - memory_profiler
 
   - pip:
       - atmodata
