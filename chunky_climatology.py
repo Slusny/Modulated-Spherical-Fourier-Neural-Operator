@@ -46,7 +46,7 @@ def print_monitor():
 if __name__ == '__main__':
     results = []
     start_time = datetime.now()
-    with Pool(sys.argv[2]) as p:
+    with Pool(sys.argv[1]) as p:
         results.append(p.map_async(calc_mean, work))
     
     while True:
