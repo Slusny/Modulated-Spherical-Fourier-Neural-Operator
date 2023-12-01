@@ -50,11 +50,13 @@ if __name__ == '__main__':
     results = []
     start_time = datetime.now()
     print('starting ' + str(sys.argv[1]) + ' processes')
+    print("main pid ",os.getpid())
     with Pool(int(sys.argv[1])) as p:
         results.append(p.map_async(calc_mean, work))
         # p.close()
         # p.join()
     print('Pool started : ', flush = True)
+    print("second pid ",os.getpid())
     print(active_children(), flush = True)
     print("looping monitor until compleation", flush = True)
     while True:
