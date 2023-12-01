@@ -26,7 +26,7 @@ work = [(lat,long) for lat in range(ds.sizes["latitude"]) for long in range(ds.s
 
 def calc_mean(lat,long):
     process = os.getpid()
-    print(f"Process {process} works on {lat}-{long}")
+    print(f"Process {process} works on {lat}-{long}", flush = True)
     ds_lat_long = ds.isel(latitude=lat,longitude=long)
     ds_hourofyear = ds_lat_long.groupby("hourofyear").mean()
     savefile = os.path.join(savepath,f"10m_v_1959-2021_hourofyear_mean_{lat}-lat_{long}-long.nc")
@@ -35,7 +35,7 @@ def calc_mean(lat,long):
 
 def print_monitor():
     pids = [ child.pid for child in active_children()]
-    print(pids)
+    print(pids, flush = True)
     names = [ child.name() for child in active_children()]
     names.append("main")
     pids.append(os.getpid())
@@ -50,10 +50,12 @@ if __name__ == '__main__':
     print('starting ' + str(sys.argv[1]) + ' processes')
     with Pool(int(sys.argv[1])) as p:
         results.append(p.map_async(calc_mean, work))
-    print("looping monitor until compleation")
+        p.close()
+        p.join()
+    print("looping monitor until compleation", flush = True)
     while True:
         print_monitor()
         if all([ar.ready() for ar in results]):
-            print('Pool done')
+            print('Pool done', flush = True)
             break
         sleep(60)
