@@ -12,28 +12,45 @@ import sys
 import sysconfig
 import psutil
 
-def system_monitor():
-    # Getting % usage of virtual_memory ( 3rd field)
-    print("RAM:")
-    print('    memory % used:', psutil.virtual_memory()[2])
-    # Getting usage of virtual_memory in GB ( 4th field)
-    print('    Used (GB):', psutil.virtual_memory()[3]/1000000000)
-    print('    Total available (GB):', psutil.virtual_memory()[1]/1000000000)
-    # use memory_profiler  for line by line memory analysis, add @profile above function
-    # Ram for certain process:
-    pid = os.getpid()
-    python_process = psutil.Process(pid)
-    memoryUse = python_process.memory_info()[0]/2.**30  # memory use in GB...I think
-    print('    Process memory used (GB):', memoryUse)
-    print("    Process memory used : ", python_process.memory_percent())
-
-    print("CPU:")
+def system_monitor(printout=False,pids=[],names=[]):
+    system = {}
+    mem_percent = psutil.virtual_memory()[2]
+    mem_used = psutil.virtual_memory()[3]/1000000000
+    mem_total = psutil.virtual_memory()[1]/1000000000
+    processes = []
+    for i,pid in enumerate(pids):
+        python_process = psutil.Process(pid)
+        mem_proc = python_process.memory_percent()
+        mem_proc_percent = python_process.memory_info()[0]/2.**30  # memory use in GB...I think
+        processes.append({"pid":pid,"process":names[i],"memory percent":mem_proc,"memory used(GB)":mem_proc_percent})
     cores = os.cpu_count()
-    print("    available cores: ",cores)
-    print("    util: ",psutil.cpu_percent())
+    cpu_percent = psutil.cpu_percent()
     loads = psutil.getloadavg()
-    cpu_usage = [load/cores* 100 for l in loads]
-    print("    averge load over 1, 5 ,15 min: ",cpu_usage)
+    cpu_usage = [load/cores* 100 for load in loads]
+    if printout:
+        print("RAM:")
+        print('    memory % used:', mem_percent)
+        print('    Used (GB):', mem_used)
+        print('    Total available (GB):', mem_total)
+        # use memory_profiler  for line by line memory analysis, add @profile above function
+        # Ram for certain process:
+        print('    Process memory used (GB):', mem_proc)
+        print("    Process memory used : ", mem_proc_percent)
+
+        print("CPU:")
+        print("    available cores: ",cores)
+        print("    util: ",cpu_percent)
+        print("    averge load over 1, 5 ,15 min: ",cpu_usage)
+    
+    system["memory percent"] =  mem_percent
+    system["memory used(GB)"] =  mem_used
+    system["memory total available (GB)"] =  mem_total
+    system["processes"] =  processes
+    system["cpu percent"] =  cpu_percent
+    system["cpu usage"] =  cpu_usage
+    system["cores"] =  cores
+
+    return system
 
     # # Realtime monotoring bar needs multiprocessing
     # from tqdm import tqdm
