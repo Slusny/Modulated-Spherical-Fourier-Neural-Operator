@@ -40,7 +40,7 @@ def print_monitor():
     pids.append(os.getpid())
     sys_dict = system_monitor(False,pids,names)
     sys_dict["time"] = str(datetime.now() - start_time)
-    with open(os.path.join(savepath,"monitor.json"), 'w') as f: 
+    with open(os.path.join(savepath,"monitor"+datetime.now().strftime("%Y%m%d-%H%M")+".json"), 'a+') as f: 
         json.dump(sys_dict, f)
 	
 if __name__ == '__main__':
