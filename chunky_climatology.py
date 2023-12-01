@@ -34,6 +34,7 @@ def calc_mean(lat,long):
     return 1
 
 def print_monitor():
+    print("in active monitor", flush = True)
     print(active_children(), flush = True)
     pids = [ child.pid for child in active_children()]
     print(pids, flush = True)
@@ -51,8 +52,10 @@ if __name__ == '__main__':
     print('starting ' + str(sys.argv[1]) + ' processes')
     with Pool(int(sys.argv[1])) as p:
         results.append(p.map_async(calc_mean, work))
-        p.close()
-        p.join()
+        # p.close()
+        # p.join()
+    print('Pool started : ', flush = True)
+    print(active_children(), flush = True)
     print("looping monitor until compleation", flush = True)
     while True:
         print_monitor()
