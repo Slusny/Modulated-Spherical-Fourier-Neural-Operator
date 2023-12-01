@@ -10,7 +10,7 @@ from time import sleep
 
 basePath = "/mnt/qb/goswami/data/era5"
 savepath = "/mnt/qb/work2/goswami0/gkd965/climate/chunky"
-
+monitor_savepath = os.path.join(savepath,"monitor"+datetime.now().strftime("%Y%m%d-%H%M")+".json")
 ds = xr.open_mfdataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_????.nc"),parallel=True)
 
 ds['hourofyear'] = xr.DataArray(ds.time.dt.strftime('%m-%d %H'), coords=ds.time.coords)
@@ -35,12 +35,13 @@ def calc_mean(lat,long):
 
 def print_monitor():
     pids = [ child.pid for child in active_children()]
+    print(pids)
     names = [ child.name() for child in active_children()]
     names.append("main")
     pids.append(os.getpid())
     sys_dict = system_monitor(False,pids,names)
     sys_dict["time"] = str(datetime.now() - start_time)
-    with open(os.path.join(savepath,"monitor"+datetime.now().strftime("%Y%m%d-%H%M")+".json"), 'a+') as f: 
+    with open(monitor_savepath, 'a+') as f: 
         json.dump(sys_dict, f)
 	
 if __name__ == '__main__':
