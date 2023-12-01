@@ -34,6 +34,7 @@ def calc_mean(lat,long):
     return 1
 
 def print_monitor():
+    print(active_children(), flush = True)
     pids = [ child.pid for child in active_children()]
     print(pids, flush = True)
     names = [ child.name() for child in active_children()]
