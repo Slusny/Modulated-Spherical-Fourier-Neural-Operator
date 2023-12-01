@@ -22,7 +22,7 @@ ds['hourofyear'] = xr.DataArray(ds.time.dt.strftime('%m-%d %H'), coords=ds.time.
 #         savefile = os.path.join(savepath,f"10m_v_1959-2021_hourofyear_mean_{lat}-lat_{long}-long.nc")
 #         ds_hourofyear.to_netcdf(savefile)
 
-work = [(lat,long) for lat in range(ds.dimensions.latitude) for long in range(ds.dimensions.longitude)]
+work = [(lat,long) for lat in range(ds.sizes["latitude"]) for long in range(ds.sizes["longitude"])]
 
 def calc_mean(lat,long):
     process = os.getpid()
