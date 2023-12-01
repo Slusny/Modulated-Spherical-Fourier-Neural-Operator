@@ -47,9 +47,10 @@ def print_monitor():
 if __name__ == '__main__':
     results = []
     start_time = datetime.now()
+    print('starting ' + str(sys.argv[1]) + ' processes')
     with Pool(int(sys.argv[1])) as p:
         results.append(p.map_async(calc_mean, work))
-    
+    print("looping monitor until compleation")
     while True:
         print_monitor()
         if all([ar.ready() for ar in results]):
