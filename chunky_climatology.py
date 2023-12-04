@@ -52,14 +52,21 @@ def print_monitor():
     pids.append(os.getpid())
     sys_dict = system_monitor(False,pids,names)
     sys_dict["time"] = str(datetime.now() - start_time)
-    with open(monitor_savepath, 'a+') as f: 
-        json.dump(sys_dict, f)
+    if not os.path.isfile(monitor_savepath):
+        with open(monitor_savepath, 'w+') as f: 
+            json.dump([sys_dict], f, indent=4, separators=(',',': '))
+    else:
+        with open(monitor_savepath, 'w') as f: 
+            listObj = json.load(f)
+            listObj.append(sys_dict)
+            json.dump(listObj, f, indent=4, separators=(',',': '))
 	
 if __name__ == '__main__':
     results = []
     start_time = datetime.now()
     print('starting ' + str(sys.argv[1]) + ' processes')
     print("main pid ",os.getpid())
+    print("len work: ",len(work), flush = True)
     with Pool(int(sys.argv[1])) as p:
         results.append(p.map_async(test_worker, work))
         # p.close()
@@ -70,6 +77,7 @@ if __name__ == '__main__':
         print("looping monitor until compleation", flush = True)
         while True:
             print_monitor()
+            print(results)
             if all([ar.ready() for ar in results]):
                 print('Pool done', flush = True)
                 break
