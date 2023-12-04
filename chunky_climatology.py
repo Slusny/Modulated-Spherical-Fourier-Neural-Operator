@@ -54,7 +54,7 @@ def print_monitor():
     #         listObj = json.load(fp)
     #         listObj.append(sys_dict)
     #         json.dump(listObj, fp, indent=4, separators=(',',': '))
-    with open(monitor_savepath, 'w+') as fp: 
+    with open(monitor_savepath, 'a+') as fp: 
         json.dump(sys_dict, fp, indent=4, separators=(',',': '))
 	
 if __name__ == '__main__':
