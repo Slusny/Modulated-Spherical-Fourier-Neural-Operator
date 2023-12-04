@@ -71,11 +71,10 @@ if __name__ == '__main__':
     print("main pid ",os.getpid())
     print("len work: ",len(work), flush = True)
     with Pool(int(sys.argv[1])) as p:
-        results.append(p.map_async(test_worker, work))
+        results.append(p.map_async(calc_mean, work))
         # p.close()
         # p.join()
         print('Pool started : ', flush = True)
-        print("second pid ",os.getpid())
         print(active_children(), flush = True)
         print("looping monitor until compleation", flush = True)
         while True:
