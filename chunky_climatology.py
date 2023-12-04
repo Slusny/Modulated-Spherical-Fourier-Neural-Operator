@@ -48,7 +48,7 @@ def print_monitor():
     print(active_children(), flush = True)
     pids = [ child.pid for child in active_children()]
     print(pids, flush = True)
-    names = [ child.name() for child in active_children()]
+    names = [ child.name for child in active_children()]
     names.append("main")
     pids.append(os.getpid())
     sys_dict = system_monitor(False,pids,names)
