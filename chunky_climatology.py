@@ -37,20 +37,13 @@ def calc_mean(lat,long):
 def test_worker(lat, long):
     the_time = 3
     print("in active monitor", flush = True)
-    print(active_children(), flush = True)
     pid = os.getpid()
     print(f"Processs {pid}\tWaiting {the_time} seconds")
     sleep(the_time)
     print(f"Process {pid}\tDONE")
 
 def print_monitor():
-    print("in active monitor", flush = True)
-    print(active_children(), flush = True)
-    pids = [ child.pid for child in active_children()]
-    print(pids, flush = True)
-    names = [ child.name for child in active_children()]
-    names.append("main")
-    pids.append(os.getpid())
+    # print("in active monitor", flush = True)
     sys_dict = system_monitor(False,pids,names)
     sys_dict["time"] = str(datetime.now() - start_time)
     # if not os.path.isfile(monitor_savepath):
@@ -75,7 +68,14 @@ if __name__ == '__main__':
         # p.close()
         # p.join()
         print('Pool started : ', flush = True)
-        print(active_children(), flush = True)
+        a_childs = active_children()
+        print(a_childs, flush = True)
+
+        pids = [ child.pid for child in a_childs]
+        pids.append(os.getpid())
+        names = [ child.name for child in a_childs]
+        names.append("main")
+
         print("looping monitor until compleation", flush = True)
         while True:
             print_monitor()
