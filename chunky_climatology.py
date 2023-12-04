@@ -53,14 +53,16 @@ def print_monitor():
     pids.append(os.getpid())
     sys_dict = system_monitor(False,pids,names)
     sys_dict["time"] = str(datetime.now() - start_time)
-    if not os.path.isfile(monitor_savepath):
-        with open(monitor_savepath, 'w+') as f: 
-            json.dump([sys_dict], f, indent=4, separators=(',',': '))
-    else:
-        with open(monitor_savepath, 'w') as f: 
-            listObj = json.load(f)
-            listObj.append(sys_dict)
-            json.dump(listObj, f, indent=4, separators=(',',': '))
+    # if not os.path.isfile(monitor_savepath):
+    #     with open(monitor_savepath, 'w+') as fp: 
+    #         json.dump([sys_dict], fp, indent=4, separators=(',',': '))
+    # else:
+    #     with open(monitor_savepath, 'w') as fp: 
+    #         listObj = json.load(fp)
+    #         listObj.append(sys_dict)
+    #         json.dump(listObj, fp, indent=4, separators=(',',': '))
+    with open(monitor_savepath, 'w+') as fp: 
+        json.dump(sys_dict, fp, indent=4, separators=(',',': '))
 	
 if __name__ == '__main__':
     results = []
