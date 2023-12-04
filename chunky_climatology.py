@@ -23,6 +23,8 @@ ds['hourofyear'] = xr.DataArray(ds.time.dt.strftime('%m-%d %H'), coords=ds.time.
 #         ds_hourofyear.to_netcdf(savefile)
 
 work = [(lat,long) for lat in range(ds.sizes["latitude"]) for long in range(ds.sizes["longitude"])]
+step = 5
+work = [(slice(lat,lat+step),slice(long,long+step)) for lat in range(0,ds.sizes["latitude"],step) for long in range(0,ds.sizes["longitude"],step)]
 len_work = len(work)
 
 def calc_mean(coords):
@@ -39,7 +41,7 @@ def calc_mean(coords):
     return 1
 
 def test_worker(lat):
-    # savepath_p = "/home/goswami/gkd965/jobs/"
+    # savepath_p = "/home/goswami/gkd965/jomem_procbs/"
     # sys.stdout = open(os.path.join(savepath_p,str(np.random.random()) + ".out"), "a+")
     # sys.stderr = open(os.path.join(savepath_p,str(np.random.random()) + ".err"), "a+")
     print(lat)
