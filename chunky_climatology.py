@@ -27,6 +27,8 @@ len_work = len(work)
 
 def calc_mean(lat,long):
     process = os.getpid()
+    sys.stdout = open(os.path.join(savepath,str(os.getpid()) + ".out"), "a+")
+    sys.stderr = open(os.path.join(savepath,str(os.getpid()) + ".err"), "a+")
     print(f"Process {process} works on {lat}-{long}", flush = True)
     ds_lat_long = ds.isel(latitude=lat,longitude=long)
     ds_hourofyear = ds_lat_long.groupby("hourofyear").mean()
