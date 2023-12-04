@@ -37,7 +37,11 @@ def calc_mean(lat,long):
     ds_hourofyear.to_netcdf(savefile)
     return 1
 
-def test_worker(lat, long):
+def test_worker(lat):
+    savepath_p = "/home/goswami/gkd965/jobs/"
+    sys.stdout = open(os.path.join(savepath_p,str(np.random.random()) + ".out"), "a+")
+    sys.stderr = open(os.path.join(savepath_p,str(np.random.random()) + ".err"), "a+")
+    print(lat)
     the_time = 3
     print("in active monitor", flush = True)
     pid = os.getpid()
