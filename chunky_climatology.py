@@ -64,13 +64,13 @@ if __name__ == '__main__':
         results.append(p.map_async(test_worker, work))
         # p.close()
         # p.join()
-    print('Pool started : ', flush = True)
-    print("second pid ",os.getpid())
-    print(active_children(), flush = True)
-    print("looping monitor until compleation", flush = True)
-    while True:
-        print_monitor()
-        if all([ar.ready() for ar in results]):
-            print('Pool done', flush = True)
-            break
-        sleep(60)
+        print('Pool started : ', flush = True)
+        print("second pid ",os.getpid())
+        print(active_children(), flush = True)
+        print("looping monitor until compleation", flush = True)
+        while True:
+            print_monitor()
+            if all([ar.ready() for ar in results]):
+                print('Pool done', flush = True)
+                break
+            sleep(60)
