@@ -33,6 +33,15 @@ def calc_mean(lat,long):
     ds_hourofyear.to_netcdf(savefile)
     return 1
 
+def test_worker(lat, long):
+    the_time = 3
+    print("in active monitor", flush = True)
+    print(active_children(), flush = True)
+    pid = os.getpid()
+    print(f"Processs {pid}\tWaiting {the_time} seconds")
+    sleep(the_time)
+    print(f"Process {pid}\tDONE")
+
 def print_monitor():
     print("in active monitor", flush = True)
     print(active_children(), flush = True)
@@ -52,7 +61,7 @@ if __name__ == '__main__':
     print('starting ' + str(sys.argv[1]) + ' processes')
     print("main pid ",os.getpid())
     with Pool(int(sys.argv[1])) as p:
-        results.append(p.map_async(calc_mean, work))
+        results.append(p.map_async(test_worker, work))
         # p.close()
         # p.join()
     print('Pool started : ', flush = True)
