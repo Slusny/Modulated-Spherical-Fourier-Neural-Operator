@@ -26,9 +26,9 @@ work = [(lat,long) for lat in range(ds.sizes["latitude"]) for long in range(ds.s
 len_work = len(work)
 
 def calc_mean(lat,long):
-    savepath_p = "/home/goswami/gkd965/jobs/"
-    sys.stdout = open(os.path.join(savepath_p,str(np.random.random()) + ".out"), "a+")
-    sys.stderr = open(os.path.join(savepath_p,str(np.random.random()) + ".err"), "a+")
+    # savepath_p = "/home/goswami/gkd965/jobs/"
+    # sys.stdout = open(os.path.join(savepath_p,str(np.random.random()) + ".out"), "a+")
+    # sys.stderr = open(os.path.join(savepath_p,str(np.random.random()) + ".err"), "a+")
     process = os.getpid()
     print(f"Process {process} works on {lat}-{long}", flush = True)
     ds_lat_long = ds.isel(latitude=lat,longitude=long)
@@ -67,7 +67,7 @@ if __name__ == '__main__':
     print("main pid ",os.getpid())
     print("len work: ",len(work), flush = True)
     with Pool(int(sys.argv[1])) as p:
-        results.append(p.map_async(calc_mean, work))
+        results.append(p.map_async(test_worker, work))
         # p.close()
         # p.join()
         print('Pool started : ', flush = True)
