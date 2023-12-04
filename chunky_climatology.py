@@ -25,7 +25,8 @@ ds['hourofyear'] = xr.DataArray(ds.time.dt.strftime('%m-%d %H'), coords=ds.time.
 work = [(lat,long) for lat in range(ds.sizes["latitude"]) for long in range(ds.sizes["longitude"])]
 len_work = len(work)
 
-def calc_mean(lat,long):
+def calc_mean(coords):
+    lat, long = coords
     # savepath_p = "/home/goswami/gkd965/jobs/"
     # sys.stdout = open(os.path.join(savepath_p,str(np.random.random()) + ".out"), "a+")
     # sys.stderr = open(os.path.join(savepath_p,str(np.random.random()) + ".err"), "a+")
@@ -38,9 +39,9 @@ def calc_mean(lat,long):
     return 1
 
 def test_worker(lat):
-    savepath_p = "/home/goswami/gkd965/jobs/"
-    sys.stdout = open(os.path.join(savepath_p,str(np.random.random()) + ".out"), "a+")
-    sys.stderr = open(os.path.join(savepath_p,str(np.random.random()) + ".err"), "a+")
+    # savepath_p = "/home/goswami/gkd965/jobs/"
+    # sys.stdout = open(os.path.join(savepath_p,str(np.random.random()) + ".out"), "a+")
+    # sys.stderr = open(os.path.join(savepath_p,str(np.random.random()) + ".err"), "a+")
     print(lat)
     the_time = 3
     print("in active monitor", flush = True)
