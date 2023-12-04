@@ -36,7 +36,7 @@ def calc_mean(coords):
     print(f"Process {process} works on {lat}-{long}", flush = True)
     ds_lat_long = ds.isel(latitude=lat,longitude=long)
     ds_hourofyear = ds_lat_long.groupby("hourofyear").mean()
-    savefile = os.path.join(savepath,f"10m_v_1959-2021_hourofyear_mean_{lat}-lat_{long}-long.nc")
+    savefile = os.path.join(savepath,f"testslice_10m_v_1959-2021_hourofyear_mean_{lat}-lat_{long}-long.nc")
     ds_hourofyear.to_netcdf(savefile)
     return 1
 
