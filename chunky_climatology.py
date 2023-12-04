@@ -23,6 +23,7 @@ ds['hourofyear'] = xr.DataArray(ds.time.dt.strftime('%m-%d %H'), coords=ds.time.
 #         ds_hourofyear.to_netcdf(savefile)
 
 work = [(lat,long) for lat in range(ds.sizes["latitude"]) for long in range(ds.sizes["longitude"])]
+len_work = len(work)
 
 def calc_mean(lat,long):
     process = os.getpid()
@@ -78,7 +79,7 @@ if __name__ == '__main__':
         while True:
             print_monitor()
             print(results)
-            if all([ar.ready() for ar in results]):
+            if len(results) == len_work and all([ar.ready() for ar in results]):
                 print('Pool done', flush = True)
                 break
             sleep(60)
