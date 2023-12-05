@@ -15,7 +15,7 @@ from time import time
 basePath = "/mnt/qb/goswami/data/era5"
 savepath = "/mnt/qb/work2/goswami0/gkd965/climate/mean_for_loop_xarray_4years2.nc"
 file_paths = os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_{}.nc")
-year_range = [1990,1994]
+year_range = [1990,1993]
 
 class IterMean():
     def __init__(self, ds):
@@ -39,28 +39,24 @@ def calc_mean(variable_path,year_range,savepath):
     if year_range[0] in range(1948,2025,4):
         print("please don't start with a leap year")
         exit(0)
-    mean = IterMean(xr.open_dataset(variable_path.format(year_range[0])).assign_coords(time=list(range(0,8760))).to_array().squeeze())#.to_numpy()) # numpy / xarray
+    mean = IterMean(xr.open_dataset(variable_path.format(year_range[0])).to_array().squeeze().assign_coords(time=list(range(0,8760))))#.to_numpy()) # numpy / xarray
     for year in range(year_range[0]+1,year_range[1]):
         print("--------------------------")
         print(year)
         data = xr.open_dataset(variable_path.format(year))
-        timesteps = data.dims["time"]   
         if year in range(1948,2025,4):
             print("leap year")
-            print("timesteps: ",timesteps)
-            if (timesteps != 8784): 
-                print("ERROR: v10_1.dims.time != 8784")
+            print("timesteps: ",data.dims["time"])
+            if (data.dims["time"] != 8784): 
+                print("ERROR: leapyear timesteps != 8784")
                 continue
             data  = data.drop_isel(time=list(range((31+28)*24,(31+29)*24)))
-        if (timesteps != 8760): 
-            print("ERROR: v10_1.dims.time != 8760")
+        if (data.dims["time"] != 8760): 
+            print("ERROR: timesteps per year != 8760")
             continue
 
-        # only needed if one wants to work with xarrays not numpy arrays
-        data = data.assign_coords(time=list(range(0,8760)))
-
         # calculate mean
-        mean + data.to_array().squeeze()#.to_numpy() # numpy / xarray
+        mean + data.to_array().squeeze().assign_coords(time=list(range(0,8760)))#.to_numpy() # numpy / xarray
         stats = system_monitor(True,[os.getpid()],["main"])
     mean.save(savepath)
 

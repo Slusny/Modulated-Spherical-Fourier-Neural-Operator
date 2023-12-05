@@ -123,15 +123,14 @@ def calc_mean(variable_path,year_range,savepath):
         print("--------------------------")
         print(year)
         data = xr.open_dataset(variable_path.format(year))
-        timesteps = data.dims["time"]   
         if year in range(1948,2025,4):
             print("leap year")
-            if (timesteps != 8784): 
+            if (data.dims["time"] != 8784): 
                 print("ERROR: v10_1.dims.time != 8760")
                 continue
             data  = data.drop_isel(time=list(range((31+28)*24,(31+29)*24)))
         else:
-            if (timesteps != 8760): 
+            if (data.dims["time"] != 8760): 
                 print("ERROR: v10_1.dims.time != 8760")
                 continue
         data = data.assign_coords(time=list(range(0,8760)))
