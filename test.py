@@ -69,6 +69,8 @@ print("v10 1 shape: ",v10_1.shape)
 v10_2 = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_1991.nc")).to_array().squeeze()#.to_numpy()
 print("v10 2 shape: ",v10_2.shape)
 
+print(xr.align(v10_1,v10_2, join='exact'))
+
 print("stats after two years in RAM")
 stats = system_monitor(True,[os.getpid()],["main"])
 
@@ -108,11 +110,13 @@ print("number of references: ",len(gc.get_referrers(v10_2)))
 def calc_mean(variable_path,year_range,savepath):
     mean = IterMean(variable_path.format(year_range[0]))
     for year in range(year_range[0]+1,year_range[1]):
+        print("--------------------------")
         print(year)
         mean + xr.open_dataset(variable_path.format(year)).to_array()
+        stats = system_monitor(True,[os.getpid()],["main"])
     mean.save(savepath)
 
 # calc_mean(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_{}.nc"),
-#           [1990,1992],
-
+#           [1990,1993],
+            # "/mnt/qb/work2/goswami0/gkd965/climate/mean_for_loop.nc"
 #           )
