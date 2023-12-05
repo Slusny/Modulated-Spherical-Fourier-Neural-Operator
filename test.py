@@ -13,8 +13,6 @@ from time import time
 
 
 basePath = "/mnt/qb/goswami/data/era5"
-savepath = "/mnt/qb/work2/goswami0/gkd965/climate/chunky"
-monitor_savepath = os.path.join(savepath,"monitor"+datetime.now().strftime("%Y%m%d-%H%M")+".json")
 
 def system_monitor(printout=False,pids=[],names=[]):
     system = {}
@@ -65,7 +63,7 @@ v10_1 = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_c
 end_load = time()
 print("time loading: " ,end_load - start_load)
 print("----------------")
-print(v10_1.info())
+print(v10_1.shape)
 
 v10_2 = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_1991.nc")).to_array().to_numpy()
 
@@ -89,6 +87,7 @@ start_mean = time()
 mean + v10_2
 end_mean = time()
 print("time calc mean: " ,end_mean - start_mean)
+stats = system_monitor(True,[os.getpid()],["main"])
 start_save = time()
 mean.save(savepath)
 end_save = time()
