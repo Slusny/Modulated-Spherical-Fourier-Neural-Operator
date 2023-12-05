@@ -60,13 +60,14 @@ stats = system_monitor(True,[os.getpid()],["main"])
 
 # load
 start_load = time()
-v10_1 = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_1990.nc"))#.to_array().to_numpy()
+v10_1 = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_1990.nc")).to_array().to_numpy().squeeze()
 end_load = time()
 print("time loading one: " ,end_load - start_load)
 print("----------------")
-# print(v10_1.shape)
+print("v10 1 shape: ",v10_1.shape)
 
-v10_2 = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_1991.nc"))#.to_array().to_numpy()
+v10_2 = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_1991.nc")).to_array().to_numpy().squeeze()
+print("v10 2 shape: ",v10_2.shape)
 
 print("stats after two years in RAM")
 stats = system_monitor(True,[os.getpid()],["main"])
@@ -78,12 +79,13 @@ class IterMean():
     def __add__(self,ds2):
         self.iter += 1
         self.mean = self.mean + (1/self.iter+1)*(ds2 - self.mean)
+        print("mean shape: ",self.mean.shape)
         del ds2
     def get(self):
         return self.mean
     def save(self,savepath):
-        # xr.DataArray(self.mean,dims=["longitude","latitude","time"],name="v10").to_netcdf(savepath)
-        self.mean.to_netcdf(savepath)
+        xr.DataArray(self.mean,dims=["longitude","latitude","time"],name="v10").to_netcdf(savepath)
+        # self.mean.to_netcdf(savepath)
 
 # mean
 mean = IterMean(v10_1)
