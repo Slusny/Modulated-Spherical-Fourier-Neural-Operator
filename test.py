@@ -61,7 +61,7 @@ stats = system_monitor(True,[os.getpid()],["main"])
 # load
 start_load = time()
 v10_1 = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_1990.nc")).to_array().squeeze()#.to_numpy()
-if (v10_1.dims.time != 8760): print("ERROR: v10_1.dims.time != 8760")
+if (v10_1.dims["time"] != 8760): print("ERROR: v10_1.dims.time != 8760")
 print("v10 timesteps: ",v10_1.dims.time)
 v10_1.assign_coords(time=list(range(0,8760)))
 end_load = time()
@@ -71,7 +71,7 @@ print("v10 1 shape: ",v10_1.shape)
 
 v10_2 = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_1991.nc")).to_array().squeeze()#.to_numpy()
 print("v10 2 shape: ",v10_2.shape)
-if (v10_2.dims.time != 8760): print("ERROR: v10_2.dims.time != 8760")
+if (v10_2.dims["time"] != 8760): print("ERROR: v10_2.dims.time != 8760")
 print("v10 timesteps: ",v10_2.dims.time)
 v10_2.assign_coords(time=list(range(0,8760)))
 
