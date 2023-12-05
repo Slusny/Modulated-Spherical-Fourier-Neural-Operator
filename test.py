@@ -8,6 +8,8 @@ from S2S_on_SFNO.Models.provenance import system_monitor
 from multiprocessing import Pool, active_children
 from time import sleep
 import psutil
+import gc
+from time import time
 
 
 basePath = "/mnt/qb/goswami/data/era5"
@@ -54,12 +56,41 @@ def system_monitor(printout=False,pids=[],names=[]):
 
     return system
 
+
+savepath = "/mnt/qb/work2/goswami0/gkd965/climate/testmean.nc"
 stats = system_monitor(True,[os.getpid()],["main"])
 
-ds = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_1990.nc"))
+start_load = time()
+v10_1 = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_1990.nc")).to_array().to_numpy()
+end_load = time()
+print("time loading: " ,end_load - start_load)
+print("----------------")
+print(v10_1.info())
 
-print(ds.info())
-
-loaded = ds.load()
+v10_2 = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_1991.nc")).to_array().to_numpy()
 
 stats = system_monitor(True,[os.getpid()],["main"])
+
+class IterMean():
+    def __init__(self, ds):
+        self.iter = 1
+        self.mean = ds
+    def __add__(self,ds2):
+        self.iter += 1
+        self.mean = self.mean + (1/self.iter+1)*(ds2 - self.mean)
+        del ds2
+    def get(self):
+        return self.mean
+    def save(self,savepath):
+        self.mean.to_netcdf(savepath)
+    
+mean = IterMean(v10_1)
+start_mean = time()
+mean + v10_2
+end_mean = time()
+print("time calc mean: " ,end_mean - start_mean)
+start_save = time()
+mean.save(savepath)
+end_save = time()
+print("time saving: " ,end_save - start_save)
+print("number of references: ",len(gc.get_referrers(v10_2)))
