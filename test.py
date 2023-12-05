@@ -60,20 +60,24 @@ stats = system_monitor(True,[os.getpid()],["main"])
 
 # load
 start_load = time()
-v10_1 = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_1990.nc")).to_array().squeeze()#.to_numpy()
-if (v10_1.dims["time"] != 8760): print("ERROR: v10_1.dims.time != 8760")
-print("v10 timesteps: ",v10_1.dims.time)
-v10_1.assign_coords(time=list(range(0,8760)))
+v10_1_dataset = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_1990.nc"))
+if (v10_1_dataset.dims["time"] != 8760): print("ERROR: v10_1.dims.time != 8760")
+print("v10 timesteps: ",v10_1_dataset.dims["time"])
+v10_1_dataset.assign_coords(time=list(range(0,8760)))
+
+v10_1 = v10_1_dataset.to_array().squeeze()#.to_numpy()
 end_load = time()
 print("time loading one: " ,end_load - start_load)
 print("----------------")
 print("v10 1 shape: ",v10_1.shape)
 
-v10_2 = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_1991.nc")).to_array().squeeze()#.to_numpy()
+v10_2_dataset = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_1991.nc"))
+if (v10_2_dataset.dims["time"] != 8760): print("ERROR: v10_2.dims.time != 8760")
+print("v10 timesteps: ", v10_2_dataset.dims["time"])
+v10_2_dataset.assign_coords(time=list(range(0,8760)))
+v10_2 = v10_2_dataset.to_array().squeeze()#.to_numpy()
 print("v10 2 shape: ",v10_2.shape)
-if (v10_2.dims["time"] != 8760): print("ERROR: v10_2.dims.time != 8760")
-print("v10 timesteps: ",v10_2.dims.time)
-v10_2.assign_coords(time=list(range(0,8760)))
+
 
 # print(xr.align(v10_1,v10_2, join='exact'))
 
