@@ -60,4 +60,6 @@ ds = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_comp
 
 print(ds.info())
 
+loaded = ds.load()
+
 stats = system_monitor(True,[os.getpid()],["main"])
