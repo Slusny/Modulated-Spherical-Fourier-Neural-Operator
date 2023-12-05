@@ -81,7 +81,7 @@ def calc_mean(variable_path,year_range,savepath):
     if year_range[0] in range(1948,2025,4):
         print("please don't start with a leap year")
         exit(0)
-    mean = IterMean(xr.open_dataset(variable_path.format(year_range[0])).assign_coords(time=list(range(0,8760))).to_array().squeeze()) # numpy / xarray
+    mean = IterMean(xr.open_dataset(variable_path.format(year_range[0])).to_array().squeeze().to_numpy()) # numpy / xarray
     for year in range(year_range[0]+1,year_range[1]):
         print("--------------------------")
         print(year)
@@ -98,18 +98,18 @@ def calc_mean(variable_path,year_range,savepath):
             continue
 
         # only needed if one wants to work with xarrays not numpy arrays
-        data = data.assign_coords(time=list(range(0,8760)))
+        # data = data.assign_coords(time=list(range(0,8760)))
 
         # calculate mean
-        mean + data.to_array().squeeze() # numpy / xarray
+        mean + data.to_array().squeeze().to_numpy() # numpy / xarray
         stats = system_monitor(True,[os.getpid()],["main"])
     mean.save(savepath)
 
-print("xarray")
+print("numpy")
 start_time = time()
 calc_mean(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_{}.nc"),
           [1990,1994],
-            "/mnt/qb/work2/goswami0/gkd965/climate/mean_for_loop_xarray_4years.nc"
+            "/mnt/qb/work2/goswami0/gkd965/climate/mean_for_loop_numpy_4years.nc"
           )
 
 end_time = time()
