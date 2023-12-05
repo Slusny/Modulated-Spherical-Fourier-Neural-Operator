@@ -78,7 +78,7 @@ class IterMean():
 
 
 def calc_mean(variable_path,year_range,savepath):
-    if year in range(1948,2025,4):
+    if year_range[0] in range(1948,2025,4):
         print("please don't start with a leap year")
         exit(0)
     mean = IterMean(xr.open_dataset(variable_path.format(year_range[0])).assign_coords(time=list(range(0,8760))).to_array().squeeze()) # numpy / xarray
