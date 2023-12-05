@@ -15,13 +15,6 @@ ds = xr.open_mfdataset(os.path.join(basePath, 'single_pressure_level', '10m_v_co
 
 ds['hourofyear'] = xr.DataArray(ds.time.dt.strftime('%m-%d %H'), coords=ds.time.coords)
 
-# for lat in range(ds.dimensions.latitude):
-#     for long in range(ds.dimensions.longitude):
-#         ds_lat_long = ds.isel(latitude=lat,longitude=long)
-#         ds_hourofyear = ds_lat_long.groupby("hourofyear").mean()
-#         savefile = os.path.join(savepath,f"10m_v_1959-2021_hourofyear_mean_{lat}-lat_{long}-long.nc")
-#         ds_hourofyear.to_netcdf(savefile)
-
 work = [(lat,long) for lat in range(ds.sizes["latitude"]) for long in range(ds.sizes["longitude"])]
 step = 5
 work = [(slice(lat,lat+step),slice(long,long+step)) for lat in range(0,ds.sizes["latitude"],step) for long in range(0,ds.sizes["longitude"],step)]
@@ -29,9 +22,6 @@ len_work = len(work)
 
 def calc_mean(coords):
     lat, long = coords
-    # savepath_p = "/home/goswami/gkd965/jobs/"
-    # sys.stdout = open(os.path.join(savepath_p,str(np.random.random()) + ".out"), "a+")
-    # sys.stderr = open(os.path.join(savepath_p,str(np.random.random()) + ".err"), "a+")
     process = os.getpid()
     print(f"Process {process} works on {lat}-{long}", flush = True)
     ds_lat_long = ds.isel(latitude=lat,longitude=long)
@@ -41,9 +31,6 @@ def calc_mean(coords):
     return 1
 
 def test_worker(lat):
-    # savepath_p = "/home/goswami/gkd965/jomem_procbs/"
-    # sys.stdout = open(os.path.join(savepath_p,str(np.random.random()) + ".out"), "a+")
-    # sys.stderr = open(os.path.join(savepath_p,str(np.random.random()) + ".err"), "a+")
     print(lat)
     the_time = 3
     print("in active monitor", flush = True)
@@ -53,17 +40,8 @@ def test_worker(lat):
     print(f"Process {pid}\tDONE")
 
 def print_monitor():
-    # print("in active monitor", flush = True)
     sys_dict = system_monitor(False,pids,names)
     sys_dict["time"] = str(datetime.now() - start_time)
-    # if not os.path.isfile(monitor_savepath):
-    #     with open(monitor_savepath, 'w+') as fp: 
-    #         json.dump([sys_dict], fp, indent=4, separators=(',',': '))
-    # else:
-    #     with open(monitor_savepath, 'w') as fp: 
-    #         listObj = json.load(fp)
-    #         listObj.append(sys_dict)
-    #         json.dump(listObj, fp, indent=4, separators=(',',': '))
     with open(monitor_savepath, 'a+') as fp: 
         json.dump(sys_dict, fp, indent=4, separators=(',',': '))
 	
@@ -75,8 +53,6 @@ if __name__ == '__main__':
     print("len work: ",len(work), flush = True)
     with Pool(int(sys.argv[1])) as p:
         results.append(p.map_async(calc_mean, work))
-        # p.close()
-        # p.join()
         print('Pool started : ', flush = True)
         a_childs = active_children()
         print(a_childs, flush = True)
