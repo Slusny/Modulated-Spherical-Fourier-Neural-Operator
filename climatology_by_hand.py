@@ -27,7 +27,7 @@ for lat, long in work:
                 if day == 29 and month == 2 and year not in range(1948,2025,4):
                     continue
                 for hour in range(0,24,6):
-                    ds_lat_long = ds.isel(latitude=lat,longitude=long,time=datetime(year,month,day,hour,0))
+                    ds_lat_long = ds.sel(latitude=lat,longitude=long,time=datetime(year,month,day,hour,0))
                     ds_lat_long.info()
                     break
                 break

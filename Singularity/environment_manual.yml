@@ -31,7 +31,6 @@ dependencies:
   - einops
   - git
   - gitpython
-  - pillow
   - pip
   - python-dateutil
   - setuptools
