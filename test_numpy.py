@@ -58,64 +58,64 @@ def system_monitor(printout=False,pids=[],names=[]):
 savepath = "/mnt/qb/work2/goswami0/gkd965/climate/testmean.nc"
 stats = system_monitor(True,[os.getpid()],["main"])
 
-# load
-start_load = time()
-v10_1_dataset = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_1990.nc"))
-if (v10_1_dataset.dims["time"] != 8760): print("ERROR: v10_1.dims.time != 8760")
-print("v10 1 timesteps: ",v10_1_dataset.dims["time"])
-v10_1_dataset = v10_1_dataset.assign_coords(time=list(range(0,8760)))
+# # load
+# start_load = time()
+# v10_1_dataset = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_1990.nc"))
+# if (v10_1_dataset.dims["time"] != 8760): print("ERROR: v10_1.dims.time != 8760")
+# print("v10 1 timesteps: ",v10_1_dataset.dims["time"])
+# v10_1_dataset = v10_1_dataset.assign_coords(time=list(range(0,8760)))
 
-v10_1 = v10_1_dataset.to_array().squeeze()#.to_numpy()
-end_load = time()
-print("time loading one: " ,end_load - start_load)
-print("----------------")
-print("v10 1 shape: ",v10_1.shape)
+# v10_1 = v10_1_dataset.to_array().squeeze()#.to_numpy()
+# end_load = time()
+# print("time loading one: " ,end_load - start_load)
+# print("----------------")
+# print("v10 1 shape: ",v10_1.shape)
 
-v10_2_dataset = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_1991.nc"))
-if (v10_2_dataset.dims["time"] != 8760): print("ERROR: v10_2.dims.time != 8760")
-print("v10 2 timesteps: ", v10_2_dataset.dims["time"])
-v10_2_dataset = v10_2_dataset.assign_coords(time=list(range(0,8760)))
-v10_2 = v10_2_dataset.to_array().squeeze()#.to_numpy()
-print("v10 2 shape: ",v10_2.shape)
+# v10_2_dataset = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_1991.nc"))
+# if (v10_2_dataset.dims["time"] != 8760): print("ERROR: v10_2.dims.time != 8760")
+# print("v10 2 timesteps: ", v10_2_dataset.dims["time"])
+# v10_2_dataset = v10_2_dataset.assign_coords(time=list(range(0,8760)))
+# v10_2 = v10_2_dataset.to_array().squeeze().to_numpy()
+# print("v10 2 shape: ",v10_2.shape)
 
 
-# print(xr.align(v10_1,v10_2, join='exact'))
+# # print(xr.align(v10_1,v10_2, join='exact'))
 
-print("stats after two years in RAM")
-stats = system_monitor(True,[os.getpid()],["main"])
+# print("stats after two years in RAM")
+# stats = system_monitor(True,[os.getpid()],["main"])
 
 class IterMean():
     def __init__(self, ds):
         self.iter = 1
-        self.mean = ds
+        self.mean = ds.to_array().squeeze().to_numpy()
     def __add__(self,ds2):
         self.iter += 1
-        self.mean = self.mean + (1/self.iter+1)*(ds2 - self.mean)
+        self.mean = self.mean + (1/self.iter+1)*(ds2.to_array().squeeze().to_numpy() - self.mean)
         print("mean shape: ",self.mean.shape)
-        del ds2
+        # del ds2
     def get(self):
         return self.mean
     def save(self,savepath):
-        # xr.DataArray(self.mean,dims=["longitude","latitude","time"],name="v10").to_netcdf(savepath)
-        self.mean.to_netcdf(savepath)
+        xr.DataArray(self.mean,dims=["longitude","latitude","time"],name="v10").to_netcdf(savepath)
+        # self.mean.to_netcdf(savepath)
 
 # mean
-mean = IterMean(v10_1)
-start_mean = time()
-mean + v10_2
-del v10_2
-end_mean = time()
-print("time calc mean: " ,end_mean - start_mean)
-stats = system_monitor(True,[os.getpid()],["main"])
+# mean = IterMean(v10_1)
+# start_mean = time()
+# mean + v10_2
+# del v10_2
+# end_mean = time()
+# print("time calc mean: " ,end_mean - start_mean)
+# stats = system_monitor(True,[os.getpid()],["main"])
 
-# save
-start_save = time()
-mean.save(savepath)
-end_save = time()
-print("time saving: " ,end_save - start_save)
-stats = system_monitor(True,[os.getpid()],["main"])
+# # save
+# start_save = time()
+# mean.save(savepath)
+# end_save = time()
+# print("time saving: " ,end_save - start_save)
+# stats = system_monitor(True,[os.getpid()],["main"])
 
-print("number of references: ",len(gc.get_referrers(v10_2)))
+# print("number of references: ",len(gc.get_referrers(v10_2)))
 
 def calc_mean(variable_path,year_range,savepath):
     mean = IterMean(variable_path.format(year_range[0]))
@@ -130,10 +130,9 @@ def calc_mean(variable_path,year_range,savepath):
                 print("ERROR: v10_1.dims.time != 8760")
                 continue
             data  = data.drop_isel(time=list(range((31+28)*24,(31+29)*24)))
-        else:
-            if (timesteps != 8760): 
-                print("ERROR: v10_1.dims.time != 8760")
-                continue
+        if (timesteps != 8760): 
+            print("ERROR: v10_1.dims.time != 8760")
+            continue
         data = data.assign_coords(time=list(range(0,8760)))
 
         # calculate mean
@@ -141,7 +140,12 @@ def calc_mean(variable_path,year_range,savepath):
         stats = system_monitor(True,[os.getpid()],["main"])
     mean.save(savepath)
 
+
+start_time = time()
 calc_mean(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_{}.nc"),
-          [1990,1993],
-            "/mnt/qb/work2/goswami0/gkd965/climate/mean_for_loop.nc"
+          [1990,1994],
+            "/mnt/qb/work2/goswami0/gkd965/climate/mean_for_loop_numpy_4years.nc"
           )
+
+end_time = time()
+print("time calc mean: " ,end_time - start_time)
