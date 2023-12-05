@@ -105,7 +105,7 @@ def calc_mean(variable_path,year_range,savepath):
         stats = system_monitor(True,[os.getpid()],["main"])
     mean.save(savepath)
 
-
+print("xarray")
 start_time = time()
 calc_mean(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_{}.nc"),
           [1990,1994],
