@@ -60,13 +60,13 @@ stats = system_monitor(True,[os.getpid()],["main"])
 
 # load
 start_load = time()
-v10_1 = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_1990.nc")).to_array()#.to_numpy().squeeze()
+v10_1 = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_1990.nc")).to_array().squeeze()#.to_numpy()
 end_load = time()
 print("time loading one: " ,end_load - start_load)
 print("----------------")
 print("v10 1 shape: ",v10_1.shape)
 
-v10_2 = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_1991.nc")).to_array()#.to_numpy().squeeze()
+v10_2 = xr.open_dataset(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_1991.nc")).to_array().squeeze()#.to_numpy()
 print("v10 2 shape: ",v10_2.shape)
 
 print("stats after two years in RAM")
@@ -91,6 +91,7 @@ class IterMean():
 mean = IterMean(v10_1)
 start_mean = time()
 mean + v10_2
+del v10_2
 end_mean = time()
 print("time calc mean: " ,end_mean - start_mean)
 stats = system_monitor(True,[os.getpid()],["main"])
@@ -103,3 +104,15 @@ print("time saving: " ,end_save - start_save)
 stats = system_monitor(True,[os.getpid()],["main"])
 
 print("number of references: ",len(gc.get_referrers(v10_2)))
+
+def calc_mean(variable_path,year_range,savepath):
+    mean = IterMean(variable_path.format(year_range[0]))
+    for year in range(year_range[0]+1,year_range[1]):
+        print(year)
+        mean + xr.open_dataset(variable_path.format(year)).to_array()
+    mean.save(savepath)
+
+# calc_mean(os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_{}.nc"),
+#           [1990,1992],
+
+#           )
