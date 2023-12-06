@@ -28,7 +28,7 @@ mean_list = [[]]*len(coords)
 for year in range(year_range[0],year_range[1]):
     data = xr.open_dataset(file_paths.format(year))
     for i,coord in enumerate(coords):
-        mean_list[i].append(data.isel(coord))
+        mean_list[i].append(data[coords[0]].to_array().to_numpy()[0])
         
 
 for i,coord in enumerate(coords):
@@ -39,4 +39,4 @@ for i,coord in enumerate(coords):
     print("--------")
     print("coords",coord)
     print("real: ",mean_list[i])
-    print("calc: ",xr.open_dataset(savepath).isel(coord).values)
+    print("calc: ",xr.open_dataset(savepath)[coords[0]].to_array().to_numpy()[0])
