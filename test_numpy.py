@@ -13,7 +13,9 @@ from time import time
 
 
 basePath = "/mnt/qb/goswami/data/era5"
-savepath = "/mnt/qb/work2/goswami0/gkd965/climate/mean_for_loop_xarray_4years2.nc"
+saveBasePath = "/mnt/qb/work2/goswami0/gkd965/climate"
+saveFileName = "mean_for_loop_xarray_4years"
+savepath = os.path.join(saveBasePath,saveFileName+datetime.now().strftime("%Y%m%d-%H%M")+".nc")
 file_paths = os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_{}.nc")
 year_range = [1990,1993]
 
