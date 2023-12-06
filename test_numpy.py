@@ -12,12 +12,12 @@ import gc
 from time import time
 
 years = list(range(1980,2020))
-variable = '10m_v_component_of_wind'
+variable = '2m_temperature'
 basePath = "/mnt/qb/goswami/data/era5"
 saveBasePath = "/mnt/qb/work2/goswami0/gkd965/climate"
-saveFileName = "mean_for_"+variable+"_from_"+str(years[0])+"_to_"+str(years[-1])+"created_"+datetime.now().strftime("%Y%m%d-%H%M")+".nc"
+saveFileName = "hourofyear_mean_for_"+variable+"_from_"+str(years[0])+"_to_"+str(years[-1])+"created_"+datetime.now().strftime("%Y%m%d-%H%M")+".nc"
 savepath = os.path.join(saveBasePath,saveFileName)
-file_paths = os.path.join(basePath, 'single_pressure_level', variable, "10m_v_component_of_wind_{}.nc")
+file_paths = os.path.join(basePath, 'single_pressure_level', variable, "2m_temperature_{}.nc")
 
 
 class IterMean():

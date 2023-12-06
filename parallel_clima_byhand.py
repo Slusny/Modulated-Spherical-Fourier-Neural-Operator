@@ -30,14 +30,15 @@ def calc_mean_parallel(year):
         print("timesteps: ",data.dims["time"]  ,flush=True)
         if (data.dims["time"]   != 8784): 
             print("ERROR: v10_1.dims.time != 8784",flush=True)
-            return
+            return 0
         data  = data.drop_isel(time=list(range((31+28)*24,(31+29)*24)))
     if (data.dims["time"]   != 8760): 
         print("ERROR: v10_1.dims.time != 8760",flush=True)
-        return
+        return 0
 
     # calculate mean
     mean + data.to_array().squeeze().assign_coords(time=list(range(0,8760))) # numpy / xarray
+    return 1
 
 def print_monitor():
     sys_dict = system_monitor(False,pids,names)
@@ -75,6 +76,11 @@ if __name__ == '__main__':
         print("looping monitor until completion", flush = True)
         while True:
             print_monitor()
+            print("......................................................")
+            print("len results ",len(results), flush = True)
+            print([ar.ready() for ar in results])
+            print(results)
+            print("......................................................")
             if len(results) == len_work and all([ar.ready() for ar in results]):
                 print('Pool done', flush = True)
                 break
