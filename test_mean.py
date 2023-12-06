@@ -13,7 +13,7 @@ years = list(range(1990,1993))
 variable = '10m_v_component_of_wind'
 basePath = "/mnt/qb/goswami/data/era5"
 saveBasePath = "/mnt/qb/work2/goswami0/gkd965/climate"
-saveFileName = "mean_for_loop_xarray_4years20231206-1615.nc"
+saveFileName = "mean_for_10m_v_component_of_wind_from_1990_to_1993created_.nc20231206-1713.nc"
 savepath = os.path.join(saveBasePath,saveFileName)
 file_paths = os.path.join(basePath, 'single_pressure_level', variable, "10m_v_component_of_wind_{}.nc")
 
