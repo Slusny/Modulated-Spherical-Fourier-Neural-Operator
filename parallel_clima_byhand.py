@@ -21,17 +21,7 @@ file_paths = os.path.join(basePath, 'single_pressure_level', variable, "10m_v_co
 monitor_savepath = os.path.join(savepath,"monitor_parllel_"+datetime.now().strftime("%Y%m%d-%H%M")+".json")
 
 
-# def calc_mean(coords):
-#     lat, long = coords
-#     process = os.getpid()
-#     print(f"Process {process} works on {lat}-{long}", flush = True)
-#     ds_lat_long = ds.isel(latitude=lat,longitude=long)
-#     ds_hourofyear = ds_lat_long.groupby("hourofyear").mean()
-#     savefile = os.path.join(savepath,f"testslice_10m_v_1959-2021_hourofyear_mean_{lat}-lat_{long}-long.nc")
-#     ds_hourofyear.to_netcdf(savefile)
-#     return 1
-
-def calc_mean(year):
+def calc_mean_parallel(year):
     print("--------------------------",flush=True)
     print(year,flush=True)
     data = xr.open_dataset(file_paths.format(year)) 
@@ -72,7 +62,7 @@ if __name__ == '__main__':
 
     print("len work: ",len_work, flush = True)
     with Pool(int(sys.argv[1])) as p:
-        results.append(p.map_async(calc_mean, work))
+        results.append(p.map_async(calc_mean_parallel, work))
         print('Pool started : ', flush = True)
         a_childs = active_children()
         print(a_childs, flush = True)
@@ -91,7 +81,7 @@ if __name__ == '__main__':
             sleep(60)
 
     # with Pool(int(sys.argv[1])) as p:
-    #     results.append(p.map(calc_mean, work))
+    #     results.append(p.map(calc_mean_parallel, work))
     mean.save(savepath)
     end_time = time()
     print("time calc mean: " ,end_time - start_time)

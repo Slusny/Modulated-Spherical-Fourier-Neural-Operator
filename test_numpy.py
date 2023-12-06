@@ -37,12 +37,12 @@ class IterMean():
             self.mean.to_netcdf(savepath)
 
 
-def calc_mean(variable_path,year_range,savepath):
-    if year_range[0] in range(1948,2025,4):
+def calc_mean(variable_path,years,savepath):
+    if years[0] in range(1948,2025,4):
         print("please don't start with a leap year")
         exit(0)
-    mean = IterMean(xr.open_dataset(variable_path.format(year_range[0])).to_array().squeeze().assign_coords(time=list(range(0,8760))))#.to_numpy()) # numpy / xarray
-    for year in range(year_range[0]+1,year_range[1]):
+    mean = IterMean(xr.open_dataset(variable_path.format(years[0])).to_array().squeeze().assign_coords(time=list(range(0,8760))))#.to_numpy()) # numpy / xarray
+    for year in years[1:]:
         print("--------------------------")
         print(year)
         data = xr.open_dataset(variable_path.format(year))
@@ -64,6 +64,6 @@ def calc_mean(variable_path,year_range,savepath):
 
 print("using xarray")
 start_time = time()
-calc_mean(file_paths, year_range, savepath)
+calc_mean(file_paths, years, savepath)
 end_time = time()
 print("time calc mean: " ,end_time - start_time)

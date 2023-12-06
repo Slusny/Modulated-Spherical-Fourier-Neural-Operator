@@ -54,7 +54,7 @@
 #d) Write your checkpoints to your home directory, so that you still have them if your job fails
 ####
 
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages4.sif /opt/conda/envs/model/bin/python parallel_clim_byhand.py 2 #chunky_climatology.py 2
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages4.sif /opt/conda/envs/model/bin/python parallel_clima_byhand.py 2 #chunky_climatology.py 2
 
 ## juptyer server
 # srun --pty bash
