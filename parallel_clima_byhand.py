@@ -18,7 +18,7 @@ saveBasePath = "/mnt/qb/work2/goswami0/gkd965/climate"
 saveFileName = "mean_parallel_for_"+variable+"_from_"+str(years[0])+"_to_"+str(years[-1])+"created_"+datetime.now().strftime("%Y%m%d-%H%M")+".nc"
 savepath = os.path.join(saveBasePath,saveFileName)
 file_paths = os.path.join(basePath, 'single_pressure_level', variable, "10m_v_component_of_wind_{}.nc")
-monitor_savepath = os.path.join(savepath,"monitor_parllel_"+datetime.now().strftime("%Y%m%d-%H%M")+".json")
+monitor_savepath = os.path.join(saveBasePath,"monitor_parllel_"+datetime.now().strftime("%Y%m%d-%H%M")+".json")
 
 
 def calc_mean_parallel(year):
