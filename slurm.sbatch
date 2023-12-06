@@ -11,7 +11,7 @@
 
 ##SBATCH --nodes=1
 
-#SBATCH --cpus-per-task=1 # 14 is max for cpu-short
+#SBATCH --cpus-per-task=3 # 14 is max for cpu-short
 # the job can use and see 4 CPUs (from max 24).
 # needet task count -n, maybe there is a better way to specify cores
 
@@ -19,7 +19,7 @@
 # the slurm partition the job is queued to.
 # exits: gpu-2080ti , gpu-v100 ... see sinfo
 
-#SBATCH --mem-per-cpu=210G # Per CPU -> Per Core
+#SBATCH --mem-per-cpu=40G # Per CPU -> Per Core
 # the job will need 12GB of memory equally distributed on 4 cpus.(251GB are available in total on one node)
 
 # #SBATCH --gres=gpu:0
@@ -54,7 +54,7 @@
 #d) Write your checkpoints to your home directory, so that you still have them if your job fails
 ####
 
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages4.sif /opt/conda/envs/model/bin/python test_numpy.py #chunky_climatology.py 2
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages4.sif /opt/conda/envs/model/bin/python parallel_clim_byhand.py 2 #chunky_climatology.py 2
 
 ## juptyer server
 # srun --pty bash
