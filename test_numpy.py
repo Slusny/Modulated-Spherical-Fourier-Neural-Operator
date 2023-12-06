@@ -26,8 +26,7 @@ class IterMean():
         self.mean = ds
     def __add__(self,ds2):
         self.iter += 1
-        self.mean = self.mean + (1/self.iter+1)*(ds2 - self.mean)
-        print("mean shape: ",self.mean.shape)
+        self.mean = self.mean + (1/self.iter)*(ds2 - self.mean)
         # del ds2
     def get(self):
         return self.mean
