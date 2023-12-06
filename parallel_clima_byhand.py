@@ -11,13 +11,15 @@ from test_numpy import IterMean
 from multiprocessing import Process, Manager
 from multiprocessing.managers import BaseManager
 
-year_range = [1990,1993]
+years = list(range(1990,1993))
 variable = '10m_v_component_of_wind'
 basePath = "/mnt/qb/goswami/data/era5"
 saveBasePath = "/mnt/qb/work2/goswami0/gkd965/climate"
-saveFileName = "mean_for_"+variable+"_from_"+str(year_range[0])+"_to_"+str(year_range[1])+"created_"+".nc"
-savepath = os.path.join(saveBasePath,saveFileName+datetime.now().strftime("%Y%m%d-%H%M")+".nc")
+saveFileName = "mean_parallel_for_"+variable+"_from_"+str(years[0])+"_to_"+str(years[-1])+"created_"+datetime.now().strftime("%Y%m%d-%H%M")+".nc"
+savepath = os.path.join(saveBasePath,saveFileName)
 file_paths = os.path.join(basePath, 'single_pressure_level', variable, "10m_v_component_of_wind_{}.nc")
+monitor_savepath = os.path.join(savepath,"monitor_parllel_"+datetime.now().strftime("%Y%m%d-%H%M")+".json")
+
 
 # def calc_mean(coords):
 #     lat, long = coords
@@ -32,35 +34,20 @@ file_paths = os.path.join(basePath, 'single_pressure_level', variable, "10m_v_co
 def calc_mean(year):
     print("--------------------------",flush=True)
     print(year,flush=True)
-    data = xr.open_dataset(file_paths.format(year))
-    timesteps = data.dims["time"]   
+    data = xr.open_dataset(file_paths.format(year)) 
     if year in range(1948,2025,4):
         print("leap year",flush=True)
-        print("timesteps: ",timesteps,flush=True)
-        if (timesteps != 8784): 
+        print("timesteps: ",data.dims["time"]  ,flush=True)
+        if (data.dims["time"]   != 8784): 
             print("ERROR: v10_1.dims.time != 8784",flush=True)
             return
         data  = data.drop_isel(time=list(range((31+28)*24,(31+29)*24)))
-    if (timesteps != 8760): 
+    if (data.dims["time"]   != 8760): 
         print("ERROR: v10_1.dims.time != 8760",flush=True)
         return
 
-    # only needed if one wants to work with xarrays not numpy arrays
-    # data = data.assign_coords(time=list(range(0,8760)))
-
     # calculate mean
-    mean + data.to_array().squeeze().to_numpy() # numpy / xarray
-    stats = system_monitor(True,[os.getpid()],["main"])
-
-
-def test_worker(lat):
-    print(lat)
-    the_time = 3
-    print("in active monitor", flush = True)
-    pid = os.getpid()
-    print(f"Processs {pid}\tWaiting {the_time} seconds")
-    sleep(the_time)
-    print(f"Process {pid}\tDONE")
+    mean + data.to_array().squeeze().assign_coords(time=list(range(0,8760))) # numpy / xarray
 
 def print_monitor():
     sys_dict = system_monitor(False,pids,names)
@@ -78,31 +65,33 @@ if __name__ == '__main__':
     BaseManager.register('IterMean', IterMean)
     manager = BaseManager()
     manager.start()
-    mean = manager.IterMean(xr.open_dataset(file_paths.format(year_range[0])).to_array().squeeze().to_numpy())
+    mean = manager.IterMean(xr.open_dataset(file_paths.format(years[0])).to_array().squeeze().assign_coords(time=list(range(0,8760))))
 
-    work = list(range(year_range[0]+1,year_range[1]))
+    work = years[1:]
     len_work = len(work)
 
-    print("len work: ",len(work), flush = True)
-    # with Pool(int(sys.argv[1])) as p:
-    #     results.append(p.map_async(calc_mean, work))
-    #     print('Pool started : ', flush = True)
-    #     a_childs = active_children()
-    #     print(a_childs, flush = True)
-
-    #     pids = [ child.pid for child in a_childs]
-    #     pids.append(os.getpid())
-    #     names = [ child.name for child in a_childs]
-    #     names.append("main")
-
-    #     print("looping monitor until compleation", flush = True)
-    #     while True:
-    #         if len(results) == len_work and all([ar.ready() for ar in results]):
-    #             print('Pool done', flush = True)
-    #             break
-    #         sleep(60)
+    print("len work: ",len_work, flush = True)
     with Pool(int(sys.argv[1])) as p:
-        results.append(p.map(calc_mean, work))
+        results.append(p.map_async(calc_mean, work))
+        print('Pool started : ', flush = True)
+        a_childs = active_children()
+        print(a_childs, flush = True)
+
+        pids = [ child.pid for child in a_childs]
+        pids.append(os.getpid())
+        names = [ child.name for child in a_childs]
+        names.append("main")
+
+        print("looping monitor until completion", flush = True)
+        while True:
+            print_monitor()
+            if len(results) == len_work and all([ar.ready() for ar in results]):
+                print('Pool done', flush = True)
+                break
+            sleep(60)
+
+    # with Pool(int(sys.argv[1])) as p:
+    #     results.append(p.map(calc_mean, work))
     mean.save(savepath)
     end_time = time()
     print("time calc mean: " ,end_time - start_time)

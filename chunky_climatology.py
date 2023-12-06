@@ -62,7 +62,7 @@ if __name__ == '__main__':
         names = [ child.name for child in a_childs]
         names.append("main")
 
-        print("looping monitor until compleation", flush = True)
+        print("looping monitor until completion", flush = True)
         while True:
             print_monitor()
             print(results)
