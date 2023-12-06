@@ -17,6 +17,7 @@ dependencies:
   - numba
   - numbagg
   - flox
+  - xskillscore
 
   # pytorch
   - pytorch-cuda=11.8
