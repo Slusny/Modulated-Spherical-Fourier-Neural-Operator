@@ -11,7 +11,7 @@ import psutil
 import gc
 from time import time
 
-years = list(range(1990,1993))
+years = list(range(1980,2020))
 variable = '10m_v_component_of_wind'
 basePath = "/mnt/qb/goswami/data/era5"
 saveBasePath = "/mnt/qb/work2/goswami0/gkd965/climate"
