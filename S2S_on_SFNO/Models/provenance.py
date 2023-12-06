@@ -28,19 +28,19 @@ def system_monitor(printout=False,pids=[],names=[]):
     loads = psutil.getloadavg()
     cpu_usage = [load/cores* 100 for load in loads]
     if printout:
-        print("RAM:")
-        print('    memory % used:', mem_percent)
-        print('    Used (GB):', mem_used)
-        print('    Total available (GB):', mem_total)
+        print("RAM:", flush = True)
+        print('    memory % used:', mem_percent, flush = True)
+        print('    Used (GB):', mem_used, flush = True)
+        print('    Total available (GB):', mem_total, flush = True)
         # use memory_profiler  for line by line memory analysis, add @profile above function
         # Ram for certain process:
-        print('    Process memory used (GB):', mem_proc)
-        print("    Process memory used : ", mem_proc_percent)
+        print('    Process memory used (GB):', mem_proc, flush = True)
+        print("    Process memory used : ", mem_proc_percent, flush = True)
 
         print("CPU:")
-        print("    available cores: ",cores)
-        print("    util: ",cpu_percent)
-        print("    averge load over 1, 5 ,15 min: ",cpu_usage)
+        print("    available cores: ",cores, flush = True)
+        print("    util: ",cpu_percent, flush = True)
+        print("    averge load over 1, 5 ,15 min: ",cpu_usage, flush = True)
     
     system["memory percent"] =  mem_percent
     system["memory used(GB)"] =  mem_used

@@ -11,13 +11,14 @@ import psutil
 import gc
 from time import time
 
-
+year_range = [1990,1993]
+variable = '10m_v_component_of_wind'
 basePath = "/mnt/qb/goswami/data/era5"
 saveBasePath = "/mnt/qb/work2/goswami0/gkd965/climate"
-saveFileName = "mean_for_loop_xarray_4years"
+saveFileName = "mean_for_"+variable+"_from_"+str(year_range[0])+"_to_"+str(year_range[1])+"created_"+".nc"
 savepath = os.path.join(saveBasePath,saveFileName+datetime.now().strftime("%Y%m%d-%H%M")+".nc")
-file_paths = os.path.join(basePath, 'single_pressure_level', '10m_v_component_of_wind', "10m_v_component_of_wind_{}.nc")
-year_range = [1990,1993]
+file_paths = os.path.join(basePath, 'single_pressure_level', variable, "10m_v_component_of_wind_{}.nc")
+
 
 class IterMean():
     def __init__(self, ds):
