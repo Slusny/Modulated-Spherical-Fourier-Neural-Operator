@@ -9,11 +9,11 @@ from multiprocessing import Pool, active_children
 from time import sleep
 
 
-year_range = [1990,1993]
+years = list(range(1990,1993))
 variable = '10m_v_component_of_wind'
 basePath = "/mnt/qb/goswami/data/era5"
 saveBasePath = "/mnt/qb/work2/goswami0/gkd965/climate"
-saveFileName = "mean_for_loop_xarray_4years.nc"
+saveFileName = "mean_for_loop_xarray_4years20231206-1615.nc"
 savepath = os.path.join(saveBasePath,saveFileName)
 file_paths = os.path.join(basePath, 'single_pressure_level', variable, "10m_v_component_of_wind_{}.nc")
 
@@ -24,19 +24,18 @@ coords = [
     {"latitude":500,"longitude":500,"time":500},
 ]
 
-mean_list = [[]]*len(coords)
-for year in range(year_range[0],year_range[1]):
+mean_list = np.zeros((len(years),len(coords)))
+for i,year in enumerate(years):
     data = xr.open_dataset(file_paths.format(year))
-    for i,coord in enumerate(coords):
-        mean_list[i].append(data[coords[0]].to_array().to_numpy()[0])
+    for j,coord in enumerate(coords):
+        mean_list[i,j] = data[coord].to_array().to_numpy()[0]
         
-
-for i,coord in enumerate(coords):
-    mean_list[i] = np.mean(mean_list[i])
+print(mean_list)
+means = mean_list.mean(axis=0)
 
 print("means")
 for i,coord in enumerate(coords):
     print("--------")
     print("coords",coord)
-    print("real: ",mean_list[i])
-    print("calc: ",xr.open_dataset(savepath)[coords[0]].to_array().to_numpy()[0])
+    print("real: ",means[i])
+    print("calc: ",xr.open_dataset(savepath)[coord].to_array().to_numpy()[0])
