@@ -33,6 +33,7 @@ class IterMean():
     def get(self):
         return self.mean
     def save(self,savepath):
+        print("saving to "+savepath,flush=True)
         if type(self.mean) == np.ndarray:
             xr.DataArray(self.mean,dims=["longitude","latitude","time"],name="v10").to_netcdf(savepath) 
         else:
