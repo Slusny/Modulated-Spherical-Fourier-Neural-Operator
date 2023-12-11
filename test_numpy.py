@@ -13,11 +13,13 @@ from time import time
 
 years = list(range(1979,2020))
 variable = '2m_temperature'
+variable = '10m_v_component_of_wind'
 basePath = "/mnt/qb/goswami/data/era5"
 saveBasePath = "/mnt/qb/work2/goswami0/gkd965/climate"
 saveFileName = "hourofyear_mean_for_"+variable+"_from_"+str(years[0])+"_to_"+str(years[-1])+"created_"+datetime.now().strftime("%Y%m%d-%H%M")+".nc"
 savepath = os.path.join(saveBasePath,saveFileName)
-file_paths = os.path.join(basePath, 'single_pressure_level', variable, "2m_temperature_{}.nc")
+file_paths = os.path.join(basePath, 'single_pressure_level', variable, variable+"_{}.nc")
+save_interval = 1
 
 
 class IterMean():
@@ -42,6 +44,7 @@ def calc_mean(variable_path,years,savepath):
         print("please don't start with a leap year")
         exit(0)
     mean = IterMean(xr.open_dataset(variable_path.format(years[0])).to_array().squeeze().assign_coords(time=list(range(0,8760))))#.to_numpy()) # numpy / xarray
+    idx = 0
     for year in years[1:]:
         print("--------------------------")
         print(year)
@@ -60,6 +63,9 @@ def calc_mean(variable_path,years,savepath):
         # calculate mean
         mean + data.to_array().squeeze().assign_coords(time=list(range(0,8760)))#.to_numpy() # numpy / xarray
         stats = system_monitor(True,[os.getpid()],["main"])
+        idx += 1
+        if idx % save_interval == 0:
+            mean.save(savepath)
     mean.save(savepath)
 
 print("using xarray")
