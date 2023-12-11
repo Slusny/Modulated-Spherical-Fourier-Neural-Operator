@@ -233,7 +233,7 @@ def _main():
     if args.path is None:
         args.path = os.path.join(Path(".").absolute(),"S2S_on_SFNO/outputs",args.model,timestr+".grib")
     else:
-        args.path = os.path.join(args.path,timestr+".grib")
+        args.path = os.path.join(args.path,"leadtime_"+str(args.lead_time)+"_"+timestr+".grib")
     if not os.path.exists(args.path):
         os.makedirs(os.path.dirname(args.path), exist_ok=True)
 
