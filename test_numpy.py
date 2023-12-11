@@ -13,13 +13,13 @@ from time import time
 
 years = list(range(1979,2020))
 variable = '2m_temperature'
-variable = '10m_v_component_of_wind'
+# variable = '10m_v_component_of_wind'
 basePath = "/mnt/qb/goswami/data/era5"
 saveBasePath = "/mnt/qb/work2/goswami0/gkd965/climate"
 saveFileName = "hourofyear_mean_for_"+variable+"_from_"+str(years[0])+"_to_"+str(years[-1])+"created_"+datetime.now().strftime("%Y%m%d-%H%M")+".nc"
 savepath = os.path.join(saveBasePath,saveFileName)
 file_paths = os.path.join(basePath, 'single_pressure_level', variable, variable+"_{}.nc")
-save_interval = 1
+save_interval = 4
 
 
 class IterMean():
