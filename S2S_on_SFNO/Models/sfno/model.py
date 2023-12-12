@@ -14,6 +14,8 @@ import torch
 from ..models import Model
 import datetime
 
+import climetlab as cml
+
 # import ai_models_fourcastnetv2.fourcastnetv2 as nvs
 from .sfnonet import FourierNeuralOperatorNet
 
