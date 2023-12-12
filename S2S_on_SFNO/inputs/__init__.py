@@ -12,6 +12,17 @@ import climetlab as cml
 
 LOG = logging.getLogger(__name__)
 
+local_era5 = {
+    "10u":"10m_u_component_of_wind/10m_u_component_of_wind_{}.nc",
+    "10v":"10m_v_component_of_wind/10m_v_component_of_wind_{}.nc",
+    "2t":"2m_dewpoint_temperature/2m_dewpoint_temperature_{}.nc",
+    "sp":"surface_pressure/surface_pressure_{}.nc",
+    "msl":"mean_sea_level_pressure/mean_sea_level_pressure_{}.nc",
+    "tcwv":"total_column_water_vapour/total_column_water_vapour_{}.nc",
+    "100u":"",
+    "100v":"",
+}
+
 
 class RequestBasedInput:
     def __init__(self, owner, **kwargs):
@@ -97,6 +108,22 @@ class CdsInput(RequestBasedInput):
         kwargs["product_type"] = "reanalysis"
         return cml.load_source("cds", "reanalysis-era5-single-levels", kwargs)
 
+class LocalInput:
+    def __init__(self,path):
+
+    def pl_load_source(self, **kwargs):
+        kwargs["product_type"] = "reanalysis"
+        return cml.load_source("cds", "reanalysis-era5-pressure-levels", kwargs)
+
+    def sfc_load_source(self, **kwargs):
+        kwargs["product_type"] = "reanalysis"
+        return cml.load_source("file", "path/to/file"
+            "cds", "reanalysis-era5-single-levels", kwargs)
+
+def sfc_load_local(self, **kwargs):
+    date = datetime.strptime(kwargs.date+str(kwargs.time),"%Y%m%d%H%M")
+    for p in kwargs.param:
+
 
 class FileInput:
     def __init__(self, owner, file, **kwargs):
@@ -120,6 +147,7 @@ INPUTS = dict(
     mars=MarsInput,
     file=FileInput,
     cds=CdsInput,
+    local=LocalInput
 )
 
 

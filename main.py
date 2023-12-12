@@ -50,6 +50,13 @@ def _main():
     )
 
     parser.add_argument(
+        "--data",
+        action='store',
+        default="S2S_on_SFNO/inputs",
+        help="If downloaded data is available, specify path here. Otherwise data is downloaded from copernicus",
+    )
+
+    parser.add_argument(
         "--retrieve-requests",
         help=(
             "Print mars requests to stdout."
