@@ -190,9 +190,9 @@ class FourCastNetv2(Model):
 
         all_fields = self.all_fields
         all_fields.save("/home/lenny/test_copernicus20210101.grib")
-        output = cml.new_grib_output("/home/lenny/test1_copernicus.grib")
-        output.write(all_fields.to_numpy(),all_fields[0])
-        output.close()
+        # output = cml.new_grib_output("/home/lenny/test1_copernicus.grib")
+        # output.write(all_fields.to_numpy(),all_fields[0])
+        # output.close()
         
         all_fields = all_fields.sel(
             param_level=self.ordering, remapping={"param_level": "{param}{levelist}"}
