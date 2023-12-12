@@ -12,11 +12,11 @@ import psutil
 import gc
 from time import time
 
-variable = '2m_temperature'
+variable = '10m_v_component_of_wind'
 basePath = "/mnt/qb/work2/goswami0/gkd965/"
 mean_file = os.path.join(basePath,"climate","hourofyear_mean_for_"+variable+"_from_1979_to_2019created_20231206-1713.nc")
-model_file_sfno = os.path.join(basePath,'outputs','v10_SFNO_HalfYearForecast_startfrom_2021-01-01.nc')
-model_file_fcn = os.path.join(basePath,'outputs','v10_FCN_HalfYearForecast_startfrom_2021-01-01.nc')
+model_file_sfno = os.path.join(basePath,'outputs/sfno','v10_SFNO_HalfYearForecast_startfrom_2021-01-01.nc')
+model_file_fcn = os.path.join(basePath,'outputs/fcn','v10_FCN_HalfYearForecast_startfrom_2021-01-01.nc')
 save_file = os.path.join(basePath,'')
 dataPath = os.path.join("/mnt/qb/goswami/data/era5","single_pressure_level",variable,variable+"_{}.nc")
 

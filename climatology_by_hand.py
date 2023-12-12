@@ -17,7 +17,7 @@ ds = xr.open_mfdataset(os.path.join(basePath, 'single_pressure_level', '10m_v_co
 work = [(lat,long) for lat in range(ds.sizes["latitude"]) for long in range(ds.sizes["longitude"])]
 
 for lat, long in work:
-    for year in range(1959,2022):
+    for year in range(1959,2021):
         for month in range(1,13):
             for day in range(1,32):
                 if day == 31 and month in [2,4,6,9,11]:
