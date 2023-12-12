@@ -187,6 +187,11 @@ class FourCastNetv2(Model):
         self.load_statistics()
 
         all_fields = self.all_fields
+        output = cml.new_grib_output("/home/lenny/test1_copernicus.grib", template=template)
+        output.write(arr)
+        output.close()
+        all_fields.save("/home/lenny/copernicus20210101")
+        
         all_fields = all_fields.sel(
             param_level=self.ordering, remapping={"param_level": "{param}{levelist}"}
         )
