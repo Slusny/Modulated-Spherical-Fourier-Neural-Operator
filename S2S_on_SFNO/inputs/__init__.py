@@ -122,7 +122,7 @@ class LocalInput:
 
 def sfc_load_local(self, **kwargs):
     date = datetime.strptime(kwargs.date+str(kwargs.time),"%Y%m%d%H%M")
-    for p in kwargs.param:
+    # for p in kwargs.param:
 
 
 class FileInput:
