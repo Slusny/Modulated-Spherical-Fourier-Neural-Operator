@@ -110,9 +110,9 @@ class CdsInput(RequestBasedInput):
         return cml.load_source("cds", "reanalysis-era5-single-levels", kwargs)
 
 class LocalInput:
-    def __init__(self,owner,path):
+    def __init__(self,owner,era5_path, **kwargs):
         print("hi")
-        self.path = path
+        self.path = era5_path
         self.owner = owner
 
     def pl_load_source(self, **kwargs):
@@ -187,7 +187,7 @@ INPUTS = dict(
     mars=MarsInput,
     file=FileInput,
     cds=CdsInput,
-    local=LocalInput
+    localERA5=LocalInput
 )
 
 

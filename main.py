@@ -101,6 +101,12 @@ def _main():
     )
 
     parser.add_argument(
+        "--era5-path",
+        default="/mnt/qb/goswami/data/era5",
+        help="path to era5 data when using input=local",
+    )
+
+    parser.add_argument(
         "--file",
         help="Source to use if source=file",
     )
