@@ -14,6 +14,8 @@ import pdb
 from pathlib import Path
 import time
 
+import torch
+
 # to get eccodes working on Ubuntu 20.04
 # os.environ["LD_PRELOAD"] = '/usr/lib/x86_64-linux-gnu/libffi.so.7'
 # in shell : export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libffi.so.7
@@ -28,6 +30,7 @@ from S2S_on_SFNO.outputs import available_outputs
 
 LOG = logging.getLogger(__name__)
 
+print(torch.cuda.is_available(),flush=True)
 
 def _main():
     parser = argparse.ArgumentParser()
