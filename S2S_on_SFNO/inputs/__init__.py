@@ -7,7 +7,8 @@
 
 import logging
 from functools import cached_property
-
+import datetime
+import os
 import climetlab as cml
 
 LOG = logging.getLogger(__name__)
@@ -109,20 +110,59 @@ class CdsInput(RequestBasedInput):
         return cml.load_source("cds", "reanalysis-era5-single-levels", kwargs)
 
 class LocalInput:
-    def __init__(self,path):
+    def __init__(self,owner,path):
         print("hi")
+        self.path = path
+        self.owner = owner
+
     def pl_load_source(self, **kwargs):
-        kwargs["product_type"] = "reanalysis"
-        return cml.load_source("cds", "reanalysis-era5-pressure-levels", kwargs)
+        return cml.load_source("file", os.path.join(self.path,"multi_pressure_level",local_era5[kwargs.param],local_era5[kwargs.level],local_era5[kwargs.param]+"_{}_"+local_era5[kwargs.level]).format(year))
 
     def sfc_load_source(self, **kwargs):
-        kwargs["product_type"] = "reanalysis"
-        return cml.load_source("file", "path/to/file"
-            "cds", "reanalysis-era5-single-levels", kwargs)
+        return cml.load_source("file", os.path.join(self.path,"single_pressure_level",local_era5[kwargs.param]).format(year))
 
-def sfc_load_local(self, **kwargs):
-    date = datetime.strptime(kwargs.date+str(kwargs.time),"%Y%m%d%H%M")
-    # for p in kwargs.param:
+    def fields_sfc(self):
+        LOG.info(f"Loading surface fields from {self.WHERE}")
+        parameters = []
+        for date, time in self.owner.datetimes():
+            date = datetime.strptime(date+str(time),"%Y%m%d%H%M")
+            for p in self.owner.param_sfc:
+                parameters.append((year,month,day,time,p))
+        return cml.load_source(
+            "multi",
+            [
+                self.sfc_load_source(
+                        date=date,
+                        time=time,
+                        param=param
+                    )
+                for date, time, param in parameters
+            ],
+        )
+
+    def fields_pl(self):
+        LOG.info(f"Loading pressure fields from {self.WHERE}")
+        param, level = self.owner.param_level_pl
+        parameters = []
+        for date, time in self.owner.datetimes():
+            for p in param:
+                for l in level:
+                    parameters.append((date,time,p,l))
+        return cml.load_source(
+            "multi",
+            [
+                self.pl_load_source(
+                        date=date,
+                        time=time,
+                        param=param,
+                        level=level
+                    )
+                for date, time, param, level in parameters
+            ],
+        )
+
+    def all_fields(self):
+        return self.fields_sfc + self.fields_pl
 
 
 class FileInput:
