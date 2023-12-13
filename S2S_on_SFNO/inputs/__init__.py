@@ -162,7 +162,7 @@ class LocalInput:
         )
 
     def all_fields(self):
-        return self.fields_sfc + self.fields_pl
+        return self.fields_sfc() + self.fields_pl()
 
 
 class FileInput:
