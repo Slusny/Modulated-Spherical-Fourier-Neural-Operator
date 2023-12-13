@@ -123,6 +123,7 @@ class FourCastNetv2(Model):
         self.n_lat = 721
         self.n_lon = 1440
         self.hour_steps = 6
+        self.input_type = kwargs["input"]
 
         self.backbone_channels = len(self.ordering)
 
@@ -188,7 +189,11 @@ class FourCastNetv2(Model):
     def run(self):
         self.load_statistics()
 
-        all_fields = self.all_fields()
+        if self.input_type == "localERA5":
+            all_fields = self.all_fields()
+        else:
+            all_fields = self.all_fields
+        
         # all_fields.save("/home/lenny/test_copernicus20210101.grib")
         # output = cml.new_grib_output("/home/lenny/test1_copernicus.grib")
         # output.write(all_fields.to_numpy(),all_fields[0])
