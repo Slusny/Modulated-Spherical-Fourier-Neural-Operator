@@ -188,8 +188,8 @@ class FourCastNetv2(Model):
     def run(self):
         self.load_statistics()
 
-        all_fields = self.all_fields
-        all_fields.save("/home/lenny/test_copernicus20210101.grib")
+        all_fields = self.all_fields()
+        # all_fields.save("/home/lenny/test_copernicus20210101.grib")
         # output = cml.new_grib_output("/home/lenny/test1_copernicus.grib")
         # output.write(all_fields.to_numpy(),all_fields[0])
         # output.close()
