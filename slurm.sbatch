@@ -3,7 +3,7 @@
 #a) Define slurm job parameters
 ####
 
-## SBATCH --job-name=sfno-t2m
+## SBATCH --job-name=fcn
 
 #resources:
 
@@ -44,18 +44,12 @@
 ####
 #b) copy all needed data to the jobs scratch folder
 # We copy the cifar10 datasets which is already available in common datasets folder to our job’s scratch folder.
-# Note: For this script, cifar-10 would be downloaded directly from internet, if you didn't copy it yourself.
-#### 
-
-# cp -R /common/datasets/cifar_tutorial/ /scratch/$SLURM_JOB_ID/
-
-####
-#c) Execute your code in a specific singularity container
+# Note: For this script, cifar-10 sfno
 #d) Write your checkpoints to your home directory, so that you still have them if your job fails
 ####
 
 # singularity e xec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif /opt/conda/envs/model/bin/python main.py --model sfno --date 20210101 --time 0000 --dump-provenance ./S2S_on_SFNO/outputs --lead-time 120 --path /mnt/qb/work2/goswami0/gkd965/outputs/sfno --assets /mnt/qb/work2/goswami0/gkd965/Assets/sfno #8760
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif /opt/conda/envs/model/bin/python main.py --model fourcastnet --date 20210101 --time 0000 --lead-time 8760 --assets /mnt/qb/work2/goswami0/gkd965/Assets/sfno --path /mnt/qb/work2/goswami0/gkd965/outputs
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif /opt/conda/envs/model/bin/python main.py --model fourcastnet --date 20210101 --time 0000 --lead-time 8760 --assets /mnt/qb/work2/goswami0/gkd965/Assets --path /mnt/qb/work2/goswami0/gkd965/outputs
 #test_numpy.py #parallel_clima_byhand.py 2 #chunky_climatology.py 2
 
 ## juptyer server

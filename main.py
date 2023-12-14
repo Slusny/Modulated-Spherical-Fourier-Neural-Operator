@@ -138,6 +138,7 @@ def _main():
         "--assets",
         action="store",
         help="Absolute path to directory containing the weights and other assets of the Model. \
+              Model Name gets appended to asset path. E.g. /path/to/assets/{model}\
               Default behaviour is to load from assets-sub-directory.",
     )
 
@@ -240,7 +241,7 @@ def _main():
 
     # Format Assets path
     if args.assets:
-        args.assets = os.path.abspath(args.assets)
+        args.assets = os.path.join(os.path.abspath(args.assets),args.model)
     elif args.assets_sub_directory:
         args.assets = os.path.join(Path(".").absolute(),args.assets_sub_directory,args.model)
 
