@@ -20,7 +20,7 @@ model_file_fcn = os.path.join(basePath,'outputs/fourcastnet','leadtime_8760_star
 save_file = os.path.join(basePath,'')
 dataPath = os.path.join("/mnt/qb/goswami/data/era5","single_pressure_level",variable,variable+"_{}.nc")
 
-ds_sfno = xr.open_dataset(model_file_sfno).to_array().squeeze()
+ds_sfno = xr.open_dataset(model_file_sfno).sel().to_array().squeeze()
 ds_fcn = xr.open_dataset(model_file_sfno).to_array().squeeze()
 ds_ref  = xr.open_dataset(mean_file).to_array().squeeze()[:ds_sfno.dims["step"]*6:6]
 g_truth = xr.open_dataset(dataPath.format(2021)).to_array().squeeze()[:ds_sfno.dims["step"]*6:6]

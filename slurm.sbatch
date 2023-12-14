@@ -53,9 +53,9 @@ singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gk
 #test_numpy.py #parallel_clima_byhand.py 2 #chunky_climatology.py 2
 
 ## juptyer server
-# srun --pty bash
+# srun --pty bash --gres=gpu:1
 # hostname
-# singularity shell --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif
+# singularity shell --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif
 # /opt/conda/envs/model/bin/jupyter lab
 ## new terminal
 # ssh -AtL $B_PORT:localhost:$B_PORT gkd965@134.2.168.72 "ssh -AtL $B_PORT:localhost:8888 gkd965@bg-slurmb-bm-3 bash"

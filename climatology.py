@@ -11,7 +11,7 @@ import psutil
 import gc
 from time import time
 
-years = list(range(1979,2020))
+years = list(range(1979,2020)) # 
 variable = '2m_temperature'
 # variable = '10m_v_component_of_wind'
 basePath = "/mnt/qb/goswami/data/era5"
