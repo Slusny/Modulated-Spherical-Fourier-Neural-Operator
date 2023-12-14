@@ -7,7 +7,7 @@ from datetime import datetime
 from S2S_on_SFNO.Models.provenance import system_monitor
 from multiprocessing import Pool, active_children
 from time import sleep, time
-from test_numpy import IterMean
+from climatology import IterMean
 from multiprocessing import Process, Manager
 from multiprocessing.managers import BaseManager
 
