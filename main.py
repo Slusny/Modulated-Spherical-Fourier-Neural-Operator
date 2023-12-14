@@ -246,10 +246,11 @@ def _main():
 
     # Format Output path
     timestr = time.strftime("%Y%m%d-%H%M")
+    save_string = "leadtime_"+str(args.lead_time)+"_startDate_"+str(args.date)+str(args.time) +"_createdOn"+timestr+".grib"
     if args.path is None:
-        args.path = os.path.join(Path(".").absolute(),"S2S_on_SFNO/outputs",args.model,timestr+".grib")
+        args.path = os.path.join(Path(".").absolute(),"S2S_on_SFNO/outputs",args.model,save_string)
     else:
-        args.path = os.path.join(args.path,"leadtime_"+str(args.lead_time)+"_"+timestr+".grib")
+        args.path = os.path.join(args.path,args.model,save_string)
     if not os.path.exists(args.path):
         os.makedirs(os.path.dirname(args.path), exist_ok=True)
 
