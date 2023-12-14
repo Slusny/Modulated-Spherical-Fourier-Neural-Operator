@@ -92,7 +92,7 @@ def _main():
 
     parser.add_argument(
         "--dump-provenance",
-        metavar="FILE",
+        action="store_true",
         help=("Dump information for tracking provenance."),
     )
 
@@ -247,11 +247,13 @@ def _main():
 
     # Format Output path
     timestr = time.strftime("%Y%m%d-%H%M")
-    save_string = "leadtime_"+str(args.lead_time)+"_startDate_"+str(args.date)+str(args.time) +"_createdOn"+timestr+".grib"
+    save_string = "leadtime_"+str(args.lead_time)+"_startDate_"+str(args.date)+str(args.time) +"_createdOn"+timestr
     if args.path is None:
-        args.path = os.path.join(Path(".").absolute(),"S2S_on_SFNO/outputs",args.model,save_string)
+        outputDirPath = os.path.join(Path(".").absolute(),"S2S_on_SFNO/outputs",args.model)
     else:
-        args.path = os.path.join(args.path,args.model,save_string)
+        outputDirPath = os.path.join(args.path,args.model)
+    
+    args.path  = os.path.join(outputDirPath,save_string+".grib")
     if not os.path.exists(args.path):
         os.makedirs(os.path.dirname(args.path), exist_ok=True)
 
@@ -320,11 +322,10 @@ def _main():
 
     if args.dump_provenance:
         with Timer("Collect provenance information"):
-            file = os.path.join(args.dump_provenance, "provenance_" + timestr + ".json")
+            file = os.path.join(outputDirPath,save_string + "_provenance.json")
             with open(file, "w") as f:
                 prov = model.provenance()
                 import json  # import here so it is not listed in provenance
-
                 json.dump(prov, f, indent=4)
 
 
