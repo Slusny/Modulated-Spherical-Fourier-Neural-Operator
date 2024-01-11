@@ -106,6 +106,8 @@ class RequestBasedInput:
     def __init__(self, owner, **kwargs):
         self.owner = owner
         self.store_path = kwargs.get("input_store",None)
+        self.date = kwargs.get("date",None)
+        self.time = kwargs.get("time",None)
 
     def _patch(self, **kargs):
         r = dict(**kargs)
@@ -157,9 +159,9 @@ class RequestBasedInput:
     @cached_property
     def all_fields(self):
         if self.store_path is not None:
+            file = os.path.join(self.store_path,"ClimateInputData_"+str(self.date)+str(self.time) +".grib")
             LOG.info(f"Storing input data at {self.store_path}")
-            self.fields_sfc.save(self.store_path)
-            self.fields_pl.save(self.store_path)
+            (self.fields_sfc + self.fields_pl).save(file)
         return self.fields_sfc + self.fields_pl
 
 
@@ -193,7 +195,6 @@ class CdsInput(RequestBasedInput):
 
 class LocalInput:
     def __init__(self,owner,era5_path, **kwargs):
-        print("hi")
         self.era5_path = era5_path
         self.owner = owner
 

@@ -106,7 +106,7 @@ def _main():
     parser.add_argument(
         "--input-store",
         default=None,
-        help="If you download data from cds or mars and want to store it somewhere else, specify path here. Default behaviour is to only temporary cache the data.",
+        help="If you download data from cds or mars and want to store it somewhere else, specify PATJ here. Default behaviour is to only temporary cache the data. The name of the file will be",
         action="store"
     )
 
@@ -123,8 +123,8 @@ def _main():
 
     parser.add_argument(
         "--output",
-        default="file",
-        help="Where to output the results",
+        default="grib",
+        help="choose output format. Default: grib",
         choices=available_outputs(),
     )
 
@@ -253,7 +253,7 @@ def _main():
         args.assets = os.path.join(Path(".").absolute(),args.assets_sub_directory,args.model)
 
     # Format Output path
-    timestr = time.strftime("%Y%m%d-%H%M")
+    timestr = time.strftime("%Y%m%dT%H%M")
     save_string = "leadtime_"+str(args.lead_time)+"_startDate_"+str(args.date)+str(args.time) +"_createdOn_"+timestr
     if args.path is None:
         outputDirPath = os.path.join(Path(".").absolute(),"S2S_on_SFNO/outputs",args.model)

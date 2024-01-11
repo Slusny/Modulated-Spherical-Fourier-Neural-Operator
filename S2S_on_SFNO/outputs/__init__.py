@@ -54,7 +54,7 @@ class NetCDFOutput:
         pathDir = '/'.join(pathList[:-1])
         self.pathString = pathList[-1].split('.')[0]
         self.subdir = os.path.join(pathDir,self.pathString)
-        os.makedirs(os.path.dirname(self.subdir, exist_ok=True))
+        os.makedirs(os.path.dirname(self.subdir), exist_ok=True)
 
     def write(self, output, template,step):
         dataset = xr.zeros_like(template.to_xarray())
@@ -102,7 +102,7 @@ class NoneOutput:
 
 
 OUTPUTS = dict(
-    file=FileOutput,
+    grib=FileOutput,
     netcdf=NetCDFOutput,
     none=NoneOutput,
 )

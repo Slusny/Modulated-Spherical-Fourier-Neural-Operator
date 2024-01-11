@@ -11,7 +11,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args":["--model","sfno","--date","20220101","--time","0000","--dump-provenance","./S2S_on_SFNO/outputs","--lead-time","4380"]
+            "args":["--model","sfno","--date","20220101","--time","0000","--dump-provenance","./S2S_on_SFNO/outputs","--lead-time","120","--input-store","./S2S_on_SFNO/inputs","--output","netcdf"]
             // python main.py --model sfno --date 20220101 --time 0000 --lead-time 120
         }
     ]
