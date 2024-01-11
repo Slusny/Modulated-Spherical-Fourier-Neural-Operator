@@ -173,7 +173,7 @@ def _main():
 
     parser.add_argument(
         "--path",
-        help="Path where to write the output of the model. Default: S2S_on_SFNO/outputs/{model}/{YYYYmmdd}.grib",
+        help="Path where to write the output of the model. Default: S2S_on_SFNO/outputs/{model}",
     )
 
     parser.add_argument(
@@ -254,7 +254,7 @@ def _main():
 
     # Format Output path
     timestr = time.strftime("%Y%m%d-%H%M")
-    save_string = "leadtime_"+str(args.lead_time)+"_startDate_"+str(args.date)+str(args.time) +"_createdOn"+timestr
+    save_string = "leadtime_"+str(args.lead_time)+"_startDate_"+str(args.date)+str(args.time) +"_createdOn_"+timestr
     if args.path is None:
         outputDirPath = os.path.join(Path(".").absolute(),"S2S_on_SFNO/outputs",args.model)
     else:

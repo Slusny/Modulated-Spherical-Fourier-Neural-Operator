@@ -255,10 +255,7 @@ class FourCastNetv2(Model):
                             np.amax(output[:, j]),
                         )
 
-                for k, fs in enumerate(all_fields):
-                    self.write(
-                        output[0, k, ...], check_nans=True, template=fs, step=step
-                    )
+                self.write(output[0],check_nans=True,template=all_fields,step=step)
 
                 stepper(i, step)
 

@@ -12,7 +12,7 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args":["--model","sfno","--date","20220101","--time","0000","--dump-provenance","./S2S_on_SFNO/outputs","--lead-time","4380"]
-            // python main.py --model sfno --date 20220101 --time 0000 --dump-provenance ./S2S_on_SFNO/outputs --lead-time 4380
+            // python main.py --model sfno --date 20220101 --time 0000 --lead-time 120
         }
     ]
 }
