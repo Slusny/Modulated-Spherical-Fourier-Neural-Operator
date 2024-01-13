@@ -11,6 +11,32 @@ import psutil
 import gc
 from time import time
 
+
+
+# Data available in cluster:
+# 10m Wind                      : 1879 - 2021
+# 2mt                           : 1959 - 2021
+# sp (surface pressure)         : 1979 - 2019
+# msl (mean sea level pressure) : 1959 - 2022     
+# tcwv                          : 1959 - 2022  
+# t                             : 1979 - 2020 (for 150, else 1959 - 2021)
+# u/v                           : 1979 - 2019 (for 150)                                 
+# z                             : 1979 - 2019 (for 150, else 1959 - 2021) 
+#    -50                        : 1959 - 2022            
+# r                             : 1979 - 2020 (for 150)                          
+
+
+# missng: 
+#   - 100u 100v, 
+#   - t/u/v/z/r in 925
+#   - t,r, in 50
+#
+#
+#
+
+# The combined year data set (e.g. 2m_temperature_sfc_1959_2021.nc) are daily means)
+# The yearly data is hourly data (e.g. 2m_temperature_2021.nc)
+
 years = list(range(1979,2020)) # 
 variable = '2m_temperature'
 # variable = '10m_v_component_of_wind'

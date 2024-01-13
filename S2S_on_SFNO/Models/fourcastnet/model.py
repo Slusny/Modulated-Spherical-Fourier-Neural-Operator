@@ -239,8 +239,8 @@ class FourCastNet(Model):
                         check_nans=True,
                         template=sample_sfc,
                         step=step,
-                        param="tp",
-                        stepType="accum",
+                        # param="tp",
+                        # stepType="accum",
                     )
 
                 stepper(i, step)

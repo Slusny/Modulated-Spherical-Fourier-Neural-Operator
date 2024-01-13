@@ -32,10 +32,10 @@ class FileOutput:
             **metadata,
         )
 
-    def write(self, output, template, step):
+    def write(self, output,check_nans, template, step):
         for k, fs in enumerate(template):
             self.output.write(
-                output[k, ...], check_nans=True, template=fs, step=step
+                output[k, ...], check_nans=check_nans, template=fs, step=step
             )
     
 class NetCDFOutput:
@@ -56,11 +56,12 @@ class NetCDFOutput:
         self.subdir = os.path.join(pathDir,self.pathString)
         os.makedirs(os.path.dirname(self.subdir), exist_ok=True)
 
-    def write(self, output, template,step):
+    def write(self, output,check_nans, template,step):
         dataset = xr.zeros_like(template.to_xarray())
         gen = iter(dataset)
         for k, var in enumerate(gen):
-            dataset[var].data = output[k]
+            print("k: ",k," var: ",var)
+            # dataset[var].data = output[k]
         return dataset.to_netcdf(os.path.join(self.subdir, self.pathString + '_step_'+step+'.nc'))
 
 

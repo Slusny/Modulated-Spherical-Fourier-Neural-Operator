@@ -25,6 +25,7 @@ local_era5 = {
     "100v":"",
 }
 
+
 # local_era5_dict = {
 #         "10u":"single_pressure_level/10m_u_component_of_wind_{}.nc",
 #         "10v":"single_pressure_level/10m_v_component_of_wind_{}.nc",
