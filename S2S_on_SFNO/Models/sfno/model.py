@@ -34,7 +34,7 @@ class FourCastNetv2(Model):
     param_sfc = ["10u", "10v", "2t", "sp", "msl", "tcwv", "100u", "100v"]
 
     param_level_pl = (
-        ["t", "u", "v", "z", "r"],
+        [ "u", "v", "z", "t", "r"],
         [1000, 925, 850, 700, 600, 500, 400, 300, 250, 200, 150, 100, 50],
     )
 
@@ -255,7 +255,7 @@ class FourCastNetv2(Model):
                             np.amax(output[:, j]),
                         )
 
-                self.write(output[0],check_nans=True,template=all_fields,step=step)
+                self.write(output[0],check_nans=True,template=all_fields,step=step,param_level_pl=self.param_level_pl,param_sfc=self.param_sfc)
 
                 stepper(i, step)
 
