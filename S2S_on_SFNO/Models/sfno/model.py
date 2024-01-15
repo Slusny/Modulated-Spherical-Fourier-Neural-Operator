@@ -31,13 +31,22 @@ class FourCastNetv2(Model):
     area = [90, 0, -90, 360 - 0.25]
     grid = [0.25, 0.25]
 
-    param_sfc = ["10u", "10v", "2t", "sp", "msl", "tcwv", "100u", "100v"]
+    # param_sfc = ["10u", "10v", "2t", "sp", "msl", "tcwv", "100u", "100v"]
+
+    # param_level_pl = (
+    #     [ "u", "v", "z", "t", "r"],
+    #     [1000, 925, 850, 700, 600, 500, 400, 300, 250, 200, 150, 100, 50],
+    # )
+
+    param_sfc = ["u10", "v10", "t2m", "sp", "msl", "tcwv", "u100", "v100"]
 
     param_level_pl = (
         [ "u", "v", "z", "t", "r"],
         [1000, 925, 850, 700, 600, 500, 400, 300, 250, 200, 150, 100, 50],
     )
 
+    # for grib data from copernicus the variable name is different (10u) from what will be used if converted to xarray. Xarray uses the cfVarName from the metadata (u10)
+    # if an xarray dataset is used as input the ordering list musst be adapted to the cfVarName
     ordering = [
         "10u",
         "10v",

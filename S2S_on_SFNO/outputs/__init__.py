@@ -33,13 +33,15 @@ class FileOutput:
             **metadata,
         )
 
-    def write(self, output,check_nans, template, step):
+    def write(self, output,check_nans, template, step,**kwargs):
         for k, fs in enumerate(template):
             self.output.write(
                 output[k, ...], check_nans=check_nans, template=fs, step=step
             )
     
 class NetCDFOutput:
+    # create new folder and save each step in a seperate netcdf file
+    # combine them later during evaluation etc with xarray.open_mfdataset(./*)
     def __init__(self, owner, path, metadata, **kwargs):
         self._first = True
         metadata.setdefault("expver", owner.expver)
@@ -55,26 +57,29 @@ class NetCDFOutput:
         pathDir = '/'.join(pathList[:-1])
         self.pathString = pathList[-1].split('.')[0]
         self.subdir = os.path.join(pathDir,self.pathString)
-        os.makedirs(os.path.dirname(self.subdir), exist_ok=True)
+        os.makedirs(self.subdir, exist_ok=True)
 
     def write(self, output,check_nans, template,step,param_level_pl,param_sfc):
-        dataset = xr.zeros_like(template.to_xarray())
+        # copy input data (template) once to copy metadata into output dataset
+        if self.dataset is None:
+            self.dataset = xr.zeros_like(template.to_xarray())
+        
+        # loop through variables and preassure levels and overwrite dataset with output from  model
         k = 0
         for sfc in param_sfc:
-            axistupel = tuple(range(len(dataset[sfc].shape) - 2))
-            dataset[sfc] = np.expand_dims(output[k],axis=axistupel)
+            axistupel = tuple(range(len(self.dataset[sfc].shape) - 2))
+            self.dataset[sfc].values = np.expand_dims(output[k],axis=axistupel)
             k += 1
         pls, levels = param_level_pl
+        levels.reverse()
         for pl in pls:
-            for level in levels.reverse():
-                axistupel = tuple(range(len(dataset[pl].shape) - 3))
-                dataset[pl].sel(isobaricInhPa=level) = np.expand_dims(output[k],axis=axistupel)
+            for level in levels:
+                axistupel = tuple(range(len(self.dataset[pl].shape) - 3))
+                self.dataset[pl].sel(isobaricInhPa=level).values = np.expand_dims(output[k],axis=axistupel)
                 k += 1
-        # gen = iter(dataset)
-        # for k, var in enumerate(gen):
-        #     print("k: ",k," var: ",var)
-        #     dataset[var].data = output[k]
-        return dataset.to_netcdf(os.path.join(self.subdir, self.pathString + '_step_'+step+'.nc'))
+
+        self.dataset = self.dataset.assign_coords(step=[np.timedelta64(step*60*60*10**9, 'ns')])
+        return self.dataset.to_netcdf(os.path.join(self.subdir, self.pathString + '_step_'+str(step)+'.nc'))
 
 
 
