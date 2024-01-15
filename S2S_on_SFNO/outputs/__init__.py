@@ -59,6 +59,8 @@ class NetCDFOutput:
         self.subdir = os.path.join(pathDir,self.pathString)
         os.makedirs(self.subdir, exist_ok=True)
 
+        self.dataset = None
+
     def write(self, output,check_nans, template,step,param_level_pl,param_sfc):
         # copy input data (template) once to copy metadata into output dataset
         if self.dataset is None:
