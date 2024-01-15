@@ -224,24 +224,35 @@ class FourCastNet(Model):
 
                 if self.precip_flag:
                     precip_output = self.nan_extend(self.accumulate.numpy())
+                else:
+                    precip_output = None
 
-                for k, fs in enumerate(all_fields):
-                    self.write(
-                        output[0, k, ...],
-                        check_nans=True,
-                        template=fs,
-                        step=step,
-                    )
+                # for k, fs in enumerate(all_fields):
+                #     self.write(
+                #         output[0, k, ...],
+                #         check_nans=True,
+                #         template=fs,
+                #         step=step,
+                #     )
+                self.write(
+                    output[0],
+                    check_nans=False,
+                    template=all_fields,
+                    step=step,
+                    param_level_pl=self.param_level_pl,
+                    param_sfc=self.param_sfc,
+                    precip_output=precip_output
+                )
 
-                if self.precip_flag:
-                    self.write(
-                        precip_output.squeeze(),
-                        check_nans=True,
-                        template=sample_sfc,
-                        step=step,
-                        # param="tp",
-                        # stepType="accum",
-                    )
+                # if self.precip_flag:
+                #     self.write(
+                #         precip_output.squeeze(),
+                #         check_nans=True,
+                #         template=sample_sfc,
+                #         step=step,
+                #         # param="tp",
+                #         # stepType="accum",
+                #     )
 
                 stepper(i, step)
 

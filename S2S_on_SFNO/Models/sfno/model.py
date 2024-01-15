@@ -264,7 +264,7 @@ class FourCastNetv2(Model):
                             np.amax(output[:, j]),
                         )
 
-                self.write(output[0],check_nans=True,template=all_fields,step=step,param_level_pl=self.param_level_pl,param_sfc=self.param_sfc)
+                self.write(output[0],check_nans=True,template=all_fields,step=step,param_level_pl=self.param_level_pl,param_sfc=self.param_sfc,precip_output=None)
 
                 stepper(i, step)
 

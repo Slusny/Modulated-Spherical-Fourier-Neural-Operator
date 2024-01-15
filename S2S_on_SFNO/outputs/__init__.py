@@ -33,11 +33,21 @@ class FileOutput:
             **metadata,
         )
 
-    def write(self, output,check_nans, template, step,**kwargs):
+    def write(self, output,check_nans, template, step,precip_output,**kwargs):
         for k, fs in enumerate(template):
+            print("k: ",k," fs: ",fs)
+            # if k != 2:
+            #     continue
             self.output.write(
                 output[k, ...], check_nans=check_nans, template=fs, step=step
             )
+            break
+            if k == 4:
+                break
+        # if precip_output is not None:
+        #     self.output.write(
+        #         precip_output.squeeze(), check_nans=check_nans, template=template.sel(param="2t")[0], step=step, #param="tp",stepType="accum"
+        #     )
     
 class NetCDFOutput:
     # create new folder and save each step in a seperate netcdf file
@@ -61,7 +71,7 @@ class NetCDFOutput:
 
         self.dataset = None
 
-    def write(self, output,check_nans, template,step,param_level_pl,param_sfc):
+    def write(self, output,check_nans, template,step,param_level_pl,param_sfc,precip_output):
         # copy input data (template) once to copy metadata into output dataset
         if self.dataset is None:
             self.dataset = xr.zeros_like(template.to_xarray())
@@ -79,6 +89,11 @@ class NetCDFOutput:
                 axistupel = tuple(range(len(self.dataset[pl].shape) - 3))
                 self.dataset[pl].sel(isobaricInhPa=level).values = np.expand_dims(output[k],axis=axistupel)
                 k += 1
+
+        if precip_output is not None:
+            self.dataset['tp'].values = xr.DataArray(precip_output.squeeze(),attr={'GRIB_cfName':'total_precipitation'})
+            print('test')
+            self.dataset = self.dataset.assign(tp=precip_output.squeeze())
 
         self.dataset = self.dataset.assign_coords(step=[np.timedelta64(step*60*60*10**9, 'ns')])
         return self.dataset.to_netcdf(os.path.join(self.subdir, self.pathString + '_step_'+str(step)+'.nc'))
