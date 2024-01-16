@@ -10,6 +10,7 @@ import xarray as xr
 import climetlab as cml
 import os
 import numpy as np
+import json
 LOG = logging.getLogger(__name__)
 
 
@@ -41,9 +42,9 @@ class FileOutput:
             self.output.write(
                 output[k, ...], check_nans=check_nans, template=fs, step=step
             )
-            break
-            if k == 4:
-                break
+            # break
+            # if k == 4:
+            #     break
         # if precip_output is not None:
         #     self.output.write(
         #         precip_output.squeeze(), check_nans=check_nans, template=template.sel(param="2t")[0], step=step, #param="tp",stepType="accum"
@@ -69,16 +70,46 @@ class NetCDFOutput:
         self.subdir = os.path.join(pathDir,self.pathString)
         os.makedirs(self.subdir, exist_ok=True)
 
+        try:
+            with open(kwargs["output_variables"]) as f:
+                self.output_variables = json.load(f)
+            
+            if type(self.output_variables) != list:
+                raise Exception("output_variables must be a list")
+            
+            if any(var.lower() == 'all' for var in self.output_variables):
+                print("outputting all variables")
+                self.output_variables = self.ordering
+            else:
+                for var in self.output_variables:
+                    err_vars = []
+                    if var not in ["all"]+self.ordering:
+                        err_vars.append(var)
+                    if len(err_vars)>0:
+                        raise Exception("output_variables must be a subset of the following: ",["all"]+self.ordering)
+                print("outputting only variables: ",self.output_variables)
+        except:
+            print("failes to load output variables from json file at location: ",kwargs["output_variables"])
+
         self.dataset = None
 
     def write(self, output,check_nans, template,step,param_level_pl,param_sfc,precip_output):
         # copy input data (template) once to copy metadata into output dataset
         if self.dataset is None:
             self.dataset = xr.zeros_like(template.to_xarray())
+
+    #key present and new value is different
+
+            if not any(var.lower() == 'all' for var in self.output_variables):
+                # delete variables that shouldn't be outputted
+                self.dataset.drop(([var for var in self.ordering if var not in self.output_variables]))
         
         # loop through variables and preassure levels and overwrite dataset with output from  model
         k = 0
         for sfc in param_sfc:
+            # skip variables that shouldn't be outputted
+            if sfc in self.output_variables:
+                continue
             axistupel = tuple(range(len(self.dataset[sfc].shape) - 2))
             self.dataset[sfc].values = np.expand_dims(output[k],axis=axistupel)
             k += 1
@@ -86,6 +117,9 @@ class NetCDFOutput:
         levels.reverse()
         for pl in pls:
             for level in levels:
+                # skip variables that shouldn't be outputted
+                if sfc in self.output_variables:
+                    continue
                 axistupel = tuple(range(len(self.dataset[pl].shape) - 3))
                 self.dataset[pl].sel(isobaricInhPa=level).values = np.expand_dims(output[k],axis=axistupel)
                 k += 1

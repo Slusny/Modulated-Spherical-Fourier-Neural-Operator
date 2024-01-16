@@ -129,6 +129,12 @@ def _main():
     )
 
     parser.add_argument(
+        "--output-variables",
+        default="./S2S_on_SFNO/outputs/output-variables.yaml",
+        help="Specify path to a yaml file detailing which variables to output. Default: all.",
+    )
+
+    parser.add_argument(
         "--date",
         default="-1",
         help="For which analysis date to start the inference (default: -1 = yesterday). Format: YYYYMMDD",

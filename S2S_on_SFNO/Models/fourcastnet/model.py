@@ -236,7 +236,7 @@ class FourCastNet(Model):
                 #     )
                 self.write(
                     output[0],
-                    check_nans=False,
+                    check_nans=True,
                     template=all_fields,
                     step=step,
                     param_level_pl=self.param_level_pl,
@@ -274,23 +274,27 @@ class FourCastNet0(FourCastNet):
         "2t",
         "sp",
         "msl",
-        "t850",
+        "t850", 
         "u1000",
         "v1000",
         "z1000",
-        "u850",
-        "v850",
-        "z850",
+        "u850", 
+        "v850", 
+        "z850", 
         "u500",
         "v500",
         "z500",
         "t500",
-        "z50",
+        "z50", 
         "r500",
         "r850",
         "tcwv",
     ]
-
+    levels_per_pl = {"u":[1000,850,500],"v":[1000,850,500],"z":[1000,850,500,50],"t":[850,500],"r":[850,500]}
+# u1000, v1000, z1000, 
+# u850,  v850,  z850, r850, t850
+# u500,  v500,  z500, r500, t500                   
+#               z50
 
 class FourCastNet1(FourCastNet):
     download_url = (
@@ -331,7 +335,12 @@ class FourCastNet1(FourCastNet):
         "z250",
         "t250",
     ]
-
+    levels_per_pl = {"u":[1000,850,500,250],"v":[1000,850,500,250],"z":[1000,850,500,250,50],"t":[850,500],"r":[850,500,250]}
+# u1000, v1000, z1000, 
+# u850,  v850,  z850, r850, t850
+# u500,  v500,  z500, r500, t500
+# u250,  v250,  z250,       t250                   
+#               z50
 
 def get_model(**kwargs):
     models = {
