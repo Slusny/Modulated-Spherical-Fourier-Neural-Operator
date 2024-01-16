@@ -162,6 +162,7 @@ cython_debug/
 # Outputs
 S2S_on_SFNO/outputs/*
 !S2S_on_SFNO/outputs/__init__.py
+!S2S_on_SFNO/outputs/output-variables.json
 
 # Inputs
 S2S_on_SFNO/inputs/*
