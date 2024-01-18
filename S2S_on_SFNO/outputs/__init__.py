@@ -96,7 +96,12 @@ class NetCDFOutput:
     def write(self, output,check_nans, template,step,param_level_pl,param_sfc,precip_output):
         # copy input data (template) once to copy metadata into output dataset
         if self.dataset is None:
-            self.dataset = xr.zeros_like(template.to_xarray())
+            # works if template has equal size in every coordinate, won't work e.g. for fourcastnet where a few variables don't exist on every pressure level
+            # x = template.to_xarray()
+            # self.dataset = xr.zeros_like(template.to_xarray())
+            self.dataset = xr.Dataset()
+            for variable in self.levels_per_pl:
+                self.dataset.assign(variable=xr.zeros_like(template.sel(param=variable).to_xarray()))
 
     #key present and new value is different
 
