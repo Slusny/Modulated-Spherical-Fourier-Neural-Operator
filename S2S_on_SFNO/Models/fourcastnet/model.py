@@ -290,7 +290,7 @@ class FourCastNet0(FourCastNet):
         "r850",
         "tcwv",
     ]
-    self.levels_per_pl = {"u":[1000,850,500],
+    levels_per_pl = {"u":[1000,850,500],
                      "v":[1000,850,500],
                      "z":[1000,850,500,50],
                      "t":[     850,500],
@@ -339,7 +339,7 @@ class FourCastNet1(FourCastNet):
         "z250",
         "t250",
     ]
-    self.levels_per_pl = {"u":[1000,850,500,250],
+    levels_per_pl = {"u":[1000,850,500,250],
                      "v":[1000,850,500,250],
                      "z":[1000,850,500,250,50],
                      "t":[     850,500],

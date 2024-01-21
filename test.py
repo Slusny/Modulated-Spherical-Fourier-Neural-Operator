@@ -22,5 +22,8 @@ temp_array = xr.DataArray(temp,dims=["x","y","time"],coords=dict(
         time=time))
 
 
-d = xr.Dataset({"temp_data":temp_array,"precip_data":precip_array})
+# d = xr.Dataset({"temp_data":temp_array,"precip_data":precip_array})
+d = xr.Dataset()
+d.assign(temperature=temp_array)
+d.assign(pre=precip_array)
 print(d)

@@ -123,7 +123,7 @@ class FourCastNetv2(Model):
         "r1000",
     ]
 
-    self.levels_per_pl = {"u":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
+    levels_per_pl = {"u":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
                      "v":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
                      "z":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
                      "t":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
@@ -284,7 +284,15 @@ class FourCastNetv2(Model):
                             np.amax(output[:, j]),
                         )
 
-                self.write(output[0],check_nans=True,template=all_fields,step=step,param_level_pl=self.param_level_pl,param_sfc=self.param_sfc,precip_output=None)
+                self.write(
+                    output[0],
+                    check_nans=True,
+                    template=all_fields,
+                    step=step,
+                    param_level_pl=self.param_level_pl,
+                    param_sfc=self.param_sfc,
+                    precip_output=None
+                )
 
                 stepper(i, step)
 
