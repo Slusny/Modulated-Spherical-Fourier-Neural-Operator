@@ -106,7 +106,7 @@ def _main():
     parser.add_argument(
         "--input-store",
         default=None,
-        help="If you download data from cds or mars and want to store it somewhere else, specify PATJ here. Default behaviour is to only temporary cache the data. The name of the file will be",
+        help="If you download data from cds or mars and want to store it somewhere else, specify a path here. Default behaviour is to only temporary cache the data. The name of the file will be ClimateInputData_{YYYYMMDDHH}.grib at specified path",
         action="store"
     )
 
