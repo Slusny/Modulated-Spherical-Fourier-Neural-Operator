@@ -3,7 +3,7 @@
 #a) Define slurm job parameters
 ####
 
-## SBATCH --job-name=fcn
+## SBATCH --job-name=sfno
 
 #resources:
 
@@ -19,7 +19,7 @@
 # the slurm partition the job is queued to.
 # exits: gpu-2080ti , gpu-v100 ... see sinfo
 
-# SBATCH --mem-per-cpu=32G # Per CPU -> Per Core
+# SBATCH --mem-per-cpu=60G # Per CPU -> Per Core
 ##SBATCH --mem-per-cpu=200G # Per CPU -> Per Core
 # the job will need 12GB of memory equally distributed on 4 cpus.(251GB are available in total on one node)
 
