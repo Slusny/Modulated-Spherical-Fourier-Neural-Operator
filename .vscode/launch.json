@@ -11,7 +11,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args":["--model","sfno","--date","20210101","--time","0000","--lead-time","6","--output","netcdf","--file", "./S2S_on_SFNO/inputs/ClimateInputData_202101010.grib"]
+            "args":["--model","sfno","--date","20210101","--time","0000","--lead-time","18","--output","netcdf","--file", "./S2S_on_SFNO/inputs/ClimateInputData_202101010.grib"]
             // python main.py --model sfno --date 20210101 --time 0000 --lead-time 120
         }
     ]

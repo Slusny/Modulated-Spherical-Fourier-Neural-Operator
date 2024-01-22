@@ -112,6 +112,7 @@ class NetCDFOutput:
         except Exception as e: 
             print("failes to load output variables from json file at location: ",kwargs["output_variables"])
             print(e)
+            exit(0)
 
         # self.dataset = None
 
@@ -121,6 +122,8 @@ class NetCDFOutput:
         # works if template has equal size in every coordinate, won't work e.g. for fourcastnet where a few variables don't exist on every pressure level
         # x = template.to_xarray()
         # self.dataset = xr.zeros_like(template.to_xarray())
+        if self.output_variables == self.owner.ordering and self.owner.model == 'sfno':
+            print("hi")
         data_dict={}
         for idx,out_var in enumerate(self.owner.ordering):
             if out_var in self.output_variables:
@@ -137,6 +140,8 @@ class NetCDFOutput:
             self.dataset = self.dataset.assign(tp=precip_output.squeeze())
 
         dataset = xr.Dataset(data_vars=data_dict,coords=dict(
+                    latitude=(["latitude"], np.arange(-90,90.25,0.25)[::-1]),
+                    longitude=([ "longitude"], np.arange(0,360,0.25)),
                     step=[np.timedelta64(step*60*60*10**9, 'ns')]
                 ))
         

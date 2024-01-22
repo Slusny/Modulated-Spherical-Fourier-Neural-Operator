@@ -236,7 +236,7 @@ class FourCastNetv2(Model):
             remapping={"param_level": "{param}{levelist}"},
         )
 
-        all_fields_numpy = all_fields.to_numpy(dtype=np.float32)
+        all_fields_numpy = all_fields.to_numpy(dtype=np.float32) # machine precision 1.1920929e-07 , 6 accurate decimals
 
         all_fields_numpy = self.normalise(all_fields_numpy)
 

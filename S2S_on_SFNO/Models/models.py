@@ -59,7 +59,8 @@ class Model:
 
     def __init__(self, input, output, download_assets, **kwargs):
         self.input = get_input(input, self, **kwargs)
-        self.output = get_output(output, self, **kwargs)
+        self.output = get_output(output, self, **kwargs)                        
+        self.output2 = get_output("grib", self, **kwargs) #! redundant, test
 
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -104,6 +105,7 @@ class Model:
         self.collect_archive_requests(
             self.output.write(*args, **kwargs),
         )
+        self.output2.write(*args, **kwargs) #! redundant, test
 
     def collect_archive_requests(self, written):
         if self.archive_requests:
