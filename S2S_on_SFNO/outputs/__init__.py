@@ -59,6 +59,8 @@ class FileOutput:
 
     def write(self, output,check_nans, template, step,precip_output,**kwargs):
         for k, fs in enumerate(template):
+            # if fs["paramName"] is not in self.output_variables: # something like this, needs testing, also the variable name for grib files are different as for netcdf
+            #     continue
             print("k: ",k," fs: ",fs)
             self.output.write(
                 output[k, ...], check_nans=check_nans, template=fs, step=step

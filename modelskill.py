@@ -12,9 +12,23 @@ import psutil
 import gc
 from time import time
 
-variable = '10m_v_component_of_wind'
+variable_index = 0
+variables = [
+    '10m_u_component_of_wind',
+    '10m_v_component_of_wind',
+    '2m_temperature',
+]
+variable = variables[variable_index]
+
 basePath = "/mnt/qb/work2/goswami0/gkd965/"
-mean_file = os.path.join(basePath,"climate","hourofyear_mean_for_10m_v_component_of_wind_from_1979_to_2019created_20231211-1339.nc")
+mean_files = {
+    '10m_u_component_of_wind':'hourofyear_mean_for_10m_u_component_of_wind_from_1979_to_2017created_20240123-0404.nc',
+    '10m_v_component_of_wind':'hourofyear_mean_for_10m_v_component_of_wind_from_1979_to_2019created_20231211-1339.nc',
+    '2m_temperature':'hourofyear_mean_for_2m_temperature_from_1979_to_2017created_20240123-0343.nc',
+    'total_column_water_vapour':'hourofyear_mean_for_total_column_water_vapour_from_1979_to_2017created_20240123-0415.nc'
+
+}
+mean_file = os.path.join(basePath,"climate",mean_files[variable])
 model_file_sfno = os.path.join(basePath,'outputs/sfno','leadtime_8760_20231213-1809.grib')
 model_file_fcn = os.path.join(basePath,'outputs/fourcastnet','leadtime_8760_startDate_202101010_createdOn20231214-1204.grib')
 save_file = os.path.join(basePath,'')
