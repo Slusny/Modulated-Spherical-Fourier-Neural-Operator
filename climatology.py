@@ -38,7 +38,7 @@ from time import time
 # The yearly data is hourly data (e.g. 2m_temperature_2021.nc)
 
 years = list(range(1979,2018)) # 
-variable = '10m_u_component_of_wind'
+variable = 'total_column_water_vapour'
 # variable = '10m_v_component_of_wind'
 basePath = "/mnt/qb/goswami/data/era5"
 saveBasePath = "/mnt/qb/work2/goswami0/gkd965/climate"
