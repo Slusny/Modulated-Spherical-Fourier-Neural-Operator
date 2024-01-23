@@ -37,7 +37,7 @@ from time import time
 # The combined year data set (e.g. 2m_temperature_sfc_1959_2021.nc) are daily means)
 # The yearly data is hourly data (e.g. 2m_temperature_2021.nc)
 
-years = list(range(1979,2018)) # 
+years = list(range(1979,2019)) # 
 variable = 'total_column_water_vapour'
 # variable = '10m_v_component_of_wind'
 basePath = "/mnt/qb/goswami/data/era5"
