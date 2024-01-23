@@ -3,7 +3,7 @@
 #a) Define slurm job parameters
 ####
 
-#SBATCH --job-name=climate_10u
+#SBATCH --job-name=clim
 
 #resources:
 

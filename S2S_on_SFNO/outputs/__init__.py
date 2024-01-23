@@ -137,7 +137,6 @@ class NetCDFOutput:
                     latitude=(["latitude", "longitude"], np.tile(np.arange(-90,90.25,0.25)[::-1],(1440,1)).T),
                     longitude=(["latitude", "longitude"], np.tile(np.arange(0,360,0.25),(721,1))),
                 ))
-            self.dataset = self.dataset.assign(tp=precip_output.squeeze())
 
         dataset = xr.Dataset(data_vars=data_dict,coords=dict(
                     latitude=(["latitude"], np.arange(-90,90.25,0.25)[::-1]),
