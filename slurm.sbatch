@@ -3,7 +3,7 @@
 #a) Define slurm job parameters
 ####
 
-# SBATCH --job-name=fcn
+#SBATCH --job-name=sfno
 
 #resources:
 
@@ -19,7 +19,7 @@
 # the slurm partition the job is queued to.
 # exits: gpu-2080ti , gpu-v100 ... see sinfo
 
-# SBATCH --mem-per-cpu=40G # Per CPU -> Per Core
+#SBATCH --mem-per-cpu=40G # Per CPU -> Per Core
 ##SBATCH --mem-per-cpu=200G # Per CPU -> Per Core
 # the job will need 12GB of memory equally distributed on 4 cpus.(251GB are available in total on one node)
 
@@ -37,7 +37,7 @@
 # write the standard output to job.*jobID*.out
 
 #SBATCH --mail-type=ALL
-#write a mail if a job begins, ends, fails, gets requeued or stages out
+# write a mail if a job begins, ends, fails, gets requeued or stages out
 
 #SBATCH --mail-user=lennart.slusny@student.uni-tuebingen.de
 # your mail address
@@ -51,7 +51,7 @@
 
 # singularity e xec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif /opt/conda/envs/model/bin/python main.py --model sfno --date 20210101 --time 0000 --lead-time 120 --path /mnt/qb/work2/goswami0/gkd965/outputs --assets /mnt/qb/work2/goswami0/gkd965/Assets --dump-provenance #8760
 #
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif /opt/conda/envs/model/bin/python main.py --model fourcastnet --date 20190101 --time 0000 --lead-time 8760 --assets /mnt/qb/work2/goswami0/gkd965/Assets --path /mnt/qb/work2/goswami0/gkd965/outputs --dump-provenance --output netcdf --file /mnt/qb/work2/goswami0/gkd965/ClimateInputData_201901010.grib
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif /opt/conda/envs/model/bin/python main.py --model sfno --date 20190101 --time 0000 --lead-time 8760 --assets /mnt/qb/work2/goswami0/gkd965/Assets --path /mnt/qb/work2/goswami0/gkd965/outputs --dump-provenance --output netcdf --file /mnt/qb/work2/goswami0/gkd965/ClimateInputData_201901010.grib
 # singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif /opt/conda/envs/model/bin/python convert_to_netcdf.py 
 
 # singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif /opt/conda/envs/model/bin/python climatology.py #parallel_clima_byhand.py 2 #chunky_climatology.py 2
