@@ -118,7 +118,7 @@ def _main():
 
     parser.add_argument(
         "--file",
-        help="Source to use if source=file",
+        help="Source to use, sets source=file automatically",
     )
 
     parser.add_argument(
