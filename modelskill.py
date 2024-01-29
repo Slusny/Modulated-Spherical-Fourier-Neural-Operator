@@ -30,6 +30,7 @@ mean_files = {
     'total_column_water_vapour':'hourofyear_mean_for_total_column_water_vapour_from_1979_to_2017created_20240123-0415.nc'
 
 }
+# only single pressure level
 mean_file = os.path.join(basePath,"climate",mean_files[variable])
 model_file_sfno = os.path.join(basePath,'outputs/sfno','leadtime_8760_startDate_201901010_createdOn_20240123T0337/*')
 model_file_fcn = os.path.join(basePath,'outputs/fourcastnet','leadtime_8760_startDate_201901010_createdOn_20240123T0408/*')

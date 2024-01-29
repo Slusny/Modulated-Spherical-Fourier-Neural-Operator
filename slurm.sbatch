@@ -58,7 +58,7 @@ singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gk
 
 
 ## juptyer server
-# srun --pty bash --gres=gpu:1
+# srun --gres=gpu:1 --pty bash 
 # hostname
 # singularity shell --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif
 # /opt/conda/envs/model/bin/jupyter lab
