@@ -77,8 +77,8 @@ for idx in range(end):
     rmse_sfno_globe = xs.rmse(ds_sfno,truth,dim=[],skipna=True)
     rmse_fcn_globe  = xs.rmse(ds_fcn ,truth,dim=[],skipna=True)
 
-    rmse_sfno_globe.save(os.path.join(save_path,"rmse_global_sfno_"+variable+"_"+date_string+".nc"))
-    rmse_fcn_globe.save(os.path.join(save_path,"rmse_global_fcn_"+variable+"_"+date_string+".nc"))
+    rmse_sfno_globe.save(os.path.join(save_path,"rmse_global_sfno_"+variable+"_hr_"+str(s)+"_"+date_string+".nc"))
+    rmse_fcn_globe.save(os.path.join(save_path,"rmse_global_fcn_"+variable+"_hr_"+str(s)+"_"+date_string+".nc"))
 
     if idx%save_interval == 0:
         print("saving skill scores to "+save_path,flush=True)
