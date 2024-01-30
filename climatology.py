@@ -38,8 +38,8 @@ from time import time
 # The yearly data is hourly data (e.g. 2m_temperature_2021.nc)
 
 years = list(range(1979,2019)) # 
-variable_index = 0
-multi_pressure_level = None # the pressure level in hPa (e.g. 850)
+variable_index = 4
+multi_pressure_level = 1000 # the pressure level in hPa (e.g. 850)
 variables = [
     # single_pressure_level
     'total_column_water_vapour',
@@ -58,11 +58,13 @@ saveBasePath = "/mnt/qb/work2/goswami0/gkd965/climate"
 if multi_pressure_level:
     ERA5_subdir = "multi_pressure_level"
     file_paths = os.path.join(basePath, ERA5_subdir, variable, str(multi_pressure_level), variable+"_{}_"+str(multi_pressure_level)+".nc")
+    saveFileName = "hourofyear_mean_for_"+variable+str(multi_pressure_level)+"_from_"+str(years[0])+"_to_"+str(years[-1])+"created_"+datetime.now().strftime("%Y%m%d-%H%M")+".nc"
 else:
     ERA5_subdir = 'single_pressure_level'
     file_paths = os.path.join(basePath, ERA5_subdir, variable, variable+"_{}.nc")
+    saveFileName = "hourofyear_mean_for_"+variable+"_from_"+str(years[0])+"_to_"+str(years[-1])+"created_"+datetime.now().strftime("%Y%m%d-%H%M")+".nc"
 
-saveFileName = "hourofyear_mean_for_"+variable+"_from_"+str(years[0])+"_to_"+str(years[-1])+"created_"+datetime.now().strftime("%Y%m%d-%H%M")+".nc"
+
 savepath = os.path.join(saveBasePath,saveFileName)
 save_interval = 4
 
