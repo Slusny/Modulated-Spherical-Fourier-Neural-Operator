@@ -11,7 +11,7 @@ from time import sleep
 import psutil
 import gc
 from time import time
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 year = 2019
 variable_index = 0
