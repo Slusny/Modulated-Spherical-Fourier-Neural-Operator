@@ -33,7 +33,7 @@ if cluster:
     model_file_sfno = os.path.join(basePath,'outputs/sfno','leadtime_8760_startDate_201901010_createdOn_20240123T0337/leadtime_8760_startDate_201901010_createdOn_20240123T0337_step_{}.nc')
     model_file_fcn = os.path.join(basePath,'outputs/fourcastnet','leadtime_8760_startDate_201901010_createdOn_20240123T0408/leadtime_8760_startDate_201901010_createdOn_20240123T0408_step_{}.nc')
 else:
-    save_path = "/mnt/V/Master/climate/skillscores"
+    save_path = os.path.join("/mnt/V/Master/climate/skillscores",variable)
     basePath = "/mnt/V/Master"
     basePath2 = "/mnt/ssd2/Master/S2S_on_SFNO"
     dataPath = os.path.join("/mnt/V/Master/data",variable,variable+"_{}.nc") # no single_pressure_level dir on local machine
@@ -56,7 +56,7 @@ save_file = os.path.join(basePath,'')
 ds_ref_alltimes  = xr.open_dataset(mean_file,chunks={'time':1})#.to_array().squeeze()[:min_step*6:6]
 g_truth = xr.open_dataset(dataPath.format(year))#.to_array().squeeze()[:min_step*6:6]
 
-end = 128
+end = 1460
 
 num_nans = {"sfno":[],"fcn":[]}
 skill_scores = {"sfno":[],"fcn":[]}
@@ -101,13 +101,13 @@ for idx in range(end):
 
     if idx%save_interval == 0:
         print("saving skill scores to "+save_path,flush=True)
-        np.save(os.path.join(savepath_sfno,"rmse_sfno_"+variable+"_"+date_string+".npz"),skill_scores['sfno'])
-        np.save(os.path.join(savepath_fcn,"rmse_fcn_"+variable+"_"+date_string+".npz"),skill_scores['fcn'])
-        np.save(os.path.join(savepath_sfno,"nans_sfno_"+variable+"_"+date_string+".npz"),num_nans['sfno'])
-        np.save(os.path.join(savepath_fcn,"nans_fcn_"+variable+"_"+date_string+".npz"),num_nans['fcn'])
+        np.save(os.path.join(savepath_sfno,"rmse_sfno_"+variable+"_"+date_string),skill_scores['sfno'])
+        np.save(os.path.join(savepath_fcn,"rmse_fcn_"+variable+"_"+date_string),skill_scores['fcn'])
+        np.save(os.path.join(savepath_sfno,"nans_sfno_"+variable+"_"+date_string),num_nans['sfno'])
+        np.save(os.path.join(savepath_fcn,"nans_fcn_"+variable+"_"+date_string),num_nans['fcn'])
 
-np.save(os.path.join(savepath_sfno,"rmse_sfno_"+variable+"_"+date_string+"_fin.npz"),skill_scores['sfno'])
-np.save(os.path.join(savepath_fcn,"rmse_fcn_"+variable+"_"+date_string+"_fin.npz"),skill_scores['fcn'])
-np.save(os.path.join(savepath_sfno,"nans_sfno_"+variable+"_"+date_string+"_fin.npz"),num_nans['sfno'])
-np.save(os.path.join(savepath_fcn,"nans_fcn_"+variable+"_"+date_string+"_fin.npz"),num_nans['fcn'])
+np.save(os.path.join(savepath_sfno,"rmse_sfno_"+variable+"_"+date_string+"_fin"),skill_scores['sfno'])
+np.save(os.path.join(savepath_fcn,"rmse_fcn_"+variable+"_"+date_string+"_fin"),skill_scores['fcn'])
+np.save(os.path.join(savepath_sfno,"nans_sfno_"+variable+"_"+date_string+"_fin"),num_nans['sfno'])
+np.save(os.path.join(savepath_fcn,"nans_fcn_"+variable+"_"+date_string+"_fin"),num_nans['fcn'])
 
