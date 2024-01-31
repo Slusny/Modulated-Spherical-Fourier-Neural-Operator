@@ -69,8 +69,12 @@ if not os.path.exists(savepath_fcn): os.makedirs(savepath_fcn)
 
 for idx in range(end):
     s = (idx+1)*6
-    ds_sfno = xr.open_dataset(model_file_sfno.format(s))[dataset_var] # needs 4 min
-    ds_fcn = xr.open_mfdataset(model_file_fcn.format(s))[dataset_var] 
+    path_sfno = model_file_sfno.format(s)
+    print('loading '+path_sfno,flush=True)
+    path_fcn = model_file_fcn.format(s)
+    print('loading '+path_sfno,flush=True)
+    ds_sfno = xr.open_dataset(path_sfno)[dataset_var] # needs 4 min
+    ds_fcn = xr.open_mfdataset(path_fcn)[dataset_var] 
     ds_ref = ds_ref_alltimes.sel(time=idx).to_array().squeeze()
     truth = g_truth.sel(time=np.datetime64(str(year)+'-01-01T00:00:00.000000000') + np.timedelta64(s, 'h')).to_array().squeeze()
 
