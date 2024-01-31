@@ -15,7 +15,7 @@ from time import time
 
 year = 2019
 variable_index = 0
-cluster = False
+cluster = True
 variables = [
     ('10m_u_component_of_wind', '10u'),
     ('10m_v_component_of_wind','10v'),
