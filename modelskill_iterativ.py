@@ -37,8 +37,8 @@ else:
     basePath = "/mnt/V/Master"
     basePath2 = "/mnt/ssd2/Master/S2S_on_SFNO"
     dataPath = os.path.join("/mnt/V/Master/data",variable,variable+"_{}.nc") # no single_pressure_level dir on local machine
-    model_file_sfno = os.path.join(basePath,'outputs/sfno','leadtime_8760_startDate_201901010_createdOn_20240129T2243/leadtime_8760_startDate_201901010_createdOn_20240129T2243_step_{}.nc')
-    model_file_fcn = os.path.join(basePath,'outputs/fourcastnet','leadtime_8760_startDate_201901010_createdOn_20240129T2244/leadtime_8760_startDate_201901010_createdOn_20240129T2244{}.nc')
+    model_file_sfno = os.path.join(basePath2,'outputs/sfno','leadtime_8760_startDate_201901010_createdOn_20240129T2243/leadtime_8760_startDate_201901010_createdOn_20240129T2243_step_{}.nc')
+    model_file_fcn = os.path.join(basePath2,'outputs/fourcastnet','leadtime_8760_startDate_201901010_createdOn_20240129T2244/leadtime_8760_startDate_201901010_createdOn_20240129T2244{}.nc')
 
 mean_files = {
     '10m_u_component_of_wind':'hourofyear_mean_for_10m_u_component_of_wind_from_1979_to_2017created_20240123-0404.nc',
