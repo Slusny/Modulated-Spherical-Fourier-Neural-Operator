@@ -30,10 +30,15 @@ if cluster:
     save_path = os.path.join("/mnt/qb/work2/goswami0/gkd965/climate/skillscores",variable)
     basePath = "/mnt/qb/work2/goswami0/gkd965/"
     dataPath = os.path.join("/mnt/qb/goswami/data/era5","single_pressure_level",variable,variable+"_{}.nc")
+    model_file_sfno = os.path.join(basePath,'outputs/sfno','leadtime_8760_startDate_201901010_createdOn_20240123T0337/leadtime_8760_startDate_201901010_createdOn_20240123T0337_step_{}.nc')
+    model_file_fcn = os.path.join(basePath,'outputs/fourcastnet','leadtime_8760_startDate_201901010_createdOn_20240123T0408/leadtime_8760_startDate_201901010_createdOn_20240123T0408_step_{}.nc')
 else:
     save_path = "/mnt/V/Master/climate/skillscores"
     basePath = "/mnt/V/Master"
+    basePath2 = "/mnt/ssd2/Master/S2S_on_SFNO"
     dataPath = os.path.join("/mnt/V/Master/data",variable,variable+"_{}.nc") # no single_pressure_level dir on local machine
+    model_file_sfno = os.path.join(basePath,'outputs/sfno','leadtime_8760_startDate_201901010_createdOn_20240129T2243/leadtime_8760_startDate_201901010_createdOn_20240129T2243_step_{}.nc')
+    model_file_fcn = os.path.join(basePath,'outputs/fourcastnet','leadtime_8760_startDate_201901010_createdOn_20240129T2244/leadtime_8760_startDate_201901010_createdOn_20240129T2244{}.nc')
 
 mean_files = {
     '10m_u_component_of_wind':'hourofyear_mean_for_10m_u_component_of_wind_from_1979_to_2017created_20240123-0404.nc',
@@ -45,8 +50,6 @@ mean_files = {
 
 date_string = datetime.now().strftime("%Y%m%d-%H%M")
 mean_file = os.path.join(basePath,"climate",mean_files[variable])
-model_file_sfno = os.path.join(basePath,'outputs/sfno','leadtime_8760_startDate_201901010_createdOn_20240123T0337/leadtime_8760_startDate_201901010_createdOn_20240123T0337_step_{}.nc')
-model_file_fcn = os.path.join(basePath,'outputs/fourcastnet','leadtime_8760_startDate_201901010_createdOn_20240123T0408/leadtime_8760_startDate_201901010_createdOn_20240123T0408_step_{}.nc')
 save_file = os.path.join(basePath,'')
 
 
