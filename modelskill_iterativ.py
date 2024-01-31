@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 year = 2019
 variable_index = 0
-cluster = False
+cluster = True
 variables = [
     ('10m_u_component_of_wind', '10u'),
     ('10m_v_component_of_wind','10v'),
@@ -33,18 +33,17 @@ if cluster:
 else:
     save_path = "/mnt/V/Master/climate/skillscores"
     basePath = "/mnt/V/Master"
-    dataPath = os.path.join("/mnt/V/Master/data","single_pressure_level",variable,variable+"_{}.nc")
+    dataPath = os.path.join("/mnt/V/Master/data",variable,variable+"_{}.nc") # no single_pressure_level dir on local machine
 
 mean_files = {
     '10m_u_component_of_wind':'hourofyear_mean_for_10m_u_component_of_wind_from_1979_to_2017created_20240123-0404.nc',
     '10m_v_component_of_wind':'hourofyear_mean_for_10m_v_component_of_wind_from_1979_to_2019created_20231211-1339.nc',
-    '2m_temperature':'hourofyear_mean_for_2m_temperature_from_1979_to_2017created_20240123-0343.nc',
+    '2':'hourofyear_mean_for_2m_temperature_from_1979_to_2017created_20240123-0343.nc',
     'total_column_water_vapour':'hourofyear_mean_for_total_column_water_vapour_from_1979_to_2017created_20240123-0415.nc'
 
 }
 
 date_string = datetime.now().strftime("%Y%m%d-%H%M")
-# only single pressure level
 mean_file = os.path.join(basePath,"climate",mean_files[variable])
 model_file_sfno = os.path.join(basePath,'outputs/sfno','leadtime_8760_startDate_201901010_createdOn_20240123T0337/leadtime_8760_startDate_201901010_createdOn_20240123T0337_step_{}.nc')
 model_file_fcn = os.path.join(basePath,'outputs/fourcastnet','leadtime_8760_startDate_201901010_createdOn_20240123T0408/leadtime_8760_startDate_201901010_createdOn_20240123T0408_step_{}.nc')
