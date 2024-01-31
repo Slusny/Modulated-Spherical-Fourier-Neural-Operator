@@ -27,7 +27,7 @@ dataset_var = variables[variable_index][1]
 
 save_interval = 6
 if cluster:
-    save_path = "/mnt/qb/work2/goswami0/gkd965/climate/skillscores"
+    save_path = os.path.join("/mnt/qb/work2/goswami0/gkd965/climate/skillscores",variable)
     basePath = "/mnt/qb/work2/goswami0/gkd965/"
     dataPath = os.path.join("/mnt/qb/goswami/data/era5","single_pressure_level",variable,variable+"_{}.nc")
 else:
@@ -58,6 +58,12 @@ end = 128
 num_nans = {"sfno":[],"fcn":[]}
 skill_scores = {"sfno":[],"fcn":[]}
 
+
+savepath_sfno  = os.path.join(save_path,"sfno",date_string)
+savepath_fcn  = os.path.join(save_path,"fourcastnet",date_string)
+if not os.path.exists(savepath_sfno): os.makedirs(savepath_sfno)
+if not os.path.exists(savepath_fcn): os.makedirs(savepath_fcn)
+
 for idx in range(end):
     s = (idx+1)*6
     ds_sfno = xr.open_dataset(model_file_sfno.format(s))[dataset_var] # needs 4 min
@@ -83,18 +89,18 @@ for idx in range(end):
     rmse_sfno_globe = xs.rmse(ds_sfno,truth,dim=[],skipna=True)
     rmse_fcn_globe  = xs.rmse(ds_fcn ,truth,dim=[],skipna=True)
 
-    rmse_sfno_globe.to_dataset().save(os.path.join(save_path,"rmse_global_sfno_"+variable+"_hr_"+str(s)+"_"+date_string+".nc"))
-    rmse_fcn_globe.to_dataset().save(os.path.join(save_path,"rmse_global_fcn_"+variable+"_hr_"+str(s)+"_"+date_string+".nc"))
+    rmse_sfno_globe.to_dataset(name="rmse").assign_coords(step=[s]).save(os.path.join(savepath_sfno,"rmse_global_sfno_"+variable+"_step_"+str(s)+".nc"))
+    rmse_fcn_globe.to_dataset(name="rmse").assign_coords(step=[s]).save(os.path.join(savepath_fcn,"rmse_global_fcn_"+variable+"_step_"+str(s)+".nc"))
 
     if idx%save_interval == 0:
         print("saving skill scores to "+save_path,flush=True)
-        np.save(os.path.join(save_path,"rmse_sfno_"+variable+"_"+date_string+".npz"),skill_scores['sfno'])
-        np.save(os.path.join(save_path,"rmse_fcn_"+variable+"_"+date_string+".npz"),skill_scores['fcn'])
-        np.save(os.path.join(save_path,"nans_sfno_"+variable+"_"+date_string+".npz"),num_nans['sfno'])
-        np.save(os.path.join(save_path,"nans_fcn_"+variable+"_"+date_string+".npz"),num_nans['fcn'])
+        np.save(os.path.join(savepath_sfno,"rmse_sfno_"+variable+"_"+date_string+".npz"),skill_scores['sfno'])
+        np.save(os.path.join(savepath_fcn,"rmse_fcn_"+variable+"_"+date_string+".npz"),skill_scores['fcn'])
+        np.save(os.path.join(savepath_sfno,"nans_sfno_"+variable+"_"+date_string+".npz"),num_nans['sfno'])
+        np.save(os.path.join(savepath_fcn,"nans_fcn_"+variable+"_"+date_string+".npz"),num_nans['fcn'])
 
-np.save(os.path.join(save_path,"rmse_sfno_"+variable+"_"+date_string+"_fin.npz"),skill_scores['sfno'])
-np.save(os.path.join(save_path,"rmse_fcn_"+variable+"_"+date_string+"_fin.npz"),skill_scores['fcn'])
-np.save(os.path.join(save_path,"nans_sfno_"+variable+"_"+date_string+"_fin.npz"),num_nans['sfno'])
-np.save(os.path.join(save_path,"nans_fcn_"+variable+"_"+date_string+"_fin.npz"),num_nans['fcn'])
+np.save(os.path.join(savepath_sfno,"rmse_sfno_"+variable+"_"+date_string+"_fin.npz"),skill_scores['sfno'])
+np.save(os.path.join(savepath_fcn,"rmse_fcn_"+variable+"_"+date_string+"_fin.npz"),skill_scores['fcn'])
+np.save(os.path.join(savepath_sfno,"nans_sfno_"+variable+"_"+date_string+"_fin.npz"),num_nans['sfno'])
+np.save(os.path.join(savepath_fcn,"nans_fcn_"+variable+"_"+date_string+"_fin.npz"),num_nans['fcn'])
 
