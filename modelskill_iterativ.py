@@ -15,7 +15,7 @@ from time import time
 
 year = 2019
 variable_index = 0
-cluster = True
+cluster = False
 variables = [
     ('10m_u_component_of_wind', '10u'),
     ('10m_v_component_of_wind','10v'),
@@ -83,8 +83,8 @@ for idx in range(end):
     rmse_sfno_globe = xs.rmse(ds_sfno,truth,dim=[],skipna=True)
     rmse_fcn_globe  = xs.rmse(ds_fcn ,truth,dim=[],skipna=True)
 
-    rmse_sfno_globe.save(os.path.join(save_path,"rmse_global_sfno_"+variable+"_hr_"+str(s)+"_"+date_string+".nc"))
-    rmse_fcn_globe.save(os.path.join(save_path,"rmse_global_fcn_"+variable+"_hr_"+str(s)+"_"+date_string+".nc"))
+    rmse_sfno_globe.to_dataset().save(os.path.join(save_path,"rmse_global_sfno_"+variable+"_hr_"+str(s)+"_"+date_string+".nc"))
+    rmse_fcn_globe.to_dataset().save(os.path.join(save_path,"rmse_global_fcn_"+variable+"_hr_"+str(s)+"_"+date_string+".nc"))
 
     if idx%save_interval == 0:
         print("saving skill scores to "+save_path,flush=True)
