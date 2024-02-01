@@ -13,6 +13,7 @@ timestp = "20240201-1307"
 path   = "/mnt/V/Master/climate/skillscores/"+variable+"/"+timestp+"/"
 save_path = "/mnt/V/Master/climate/skillscores/"+variable+"/"+timestp+"/"
 
+variable_index = 0
 
 variables = [
     ('10m_u_component_of_wind', '10u'),
