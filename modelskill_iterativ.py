@@ -68,7 +68,7 @@ savepath_fcn  = os.path.join(save_path,"fourcastnet",date_string)
 if not os.path.exists(savepath_sfno): os.makedirs(savepath_sfno)
 if not os.path.exists(savepath_fcn): os.makedirs(savepath_fcn)
 
-for idx in range(end):
+for idx in range(end - 1):
     s = (idx+1)*6
     path_sfno = model_file_sfno.format(s)
     print('loading '+path_sfno,flush=True)
