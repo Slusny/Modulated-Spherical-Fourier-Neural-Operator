@@ -63,8 +63,9 @@ num_nans = {"sfno":[],"fcn":[]}
 rmse_ = {"sfno":[],"fcn":[],"ref":[]}
 
 
-savepath_sfno  = os.path.join(save_path,"sfno",date_string)
-savepath_fcn  = os.path.join(save_path,"fourcastnet",date_string)
+savepath_sfno  = os.path.join(save_path,date_string,"sfno")
+savepath_fcn  = os.path.join(save_path,date_string,"fourcastnet")
+savepath_numpy  = os.path.join(save_path,date_string)
 if not os.path.exists(savepath_sfno): os.makedirs(savepath_sfno)
 if not os.path.exists(savepath_fcn): os.makedirs(savepath_fcn)
 
@@ -108,9 +109,9 @@ for idx in range(end - 1):
     #     np.save(os.path.join(savepath_sfno,"nans_sfno_"+variable+"_"+date_string),num_nans['sfno'])
     #     np.save(os.path.join(savepath_fcn,"nans_fcn_"+variable+"_"+date_string),num_nans['fcn'])
 
-np.save(os.path.join(savepath_sfno,"rmse_sfno_"+variable+"_"+date_string+"_fin"),rmse_['sfno'])
-np.save(os.path.join(savepath_fcn,"rmse_fcn_"+variable+"_"+date_string+"_fin"),rmse_['fcn'])
-np.save(os.path.join(savepath_fcn,"rmse_ref_"+variable+"_"+date_string+"_fin"),rmse_['ref'])
-np.save(os.path.join(savepath_sfno,"nans_sfno_"+variable+"_"+date_string+"_fin"),num_nans['sfno'])
-np.save(os.path.join(savepath_fcn,"nans_fcn_"+variable+"_"+date_string+"_fin"),num_nans['fcn'])
+np.save(os.path.join(savepath_numpy,"rmse_sfno_"+variable+"_"+date_string+"_fin"),rmse_['sfno'])
+np.save(os.path.join(savepath_numpy,"rmse_fcn_"+variable+"_"+date_string+"_fin"),rmse_['fcn'])
+np.save(os.path.join(savepath_numpy,"rmse_ref_"+variable+"_"+date_string+"_fin"),rmse_['ref'])
+np.save(os.path.join(savepath_numpy,"nans_sfno_"+variable+"_"+date_string+"_fin"),num_nans['sfno'])
+np.save(os.path.join(savepath_numpy,"nans_fcn_"+variable+"_"+date_string+"_fin"),num_nans['fcn'])
 
