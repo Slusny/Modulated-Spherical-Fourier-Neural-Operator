@@ -47,7 +47,7 @@ for idx in range(end - 1):
     print(idx)
     s = (idx+1)*6
     file_sfno = os.path.join(path,'sfno','rmse_global_sfno_10m_u_component_of_wind_step_{}.nc').format(s)
-    file_fcn = os.path.join(path,'fourcastnet','rmse_global_sfno_10m_u_component_of_wind_step_{}.nc').format(s)
+    file_fcn = os.path.join(path,'fourcastnet','rmse_global_fcn_10m_u_component_of_wind_step_{}.nc').format(s)
 
     ds_sfno = xr.open_dataset(file_sfno)['rmse'].squeeze()
     ds_fcn = xr.open_dataset(file_fcn)['rmse'].squeeze()
