@@ -60,7 +60,7 @@ g_truth = xr.open_dataset(dataPath.format(year))#.to_array().squeeze()[:min_step
 
 
 num_nans = {"sfno":[],"fcn":[]}
-rmse_ = {"sfno":[],"fcn":[]}
+rmse_ = {"sfno":[],"fcn":[],"ref":[]}
 
 
 savepath_sfno  = os.path.join(save_path,"sfno",date_string)
