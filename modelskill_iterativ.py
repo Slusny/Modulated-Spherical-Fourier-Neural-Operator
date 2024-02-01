@@ -25,7 +25,9 @@ variables = [
 variable = variables[variable_index][0]
 dataset_var = variables[variable_index][1]
 
-save_interval = 6
+save_interval = 100
+end = 1460
+
 if cluster:
     save_path = os.path.join("/mnt/qb/work2/goswami0/gkd965/climate/skillscores",variable)
     basePath = "/mnt/qb/work2/goswami0/gkd965/"
@@ -56,7 +58,6 @@ save_file = os.path.join(basePath,'')
 ds_ref_alltimes  = xr.open_dataset(mean_file,chunks={'time':1})#.to_array().squeeze()[:min_step*6:6]
 g_truth = xr.open_dataset(dataPath.format(year))#.to_array().squeeze()[:min_step*6:6]
 
-end = 1460
 
 num_nans = {"sfno":[],"fcn":[]}
 skill_scores = {"sfno":[],"fcn":[]}
@@ -99,12 +100,12 @@ for idx in range(end):
     rmse_sfno_globe.to_dataset(name="rmse").assign_coords(step=[s]).to_netcdf(os.path.join(savepath_sfno,"rmse_global_sfno_"+variable+"_step_"+str(s)+".nc"))
     rmse_fcn_globe.to_dataset(name="rmse").assign_coords(step=[s]).to_netcdf(os.path.join(savepath_fcn,"rmse_global_fcn_"+variable+"_step_"+str(s)+".nc"))
 
-    if idx%save_interval == 0:
-        print("saving skill scores to "+save_path,flush=True)
-        np.save(os.path.join(savepath_sfno,"rmse_sfno_"+variable+"_"+date_string),skill_scores['sfno'])
-        np.save(os.path.join(savepath_fcn,"rmse_fcn_"+variable+"_"+date_string),skill_scores['fcn'])
-        np.save(os.path.join(savepath_sfno,"nans_sfno_"+variable+"_"+date_string),num_nans['sfno'])
-        np.save(os.path.join(savepath_fcn,"nans_fcn_"+variable+"_"+date_string),num_nans['fcn'])
+    # if idx%save_interval == 0:
+    #     print("saving skill scores to "+save_path,flush=True)
+    #     np.save(os.path.join(savepath_sfno,"rmse_sfno_"+variable+"_"+date_string),skill_scores['sfno'])
+    #     np.save(os.path.join(savepath_fcn,"rmse_fcn_"+variable+"_"+date_string),skill_scores['fcn'])
+    #     np.save(os.path.join(savepath_sfno,"nans_sfno_"+variable+"_"+date_string),num_nans['sfno'])
+    #     np.save(os.path.join(savepath_fcn,"nans_fcn_"+variable+"_"+date_string),num_nans['fcn'])
 
 np.save(os.path.join(savepath_sfno,"rmse_sfno_"+variable+"_"+date_string+"_fin"),skill_scores['sfno'])
 np.save(os.path.join(savepath_fcn,"rmse_fcn_"+variable+"_"+date_string+"_fin"),skill_scores['fcn'])
