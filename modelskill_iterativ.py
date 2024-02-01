@@ -60,7 +60,7 @@ g_truth = xr.open_dataset(dataPath.format(year))#.to_array().squeeze()[:min_step
 
 
 num_nans = {"sfno":[],"fcn":[]}
-skill_scores = {"sfno":[],"fcn":[]}
+rmse_ = {"sfno":[],"fcn":[]}
 
 
 savepath_sfno  = os.path.join(save_path,"sfno",date_string)
@@ -89,10 +89,11 @@ for idx in range(end):
     rmse_fcn  = xs.rmse(ds_fcn ,truth,dim=["latitude","longitude"],skipna=True)
     rmse_ref  = xs.rmse(ds_ref,truth,dim=["latitude","longitude"])
 
-    skill_score_sfno = 1 - rmse_sfno/rmse_ref
-    skill_score_fcn  = 1 - rmse_fcn/rmse_ref
-    skill_scores["sfno"].append(skill_score_sfno)
-    skill_scores["fcn"].append(skill_score_fcn)
+    # skill_score_sfno = 1 - rmse_sfno/rmse_ref
+    # skill_score_fcn  = 1 - rmse_fcn/rmse_ref
+    rmse_["sfno"].append(rmse_sfno)
+    rmse_["fcn"].append(rmse_fcn)
+    rmse_["ref"].append(rmse_ref)
 
     rmse_sfno_globe = xs.rmse(ds_sfno,truth,dim=[],skipna=True)
     rmse_fcn_globe  = xs.rmse(ds_fcn ,truth,dim=[],skipna=True)
@@ -102,13 +103,14 @@ for idx in range(end):
 
     # if idx%save_interval == 0:
     #     print("saving skill scores to "+save_path,flush=True)
-    #     np.save(os.path.join(savepath_sfno,"rmse_sfno_"+variable+"_"+date_string),skill_scores['sfno'])
-    #     np.save(os.path.join(savepath_fcn,"rmse_fcn_"+variable+"_"+date_string),skill_scores['fcn'])
+    #     np.save(os.path.join(savepath_sfno,"rmse_sfno_"+variable+"_"+date_string),rmse_['sfno'])
+    #     np.save(os.path.join(savepath_fcn,"rmse_fcn_"+variable+"_"+date_string),rmse_['fcn'])
     #     np.save(os.path.join(savepath_sfno,"nans_sfno_"+variable+"_"+date_string),num_nans['sfno'])
     #     np.save(os.path.join(savepath_fcn,"nans_fcn_"+variable+"_"+date_string),num_nans['fcn'])
 
-np.save(os.path.join(savepath_sfno,"rmse_sfno_"+variable+"_"+date_string+"_fin"),skill_scores['sfno'])
-np.save(os.path.join(savepath_fcn,"rmse_fcn_"+variable+"_"+date_string+"_fin"),skill_scores['fcn'])
+np.save(os.path.join(savepath_sfno,"rmse_sfno_"+variable+"_"+date_string+"_fin"),rmse_['sfno'])
+np.save(os.path.join(savepath_fcn,"rmse_fcn_"+variable+"_"+date_string+"_fin"),rmse_['fcn'])
+np.save(os.path.join(savepath_fcn,"rmse_ref_"+variable+"_"+date_string+"_fin"),rmse_['ref'])
 np.save(os.path.join(savepath_sfno,"nans_sfno_"+variable+"_"+date_string+"_fin"),num_nans['sfno'])
 np.save(os.path.join(savepath_fcn,"nans_fcn_"+variable+"_"+date_string+"_fin"),num_nans['fcn'])
 
