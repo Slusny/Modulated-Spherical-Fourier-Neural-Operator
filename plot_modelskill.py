@@ -19,7 +19,7 @@ path   = "/mnt/V/Master/climate/skillscores/"+variable+"/"+timestp+"/"
 save_path = "/mnt/V/Master/climate/skillscores/"+variable+"/"+timestp+"/"
 monitor_savepath = os.path.join(save_path,"monitor_parllel_"+datetime.now().strftime("%Y%m%d-%H%M")+".json")
 
-variable_index = 2
+variable_index = 3
 
 variables = [
     ('10m_u_component_of_wind', '10u'),
@@ -32,6 +32,12 @@ dataset_var = variables[variable_index][1]
 
 save_interval = 100
 end = 200
+
+
+
+print("-------------------------")
+print("Variable: ",variable)
+print("-------------------------")
 
 savepath_sfno = os.path.join(save_path,"plot_sfno")
 savepath_fcn  = os.path.join(save_path,"plot_fcn")
