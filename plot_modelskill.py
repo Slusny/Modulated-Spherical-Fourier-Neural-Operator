@@ -65,6 +65,7 @@ def plot(idx):
     ax.coastlines()
     ax.set_title(np.datetime_as_string(ds_sfno.time.values,unit="h"))
     fig.savefig(os.path.join(savepath_sfno,str(idx)+".png"),dpi=300)
+    plt.close(fig)
 
     # fcn
     fig = plt.figure(figsize=(10, 5))
@@ -74,6 +75,7 @@ def plot(idx):
     ax.coastlines()
     ax.set_title(np.datetime_as_string(ds_fcn.time.values,unit="h"))
     fig.savefig(os.path.join(savepath_fcn,str(idx)+".png"),dpi=300)
+    plt.close(fig)
 
     # sfno - globe
     fig = plt.figure(figsize=(10, 5))
@@ -83,6 +85,7 @@ def plot(idx):
     ax.coastlines()
     ax.set_title(np.datetime_as_string(ds_sfno.time.values,unit="h"))
     fig.savefig(os.path.join(savepath_sfno_globe,str(idx)+".png"),dpi=300)
+    plt.close(fig)
 
     # fcn - globe
     fig = plt.figure(figsize=(10, 5))
@@ -92,6 +95,7 @@ def plot(idx):
     ax.coastlines()
     ax.set_title(np.datetime_as_string(ds_fcn.time.values,unit="h"))
     fig.savefig(os.path.join(savepath_fcn_globe,str(idx)+".png"),dpi=300)
+    plt.close(fig)
 
 
 def print_monitor():
