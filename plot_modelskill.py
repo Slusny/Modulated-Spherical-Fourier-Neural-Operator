@@ -19,7 +19,7 @@ path   = "/mnt/V/Master/climate/skillscores/"+variable+"/"+timestp+"/"
 save_path = "/mnt/V/Master/climate/skillscores/"+variable+"/"+timestp+"/"
 monitor_savepath = os.path.join(save_path,"monitor_parllel_"+datetime.now().strftime("%Y%m%d-%H%M")+".json")
 
-variable_index = 3
+variable_index = 2
 
 variables = [
     ('10m_u_component_of_wind', '10u'),
