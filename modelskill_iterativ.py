@@ -14,7 +14,7 @@ from time import time
 # import matplotlib.pyplot as plt
 
 year = 2019
-variable_index = 2
+variable_index = 4
 cluster = False
 variables = [
     ('10m_u_component_of_wind', '10u'),
@@ -47,6 +47,7 @@ mean_files = {
     '10m_v_component_of_wind':'hourofyear_mean_for_10m_v_component_of_wind_from_1979_to_2019created_20231211-1339.nc',
     '2m_temperature':'hourofyear_mean_for_2m_temperature_from_1979_to_2017created_20240123-0343.nc',
     'total_column_water_vapour':'hourofyear_mean_for_total_column_water_vapour_from_1979_to_2017created_20240123-0415.nc'
+    'z1000':'hourofyear_mean_for_geopotential1000_from_1979_to_2018created_20240131-0011.nc'
 
 }
 
