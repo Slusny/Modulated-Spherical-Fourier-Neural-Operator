@@ -14,7 +14,7 @@ from time import time
 # import matplotlib.pyplot as plt
 
 year = 2019
-variable_index = 4
+variable_index = 3
 cluster = False
 variables = [
     ('10m_u_component_of_wind', '10u'),
@@ -28,6 +28,10 @@ dataset_var = variables[variable_index][1]
 
 save_interval = 100
 end = 1460
+
+print("-------------------------")
+print("Variable: ",variable)
+print("-------------------------")
 
 if cluster:
     save_path = os.path.join("/mnt/qb/work2/goswami0/gkd965/climate/skillscores",variable)
