@@ -20,7 +20,7 @@ variables = [
     ('10m_u_component_of_wind', '10u'),
     ('10m_v_component_of_wind','10v'),
     ('2m_temperature','2t'),
-    ('total_column_water_vapour','tcwv')
+    ('total_column_water_vapour','tcwv'),
     ('z1000','z1000')
 ]
 variable = variables[variable_index][0]
