@@ -14,7 +14,7 @@ from time import time
 # import matplotlib.pyplot as plt
 
 year = 2019
-variable_index = 3
+variable_index = 4
 cluster = False
 variables = [
     ('10m_u_component_of_wind', '10u'),
