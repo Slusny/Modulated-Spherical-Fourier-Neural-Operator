@@ -7,13 +7,18 @@ from datetime import datetime
 import cartopy.crs as ccrs
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from time import sleep, time
 
-variable = "10m_u_component_of_wind"
-timestp = "20240201-1307"
+from multiprocessing import Pool, active_children
+from S2S_on_SFNO.Models.provenance import system_monitor
+
+variable = "2m_temperature"
+timestp = "20240201-1555"
 path   = "/mnt/V/Master/climate/skillscores/"+variable+"/"+timestp+"/"
 save_path = "/mnt/V/Master/climate/skillscores/"+variable+"/"+timestp+"/"
+monitor_savepath = os.path.join(save_path,"monitor_parllel_"+datetime.now().strftime("%Y%m%d-%H%M")+".json")
 
-variable_index = 0
+variable_index = 2
 
 variables = [
     ('10m_u_component_of_wind', '10u'),
@@ -25,7 +30,7 @@ variable = variables[variable_index][0]
 dataset_var = variables[variable_index][1]
 
 save_interval = 100
-end = 1460
+end = 200
 
 savepath_sfno = os.path.join(save_path,"plot_sfno")
 savepath_fcn  = os.path.join(save_path,"plot_fcn")
@@ -42,8 +47,7 @@ savepath_fcn_globe  = os.path.join(save_path,"plot_fcn_globe")
 if not os.path.exists(savepath_sfno_globe): os.makedirs(savepath_sfno_globe)
 if not os.path.exists(savepath_fcn_globe): os.makedirs(savepath_fcn_globe)
 
-
-for idx in range(end - 1):
+def plot(idx):
     print(idx)
     s = (idx+1)*6
     file_sfno = os.path.join(path,'sfno','rmse_global_sfno_10m_u_component_of_wind_step_{}.nc').format(s)
@@ -87,3 +91,46 @@ for idx in range(end - 1):
     ax.coastlines()
     ax.set_title(np.datetime_as_string(ds_fcn.time.values,unit="h"))
     fig.savefig(os.path.join(savepath_fcn_globe,str(idx)+".png"),dpi=300)
+
+
+def print_monitor():
+    sys_dict = system_monitor(False,pids,names)
+    sys_dict["time"] = str(datetime.now() - start_time)
+    with open(monitor_savepath, 'a+') as fp: 
+        json.dump(sys_dict, fp, indent=4, separators=(',',': '))
+
+# for idx in range(end - 1):
+#     plot(idx)
+
+work = list(range(end - 1))
+len_work = len(work)
+results = []
+
+
+start_time = datetime.now()
+print('starting ' + str(sys.argv[1]) + ' processes')
+print("main pid ",os.getpid())
+
+with Pool(int(sys.argv[1])) as p:
+    results.append(p.map_async(plot, work))
+    print('Pool started : ', flush = True)
+    a_childs = active_children()
+    print(a_childs, flush = True)
+
+    pids = [ child.pid for child in a_childs]
+    pids.append(os.getpid())
+    names = [ child.name for child in a_childs]
+    names.append("main")
+
+    print("looping monitor until completion", flush = True)
+    while True:
+        print_monitor()
+        print("......................................................")
+        print("len results ",len(results), flush = True)
+        print([ar.ready() for ar in results])
+        print(results)
+        print("......................................................")
+        if len(results) == len_work and all([ar.ready() for ar in results]):
+            print('Pool done', flush = True)
+            break
+        sleep(60)
