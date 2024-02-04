@@ -13,8 +13,8 @@ from time import sleep, time
 from multiprocessing import Pool, active_children
 from S2S_on_SFNO.Models.provenance import system_monitor
 
-variable = "2m_temperature"
-timestp = "20240201-1555"
+variable = "total_column_water_vapour" #"2m_temperature"
+timestp = "20240202-1541" #"20240201-1555"
 path   = "/mnt/V/Master/climate/skillscores/"+variable+"/"+timestp+"/"
 save_path = "/mnt/V/Master/climate/skillscores/"+variable+"/"+timestp+"/"
 monitor_savepath = os.path.join(save_path,"monitor_parllel_"+datetime.now().strftime("%Y%m%d-%H%M")+".json")
