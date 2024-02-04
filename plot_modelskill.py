@@ -17,7 +17,7 @@ variable = "total_column_water_vapour" #"2m_temperature"
 timestp = "20240202-1541" #"20240201-1555"
 path   = "/mnt/V/Master/climate/skillscores/"+variable+"/"+timestp+"/"
 save_path = "/mnt/V/Master/climate/skillscores/"+variable+"/"+timestp+"/"
-monitor_savepath = os.path.join(save_path,"monitor_parllel_"+datetime.now().strftime("%Y%m%d-%H%M")+".json")
+monitor_savepath = os.path.join(save_path,'monitor',"monitor_parllel_"+datetime.now().strftime("%Y%m%d-%H%M")+".json")
 
 variable_index = 2
 
@@ -141,7 +141,7 @@ with Pool(int(sys.argv[1])) as p:
         print([ar.ready() for ar in results])
         print(results)
         print("......................................................")
-        if len(results) == len_work and all([ar.ready() for ar in results]):
+        if all([ar.ready() for ar in results]):
             print('Pool done', flush = True)
             break
         sleep(60)
