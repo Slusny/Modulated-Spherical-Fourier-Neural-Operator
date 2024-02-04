@@ -13,22 +13,23 @@ from time import sleep, time
 from multiprocessing import Pool, active_children
 from S2S_on_SFNO.Models.provenance import system_monitor
 
-variable = "total_column_water_vapour" #"2m_temperature"
-timestp = "20240202-1541" #"20240201-1555"
-path   = "/mnt/V/Master/climate/skillscores/"+variable+"/"+timestp+"/"
-save_path = "/mnt/V/Master/climate/skillscores/"+variable+"/"+timestp+"/"
-monitor_savepath = os.path.join(save_path,'monitor',"monitor_parllel_"+datetime.now().strftime("%Y%m%d-%H%M")+".json")
-
-variable_index = 2
+variable_index = 3
 
 variables = [
     ('10m_u_component_of_wind', '10u'),
     ('10m_v_component_of_wind','10v'),
-    ('2m_temperature','2t'),
-    ('total_column_water_vapour','tcwv')
+    ('2m_temperature','2t'), #"20240201-1555"
+    ('total_column_water_vapour','tcwv') #"20240202-1541" 
 ]
 variable = variables[variable_index][0]
 dataset_var = variables[variable_index][1]
+
+timestp = "20240202-1541" 
+path   = "/mnt/V/Master/climate/skillscores/"+variable+"/"+timestp+"/"
+save_path = "/mnt/V/Master/climate/skillscores/"+variable+"/"+timestp+"/"
+monitor_savepath = os.path.join(save_path,'monitor',"monitor_parllel_"+datetime.now().strftime("%Y%m%d-%H%M")+".json")
+
+
 
 save_interval = 100
 end = 200
