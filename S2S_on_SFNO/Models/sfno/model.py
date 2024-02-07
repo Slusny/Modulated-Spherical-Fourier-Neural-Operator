@@ -47,6 +47,7 @@ class FourCastNetv2(Model):
 
     # for grib data from copernicus the variable name is different (10u) from what will be used if converted to xarray. Xarray uses the cfVarName from the metadata (u10)
     # if an xarray dataset is used as input the ordering list musst be adapted to the cfVarName
+    # 73 Variables
     ordering = [
         "10u",
         "10v",
