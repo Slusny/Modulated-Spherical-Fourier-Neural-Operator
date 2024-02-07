@@ -7,6 +7,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.checkpoint import checkpoint
+from torch_geometric.nn import GCNConv
+
 
 # from apex.normalization import FusedLayerNorm
 
@@ -234,6 +236,128 @@ class FourierNeuralOperatorBlock(nn.Module):
                 x = x + self.outer_skip(residual)
 
         return x
+    
+class FourierNeuralOperatorBlock_Filmed(nn.Module):
+    def __init__(
+        self,
+        forward_transform,
+        inverse_transform,
+        embed_dim,
+        filter_type="linear",
+        mlp_ratio=2.0,
+        drop_rate=0.0,
+        drop_path=0.0,
+        block_idx=0,
+        act_layer=nn.GELU,
+        norm_layer=(nn.LayerNorm, nn.LayerNorm),
+        # num_blocks = 8,
+        sparsity_threshold=0.0,
+        use_complex_kernels=True,
+        compression=None,
+        rank=128,
+        inner_skip="linear",
+        outer_skip=None,  # None, nn.linear or nn.Identity
+        concat_skip=False,
+        mlp_mode="none",
+        complex_network=True,
+        complex_activation="real",
+        spectral_layers=1,
+        checkpointing=False,
+    ):
+        super().__init__()
+
+        # norm layer
+        self.norm0 = norm_layer[0]()  # ((h,w))
+
+        # convolution layer
+        self.filter_layer = SpectralFilterLayer(
+            forward_transform,
+            inverse_transform,
+            embed_dim,
+            filter_type,
+            sparsity_threshold,
+            use_complex_kernels=use_complex_kernels,
+            hidden_size_factor=mlp_ratio,
+            compression=compression,
+            rank=rank,
+            complex_network=complex_network,
+            complex_activation=complex_activation,
+            spectral_layers=spectral_layers,
+            drop_rate=drop_rate,
+        )
+
+        self.block_idx = block_idx
+
+        if inner_skip == "linear":
+            self.inner_skip = nn.Conv2d(embed_dim, embed_dim, 1, 1)
+        elif inner_skip == "identity":
+            self.inner_skip = nn.Identity()
+
+        self.concat_skip = concat_skip
+
+        if concat_skip and inner_skip is not None:
+            self.inner_skip_conv = nn.Conv2d(2 * embed_dim, embed_dim, 1, bias=False)
+
+        if filter_type == "linear":
+            self.act_layer = act_layer()
+
+        # dropout
+        self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
+
+        # norm layer
+        self.norm1 = norm_layer[1]()  # ((h,w))
+
+        if mlp_mode != "none":
+            mlp_hidden_dim = int(embed_dim * mlp_ratio)
+            self.mlp = MLP(
+                in_features=embed_dim,
+                hidden_features=mlp_hidden_dim,
+                act_layer=act_layer,
+                drop_rate=drop_rate,
+                checkpointing=checkpointing,
+            )
+
+        if outer_skip == "linear":
+            self.outer_skip = nn.Conv2d(embed_dim, embed_dim, 1, 1)
+        elif outer_skip == "identity":
+            self.outer_skip = nn.Identity()
+
+        if concat_skip and outer_skip is not None:
+            self.outer_skip_conv = nn.Conv2d(2 * embed_dim, embed_dim, 1, bias=False)
+
+    def forward(self, x, gamma, beta):
+        residual = x
+
+        x = self.norm0(x)
+        x = self.filter_layer(x).contiguous()
+
+        if hasattr(self, "inner_skip"):
+            if self.concat_skip:
+                x = torch.cat((x, self.inner_skip(residual)), dim=1)
+                x = self.inner_skip_conv(x)
+            else:
+                x = x + self.inner_skip(residual)
+
+        if hasattr(self, "act_layer"):
+            x = self.act_layer(x)
+
+        x = self.norm1(x)
+
+        x = self.film(x,gamma,beta,self.block_idx)
+
+        if hasattr(self, "mlp"):
+            x = self.mlp(x)
+
+        x = self.drop_path(x)
+
+        if hasattr(self, "outer_skip"):
+            if self.concat_skip:
+                x = torch.cat((x, self.outer_skip(residual)), dim=1)
+                x = self.outer_skip_conv(x)
+            else:
+                x = x + self.outer_skip(residual)
+
+        return x
 
     # @torch.jit.ignore
     # def checkpoint_forward(self, x):
@@ -304,7 +428,7 @@ class FourierNeuralOperatorNet(nn.Module):
 
         # dropout
         self.pos_drop = nn.Dropout(p=drop_rate) if drop_rate > 0.0 else nn.Identity()
-        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, self.num_layers)]
+        self.dpr = [x.item() for x in torch.linspace(0, drop_path_rate, self.num_layers)] # made class property from original local variable
 
         # pick norm layer
         if self.normalization_layer == "layer_norm":
@@ -424,7 +548,7 @@ class FourierNeuralOperatorNet(nn.Module):
                 filter_type=self.filter_type,
                 mlp_ratio=mlp_ratio,
                 drop_rate=drop_rate,
-                drop_path=dpr[i],
+                drop_path=self.dpr[i],
                 norm_layer=norm_layer,
                 sparsity_threshold=sparsity_threshold,
                 use_complex_kernels=use_complex_kernels,
@@ -499,6 +623,126 @@ class FourierNeuralOperatorNet(nn.Module):
 
         # forward features
         x = self.forward_features(x)
+
+        # concatenate the big skip
+        if self.big_skip:
+            x = torch.cat((x, residual), dim=1)
+
+        # decoder
+        x = self.decoder(x)
+
+        return x
+
+class GCN(torch.nn.Module):
+    def __init__(self,out_features,num_layers):
+        super().__init__()
+        self.num_layers = num_layers
+        num_node_features = 686364
+        self.conv1 = GCNConv(num_node_features, 6000)
+        self.conv2 = GCNConv(6000, 1000)
+        self.fc1 = torch.nn.Linear(1000, out_features)
+
+    def forward(self, data):
+        x, edge_index = data.x, data.edge_index
+
+        x = self.conv1(x, edge_index)
+        x = F.relu(x)
+        x = F.dropout(x, training=self.training)
+        x = self.conv2(x, edge_index)
+        x = F.relu(x)
+        heads = []
+        for i in range(self.num_layers):
+            heads.append(self.fc1(x))
+        return torch.stack(heads)
+
+
+class FiLM(nn.Module):
+    """
+    A Feature-wise Linear Modulation Layer from
+    'FiLM: Visual Reasoning with a General Conditioning Layer'
+    """
+    def forward(self, x, gammas, betas, block_idx):
+        gammas = gammas.unsqueeze(2).unsqueeze(3).expand_as(x)
+        betas = betas.unsqueeze(2).unsqueeze(3).expand_as(x)
+        return (gammas * x) + betas
+
+class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
+    def __init__(
+            self,
+            mlp_ratio=2.0,
+            drop_rate=0.0,
+            sparsity_threshold=0.0,
+            use_complex_kernels=True,
+        ):
+        super().__init__()
+
+        # new SFNO-Block with Film Layer
+        self.blocks = nn.ModuleList([])
+        for i in range(self.num_layers):
+            first_layer = i == 0
+            last_layer = i == self.num_layers - 1
+
+            forward_transform = self.trans_down if first_layer else self.trans
+            inverse_transform = self.itrans_up if last_layer else self.itrans
+
+            inner_skip = "linear" if 0 < i < self.num_layers - 1 else None
+            outer_skip = "identity" if 0 < i < self.num_layers - 1 else None
+            mlp_mode = self.mlp_mode if not last_layer else "none"
+
+            if first_layer:
+                norm_layer = (norm_layer0, norm_layer1)
+            elif last_layer:
+                norm_layer = (norm_layer1, norm_layer0)
+            else:
+                norm_layer = (norm_layer1, norm_layer1)
+
+            block = FourierNeuralOperatorBlock_Filmed(
+                forward_transform,
+                inverse_transform,
+                self.embed_dim,
+                filter_type=self.filter_type,
+                mlp_ratio=mlp_ratio,
+                drop_rate=drop_rate,
+                drop_path=self.dpr[i],
+                block_idx = i,
+                norm_layer=norm_layer,
+                sparsity_threshold=sparsity_threshold,
+                use_complex_kernels=use_complex_kernels,
+                inner_skip=inner_skip,
+                outer_skip=outer_skip,
+                mlp_mode=mlp_mode,
+                compression=self.compression,
+                rank=self.rank,
+                complex_network=self.complex_network,
+                complex_activation=self.complex_activation,
+                spectral_layers=self.spectral_layers,
+                checkpointing=self.checkpointing,
+            )
+
+            self.blocks.append(block)
+        
+        self.film_gen = GCN(out_features=self.embed_dim)
+    
+    def forward(self, x,sst):
+
+        # calculate gammas and betas for film layers
+        gamma,beta = self.film_gen(sst)
+        
+        # save big skip
+        if self.big_skip:
+            residual = x
+
+        # encoder
+        x = self.encoder(x)
+
+        # do positional embedding
+        x = x + self.pos_embed
+
+        # forward features
+        x = self.pos_drop(x)
+
+        for blk in self.blocks:
+            x = blk(x)
 
         # concatenate the big skip
         if self.big_skip:

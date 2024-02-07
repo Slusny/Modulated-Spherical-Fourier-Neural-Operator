@@ -18,6 +18,7 @@ import climetlab as cml
 
 # import ai_models_fourcastnetv2.fourcastnetv2 as nvs
 from .sfnonet import FourierNeuralOperatorNet
+from .sfnonet import FourierNeuralOperatorNet_filmed
 
 LOG = logging.getLogger(__name__)
 
@@ -304,5 +305,6 @@ def get_model(**kwargs):
         "small": FourCastNetv2,
         "release": FourCastNetv2,
         "latest": FourCastNetv2,
+        "film": FourCastNetv2_filmed,
     }
     return models[kwargs["model_version"]](**kwargs)
