@@ -48,22 +48,46 @@ import pandas as pd
 # d2.info()
 # print("done")
 
-class A():
-    def __init__(self):
-        self.n_lat = 721
-        self.n_lon = 1440
-        self.hour_steps = 6
-        self.input_type = "test"
+# class A():
+#     def __init__(self):
+#         self.n_lat = 721
+#         self.n_lon = 1440
+#         self.hour_steps = 6
+#         self.input_type = "test"
 
-        self.backbone_channels = 2
+#         self.backbone_channels = 2
 
-        self.checkpoint_path = "weights.tar"
+#         self.checkpoint_path = "weights.tar"
 
-class B(A):
-    def __init__(self):
-        super().__init__()
-        self.hour_steps = 12
-        self.test = self.n_lat * 3
+# class B(A):
+#     def __init__(self):
+#         super().__init__()
+#         self.hour_steps = 12
+#         self.test = self.n_lat * 3
 
-b = B()
-print(b.test)
+# b = B()
+# print(b.test)
+
+long = 1440
+lat = 721
+
+def kernel(j,i,w,h):
+    x_temp = i+w
+    y_temp = j+h
+    if x_temp < 0:
+        x = long + x_temp
+    elif x_temp >= long:
+        x = x_temp + long
+    else:
+        x = x_temp
+        
+    if y_temp < 0:
+        y = lat + y_temp
+    elif y_temp >= lat:
+        y = y_temp + lat
+    else:
+        y = y_temp
+    return (y,x)
+
+a = kernel(0,1437,-1,-1)
+print(a)

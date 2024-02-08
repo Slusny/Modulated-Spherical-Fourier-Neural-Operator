@@ -32,4 +32,4 @@ From: continuumio/miniconda3
 # running with model
 # singularity exec --nv --bind /mnt/ssd2/Master/Singularity/ model_libraries.sif /opt/conda/envs/model/bin/python test.py
 # build
-# sudo singularity build sfno_packages.sif model_singularity.def
+# sudo singularity build --writable sfno_packages.sif model_singularity.def

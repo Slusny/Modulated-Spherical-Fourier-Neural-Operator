@@ -650,10 +650,12 @@ class GCN(torch.nn.Module):
         x = F.dropout(x, training=self.training)
         x = self.conv2(x, edge_index)
         x = F.relu(x)
-        heads = []
+        heads_gamma = []
+        heads_beta = []
         for i in range(self.num_layers):
-            heads.append(self.fc1(x))
-        return torch.stack(heads)
+            heads_gamma.append(self.fc1(x))
+            heads_beta.append(self.fc1(x))
+        return torch.stack([heads_gamma,heads_beta])
 
 
 class FiLM(nn.Module):
@@ -752,3 +754,6 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         x = self.decoder(x)
 
         return x
+    
+    def train():
+        
