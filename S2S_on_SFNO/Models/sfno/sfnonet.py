@@ -744,7 +744,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         x = self.pos_drop(x)
 
         for blk in self.blocks:
-            x = blk(x)
+            x = blk(x,gamma,beta)
 
         # concatenate the big skip
         if self.big_skip:
