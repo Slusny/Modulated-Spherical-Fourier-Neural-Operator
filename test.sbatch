@@ -3,7 +3,7 @@
 #a) Define slurm job parameters
 ####
 
-#SBATCH --job-name=fcn
+#SBATCH --job-name=clim
 
 #resources:
 
@@ -15,29 +15,29 @@
 # the job can use and see 4 CPUs (from max 24).
 # needet task count -n, maybe there is a better way to specify cores
 
-#SBATCH --partition=gpu-2080ti#cpu-short #gpu-v100  #gpu-2080ti #cpu-long
+#SBATCH --partition=cpu-short#cpu-short #gpu-v100  #gpu-2080ti #cpu-long
 # the slurm partition the job is queued to.
 # exits: gpu-2080ti , gpu-v100 ... see sinfo
 
-#SBATCH --mem-per-cpu=40G # Per CPU -> Per Core
-##SBATCH --mem-per-cpu=200G # Per CPU -> Per Core
+## SBATCH --mem-per-cpu=2G # Per CPU -> Per Core
+#SBATCH --mem-per-cpu=2G # Per CPU -> Per Core
 # the job will need 12GB of memory equally distributed on 4 cpus.(251GB are available in total on one node)
 
-# SBATCH --gres=gpu:1
+## SBATCH --gres=gpu:1
 #the job can use and see 1 GPUs (4 GPUs are available in total on one node) use SBATCH --gres=gpu:1080ti:1 to explicitly demand a Geforce 1080 Ti GPU. Use SBATCH --gres=gpu:A4000:1 to explicitly demand a RTX A4000 GPU
 
-#SBATCH --time=01-05:00
+#SBATCH --time=00-00:05
 # the maximum time the scripts needs to run
 # "minutes:seconds", "hours:minutes:seconds", "days-hours","days-hours:minutes" and "days-hours:minutes:seconds"
 
-#SBATCH --error=/home/goswami/gkd965/jobs/job.%J.err
+#SBATCH --error=/home/goswami/gkd965/jobs/job.clim.%J.err
 # write the error output to job.*jobID*.err
 
-#SBATCH --output=/home/goswami/gkd965/jobs/job.%J.out
+#SBATCH --output=/home/goswami/gkd965/jobs/job.clim.%J.out
 # write the standard output to job.*jobID*.out
 
 #SBATCH --mail-type=ALL
-# write a mail if a job begins, ends, fails, gets requeued or stages out
+#write a mail if a job begins, ends, fails, gets requeued or stages out
 
 #SBATCH --mail-user=lennart.slusny@student.uni-tuebingen.de
 # your mail address
@@ -51,26 +51,20 @@
 
 # singularity e xec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif /opt/conda/envs/model/bin/python main.py --model sfno --date 20210101 --time 0000 --lead-time 120 --path /mnt/qb/work2/goswami0/gkd965/outputs --assets /mnt/qb/work2/goswami0/gkd965/Assets --dump-provenance #8760
 #
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif /opt/conda/envs/model/bin/python main.py --model fourcastnet --date 20190101 --time 0000 --lead-time 8760 --assets /mnt/qb/work2/goswami0/gkd965/Assets --path /mnt/qb/work2/goswami0/gkd965/outputs --dump-provenance --output netcdf --file /mnt/qb/work2/goswami0/gkd965/ClimateInputData_201901010.grib
+# singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif /opt/conda/envs/model/bin/python main.py --model sfno --date 20190101 --time 0000 --lead-time 8760 --assets /mnt/qb/work2/goswami0/gkd965/Assets --path /mnt/qb/work2/goswami0/gkd965/outputs --dump-provenance --output netcdf --file /mnt/qb/work2/goswami0/gkd965/ClimateInputData_201901010.grib
 # singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif /opt/conda/envs/model/bin/python convert_to_netcdf.py 
 
 # singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif /opt/conda/envs/model/bin/python climatology.py #parallel_clima_byhand.py 2 #chunky_climatology.py 2
-
+ls /mnt/ceph/goswamicd/datasets
 
 ## juptyer server
-# srun --gres=gpu:1 --pty bash 
+# srun --pty bash --gres=gpu:1
 # hostname
 # singularity shell --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif
-# singularity shell --nv --bind /mnt/ceph/goswamicd/datasets,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif
 # /opt/conda/envs/model/bin/jupyter lab
 ## new terminal
-# ssh -AtL $B_PORT:localhost:$B_PORT gkd965@134.2.168.72 "ssh -AtL $B_PORT:localhost:8888 gkd965@slurm-bm-10 bash"
+# ssh -AtL $B_PORT:localhost:$B_PORT gkd965@134.2.168.72 "ssh -AtL $B_PORT:localhost:8888 gkd965@bg-slurmb-bm-3 bash"
 # don't use the "novalocal" in the hostname, eg. bg-slurmb-bm-3.novalocalssh -AtL $B_PORT:localhost:$B_PORT gkd965@134.2.168.72 "ssh -AtL $B_PORT:localhost:8888 gkd965@bg-slurmb-bm-3 bash"
-
-# 1 Terminal jupyter notebook
-# 2 Terminal ssh -AtL 8912:localhost:8888 gkd965@galvani-cn001 -i /home/goswami/gkd965/.ssh/cluster_lennart_slusny_rsa (execute from cluster)
-# 3 ssh -AtL 8912:localhost:8912 cluster11
-
 
 echo DONE!
 
