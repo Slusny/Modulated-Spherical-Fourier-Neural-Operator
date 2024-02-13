@@ -18,7 +18,7 @@ import climetlab as cml
 
 # import ai_models_fourcastnetv2.fourcastnetv2 as nvs
 from .sfnonet import FourierNeuralOperatorNet
-from .sfnonet import FourierNeuralOperatorNet_filmed
+from .sfnonet import FourierNeuralOperatorNet_Filmed
 
 LOG = logging.getLogger(__name__)
 
@@ -304,7 +304,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
     
     def load_model(self, checkpoint_file):
 
-        model = FourierNeuralOperatorNet_filmed()
+        model = FourierNeuralOperatorNet_Filmed()
 
         model.zero_grad()
         # Load weights
@@ -340,7 +340,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
     def run(self):
         pass
-    
+
     def train(self):
         pass
 

@@ -435,23 +435,23 @@ class FourierNeuralOperatorNet(nn.Module):
 
         # pick norm layer
         if self.normalization_layer == "layer_norm":
-            norm_layer0 = partial(
+            self.norm_layer0 = partial( #changed norm_layer0 to self.norm_layer0
                 nn.LayerNorm,
                 normalized_shape=(self.img_size[0], self.img_size[1]),
                 eps=1e-6,
             )
-            norm_layer1 = partial(
+            self.norm_layer1 = partial(
                 nn.LayerNorm, normalized_shape=(self.h, self.w), eps=1e-6
             )
         elif self.normalization_layer == "instance_norm":
-            norm_layer0 = partial(
+            self.norm_layer0 = partial(
                 nn.InstanceNorm2d,
                 num_features=self.embed_dim,
                 eps=1e-6,
                 affine=True,
                 track_running_stats=False,
             )
-            norm_layer1 = norm_layer0
+            self.norm_layer1 = self.norm_layer0
         # elif self.normalization_layer == "batch_norm":
         #     norm_layer = partial(nn.InstanceNorm2d, num_features=self.embed_dim, eps=1e-6, affine=True, track_running_stats=False)
         else:
@@ -466,7 +466,7 @@ class FourierNeuralOperatorNet(nn.Module):
         # encoder0 = nn.Conv2d(self.in_chans, encoder_hidden_dim, 1, bias=True)
         # encoder1 = nn.Conv2d(encoder_hidden_dim, self.embed_dim, 1, bias=False)
         # encoder_act = nn.GELU()
-        # self.encoder = nn.Sequential(encoder0, encoder_act, encoder1, norm_layer0())
+        # self.encoder = nn.Sequential(encoder0, encoder_act, encoder1, self.norm_layer0())
 
         self.encoder = MLP(
             in_features=self.in_chans,
@@ -538,11 +538,11 @@ class FourierNeuralOperatorNet(nn.Module):
             mlp_mode = self.mlp_mode if not last_layer else "none"
 
             if first_layer:
-                norm_layer = (norm_layer0, norm_layer1)
+                norm_layer = (self.norm_layer0, self.norm_layer1)
             elif last_layer:
-                norm_layer = (norm_layer1, norm_layer0)
+                norm_layer = (self.norm_layer1, self.norm_layer0)
             else:
-                norm_layer = (norm_layer1, norm_layer1)
+                norm_layer = (self.norm_layer1, self.norm_layer1)
 
             block = FourierNeuralOperatorBlock(
                 forward_transform,
@@ -705,11 +705,11 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
             mlp_mode = self.mlp_mode if not last_layer else "none"
 
             if first_layer:
-                norm_layer = (norm_layer0, norm_layer1)
+                norm_layer = (self.norm_layer0, self.norm_layer1)
             elif last_layer:
-                norm_layer = (norm_layer1, norm_layer0)
+                norm_layer = (self.norm_layer1, self.norm_layer0)
             else:
-                norm_layer = (norm_layer1, norm_layer1)
+                norm_layer = (self.norm_layer1, self.norm_layer1)
 
             block = FourierNeuralOperatorBlock_Filmed(
                 forward_transform,
