@@ -13,8 +13,11 @@ import gc
 from time import time
 # import matplotlib.pyplot as plt
 
+##
+
+
 year = 2019
-variable_index = 4
+variable_index = 0
 cluster = False
 variables = [
     ('10m_u_component_of_wind', '10u'),
@@ -27,7 +30,8 @@ variable = variables[variable_index][0]
 dataset_var = variables[variable_index][1]
 
 save_interval = 100
-end = 1460
+end = 440
+start = 0
 
 print("-------------------------")
 print("Variable: ",variable)
@@ -69,13 +73,18 @@ num_nans = {"sfno":[],"fcn":[]}
 rmse_ = {"sfno":[],"fcn":[],"ref":[]}
 
 
-savepath_sfno  = os.path.join(save_path,date_string,"sfno")
-savepath_fcn  = os.path.join(save_path,date_string,"fourcastnet")
+# savepath_sfno  = os.path.join(save_path,date_string,"sfno")
+# savepath_fcn  = os.path.join(save_path,date_string,"fourcastnet")
+savepath_sfno  = os.path.join("/mnt/V/Master/ai-models")
+savepath_fcn  = os.path.join("/mnt/V/Master/ai-models")
 savepath_numpy  = os.path.join(save_path,date_string)
 if not os.path.exists(savepath_sfno): os.makedirs(savepath_sfno)
 if not os.path.exists(savepath_fcn): os.makedirs(savepath_fcn)
 
-for idx in range(end - 1):
+# for ref pic
+savepath_ref  = os.path.join(save_path,"ref",)
+
+for idx in range(start,end - 1):
     s = (idx+1)*6
     path_sfno = model_file_sfno.format(s)
     print('loading '+path_sfno,flush=True)
@@ -104,9 +113,13 @@ for idx in range(end - 1):
 
     rmse_sfno_globe = xs.rmse(ds_sfno,truth,dim=[],skipna=True)
     rmse_fcn_globe  = xs.rmse(ds_fcn ,truth,dim=[],skipna=True)
+    rmse_ref_globe  = xs.rmse(ds_ref ,truth,dim=[],skipna=True) # ref pic
 
-    rmse_sfno_globe.to_dataset(name="rmse").assign_coords(step=[s]).to_netcdf(os.path.join(savepath_sfno,"rmse_global_sfno_"+variable+"_step_"+str(s)+".nc"))
-    rmse_fcn_globe.to_dataset(name="rmse").assign_coords(step=[s]).to_netcdf(os.path.join(savepath_fcn,"rmse_global_fcn_"+variable+"_step_"+str(s)+".nc"))
+    # rmse_sfno_globe.to_dataset(name="rmse").assign_coords(step=[s]).to_netcdf(os.path.join(savepath_sfno,"rmse_global_sfno_"+variable+"_step_"+str(s)+".nc"))
+    # rmse_fcn_globe.to_dataset(name="rmse").assign_coords(step=[s]).to_netcdf(os.path.join(savepath_fcn,"rmse_global_fcn_"+variable+"_step_"+str(s)+".nc"))
+
+    #
+    # rmse_ref_globe.to_dataset(name="rmse").assign_coords(step=[s]).to_netcdf(os.path.join(savepath_ref,"rmse_global_ref_"+variable+"_step_"+str(s)+".nc")) # ref pic
 
     # if idx%save_interval == 0:
     #     print("saving skill scores to "+save_path,flush=True)
@@ -114,6 +127,7 @@ for idx in range(end - 1):
     #     np.save(os.path.join(savepath_fcn,"rmse_fcn_"+variable+"_"+date_string),rmse_['fcn'])
     #     np.save(os.path.join(savepath_sfno,"nans_sfno_"+variable+"_"+date_string),num_nans['sfno'])
     #     np.save(os.path.join(savepath_fcn,"nans_fcn_"+variable+"_"+date_string),num_nans['fcn'])
+
 
 np.save(os.path.join(savepath_numpy,"rmse_sfno_"+variable+"_"+date_string+"_fin"),rmse_['sfno'])
 np.save(os.path.join(savepath_numpy,"rmse_fcn_"+variable+"_"+date_string+"_fin"),rmse_['fcn'])
