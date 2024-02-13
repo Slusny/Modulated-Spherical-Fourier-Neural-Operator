@@ -768,5 +768,4 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
 
         return x
     
-    def train():
         

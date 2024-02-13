@@ -58,7 +58,7 @@ singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gk
 
 
 ## juptyer server
-# srun --gres=gpu:1 --pty bash 
+# srun --pty --gres=gpu:1 --partition=2080-galvani -w galvani-cn127  bash
 # hostname
 # singularity shell --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif
 # singularity shell --nv --bind /mnt/ceph/goswamicd/datasets,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif
@@ -68,8 +68,8 @@ singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gk
 # don't use the "novalocal" in the hostname, eg. bg-slurmb-bm-3.novalocalssh -AtL $B_PORT:localhost:$B_PORT gkd965@134.2.168.72 "ssh -AtL $B_PORT:localhost:8888 gkd965@bg-slurmb-bm-3 bash"
 
 # 1 Terminal jupyter notebook
-# 2 Terminal ssh -AtL 8912:localhost:8888 gkd965@galvani-cn001 -i /home/goswami/gkd965/.ssh/cluster_lennart_slusny_rsa (execute from cluster)
-# 3 ssh -AtL 8912:localhost:8912 cluster11
+# 2 Terminal ssh -AtL 8888:localhost:8888 gkd965@galvani-cn127 -i /home/goswami/gkd965/.ssh/cluster_lennart_slusny_rsa (execute from cluster)
+# 3 ssh -AtL 8888:localhost:8888 cluster11
 
 
 echo DONE!
