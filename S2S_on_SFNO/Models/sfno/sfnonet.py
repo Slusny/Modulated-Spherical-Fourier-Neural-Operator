@@ -236,7 +236,8 @@ class FourierNeuralOperatorBlock(nn.Module):
                 x = x + self.outer_skip(residual)
 
         return x
-    
+
+
 class FourierNeuralOperatorBlock_Filmed(nn.Module):
     def __init__(
         self,
@@ -268,6 +269,8 @@ class FourierNeuralOperatorBlock_Filmed(nn.Module):
 
         # norm layer
         self.norm0 = norm_layer[0]()  # ((h,w))
+
+        self.film = FiLM()
 
         # convolution layer
         self.filter_layer = SpectralFilterLayer(
@@ -634,28 +637,40 @@ class FourierNeuralOperatorNet(nn.Module):
         return x
 
 class GCN(torch.nn.Module):
-    def __init__(self,out_features,num_layers):
+    def __init__(self,out_features=256,num_layers=12):
         super().__init__()
         self.num_layers = num_layers
         num_node_features = 686364
-        self.conv1 = GCNConv(num_node_features, 6000)
-        self.conv2 = GCNConv(6000, 1000)
-        self.fc1 = torch.nn.Linear(1000, out_features)
+        hidden_size = out_features*2
+        self.conv1 = GCNConv(1, hidden_size,cached=True)
+        self.conv2 = GCNConv(hidden_size, hidden_size,cached=True)
+        self.fc1 = torch.nn.Linear(hidden_size, out_features)
+        self.heads_gamma = nn.ModuleList([])
+        self.heads_beta = nn.ModuleList([])
+        for i in range(self.num_layers):
+            self.heads_gamma.append(nn.Linear(hidden_size, out_features))
+            self.heads_beta.append(nn.Linear(hidden_size, out_features))
 
     def forward(self, data):
-        x, edge_index = data.x, data.edge_index
+        x, edge_index, batch = data.x, data.edge_index, data.batch
+
+        # batch = torch.tensor([0]*x.size().numel(),dtype=torch.long)
 
         x = self.conv1(x, edge_index)
         x = F.relu(x)
-        x = F.dropout(x, training=self.training)
+        # x = F.dropout(x, training=self.training)
         x = self.conv2(x, edge_index)
         x = F.relu(x)
+        x = self.conv2(x, edge_index)
+        x = F.relu(x)
+        x = self.conv2(x, edge_index)
+        x = global_mean_pool(x, batch)
         heads_gamma = []
         heads_beta = []
         for i in range(self.num_layers):
-            heads_gamma.append(self.fc1(x))
-            heads_beta.append(self.fc1(x))
-        return torch.stack([heads_gamma,heads_beta])
+            heads_gamma.append(self.heads_gamma[i](x))
+            heads_beta.append(self.heads_beta[i](x))
+        return torch.stack([torch.stack(heads_gamma),torch.stack(heads_beta)]).squeeze()
 
 
 class FiLM(nn.Module):
@@ -664,9 +679,7 @@ class FiLM(nn.Module):
     'FiLM: Visual Reasoning with a General Conditioning Layer'
     """
     def forward(self, x, gammas, betas, block_idx):
-        gammas = gammas.unsqueeze(2).unsqueeze(3).expand_as(x)
-        betas = betas.unsqueeze(2).unsqueeze(3).expand_as(x)
-        return (gammas * x) + betas
+        return (gammas[block_idx] * x) + betas[block_idx]
 
 class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
     def __init__(
@@ -723,7 +736,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
 
             self.blocks.append(block)
         
-        self.film_gen = GCN(out_features=self.embed_dim)
+        self.film_gen = GCN(out_features=self.embed_dim,num_layers=12)
     
     def forward(self, x,sst):
 
@@ -744,7 +757,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         x = self.pos_drop(x)
 
         for blk in self.blocks:
-            x = blk(x)
+            x = blk(x,gamma,beta)
 
         # concatenate the big skip
         if self.big_skip:
