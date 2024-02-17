@@ -19,6 +19,7 @@ import climetlab as cml
 # import ai_models_fourcastnetv2.fourcastnetv2 as nvs
 from .sfnonet import FourierNeuralOperatorNet
 from .sfnonet import FourierNeuralOperatorNet_Filmed
+from ..train import ERA5_galvani
 
 LOG = logging.getLogger(__name__)
 
@@ -125,11 +126,13 @@ class FourCastNetv2(Model):
         "r1000",
     ]
 
-    levels_per_pl = {"u":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
-                     "v":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
-                     "z":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
-                     "t":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
-                     "r":[1000,925,850,700,600,500,400,300,250,200,150,100,50]}
+    levels_per_pl = {"u_component_of_wind":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
+                     "v_component_of_wind":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
+                     "geopotential":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
+                     "temperature":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
+                     "relative_humidity":[1000,925,850,700,600,500,400,300,250,200,150,100,50]}
+
+    param_sfc_ERA5 = ["10m_u_component_of_wind", "10m_v_component_of_wind", "2m_temperature", "surface_pressure", "mean_sea_level_pressure", "total_column_water_vapour"]
 
         # u50     v50   z50     t50     r50
         # u100    v100  z100    t100    r100
@@ -302,16 +305,17 @@ class FourCastNetv2_filmed(FourCastNetv2):
     def __init__(self, precip_flag=False, **kwargs):
         super().__init__(precip_flag, **kwargs)
     
-    def load_model(self, checkpoint_file):
+    def load_model(self, checkpoint_file, checkpoint_file_film):
 
         model = FourierNeuralOperatorNet_Filmed()
 
         model.zero_grad()
         # Load weights
 
-        checkpoint = torch.load(checkpoint_file, map_location=self.device)
+        checkpoint_sfno = torch.load(checkpoint_file, map_location=self.device)
+        checkpoint_film = torch.load(checkpoint_file_film, map_location=self.device)
 
-        weights = checkpoint["model_state"]
+        weights = checkpoint_sfno["model_state"]
         drop_vars = ["module.norm.weight", "module.norm.bias"]
         weights = {k: v for k, v in weights.items() if k not in drop_vars}
 
@@ -321,16 +325,21 @@ class FourCastNetv2_filmed(FourCastNetv2):
         # RuntimeError: Error(s) in loading state_dict for Wrapper:
         # Missing key(s) in state_dict: "module.trans_down.weights",
         # "module.itrans_up.pct",
+
+        # Load SFNO weights
         try:
             # Try adding model weights as dictionary
             new_state_dict = dict()
-            for k, v in checkpoint["model_state"].items():
+            for k, v in checkpoint_sfno["model_state"].items():
                 name = k[7:]
                 if name != "ged":
                     new_state_dict[name] = v
-            model.load_state_dict(new_state_dict)
+            model.load_state_dict(new_state_dict,strict=False)
         except Exception:
-            model.load_state_dict(checkpoint["model_state"])
+            model.load_state_dict(checkpoint_sfno["model_state"])
+
+        #  Load Filmed weights
+        model.film_gen.load_state_dict(checkpoint_film["model_state"])
 
         # Set model to eval mode and return
         model.eval()
@@ -341,8 +350,18 @@ class FourCastNetv2_filmed(FourCastNetv2):
     def run(self):
         pass
 
-    def train(self):
-        pass
+    def train(self,**kwargs):
+        dataset = ERA5_galvani(
+            self,
+            path=kwargs.train_path, 
+            start_year=kwargs.trainingset_start_year,
+            end_year=kwargs.trainingset_end_year)
+        x  = dataset[0]
+        print(x)
+        x2  = dataset[1]
+        print(x2)
+
+
 
 def get_model(**kwargs):
     models = {

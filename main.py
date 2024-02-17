@@ -241,7 +241,7 @@ def _main():
     parser.add_argument(
         "--model-version",
         default="latest",
-        help="Model version",
+        help="Model version, set to film to use filmed version",
     )
     parser.add_argument(
         "--model-args",
@@ -249,6 +249,31 @@ def _main():
         action="store",
         default=None,
     )
+
+    # Training
+
+    parser.add_argument(
+        "--train",
+        help="train model",
+        action="store-true",
+    )
+    parser.add_argument(
+        "--trainingset-start-year",
+        help="specify training dataset by start year",
+        action="store"
+    )
+    parser.add_argument(
+        "--trainingset-end-year",
+        help="specify training dataset by start year",
+        action="store",
+    )
+    parser.add_argument(
+        "--train-path",
+        help="path to training data zarr file",
+        action="store",
+        default="/mnt/ceph/goswamicd/datasets/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr"
+    )
+
 
     args, unknownargs = parser.parse_known_args()
 
@@ -305,6 +330,7 @@ def _main():
             parser.error(
                 "You need to specify --retrieve-requests or --archive-requests"
             )
+            
 
     # This logic is a bit convoluted, but it is for backwards compatibility.
     if args.retrieve_requests or (args.requests_extra and not args.archive_requests):
@@ -315,21 +341,25 @@ def _main():
         model.print_assets_list()
         sys.exit(0)
 
-    try:
-        model.run()
-    except FileNotFoundError as e:
-        LOG.exception(e)
-        LOG.error(
-            "It is possible that some files requited by %s are missing.\
-            \n    Or that the assets path is not set correctly.",
-            args.model,
-        )
-        LOG.error("Rerun the command as:")
-        LOG.error(
-            "   %s",
-            shlex.join([sys.argv[0], "--download-assets"] + sys.argv[1:]), ## download assets call not nessessary
-        )
-        sys.exit(1)
+    if args.train:
+        model.train(**args)
+    else:
+
+        try:
+            model.run()
+        except FileNotFoundError as e:
+            LOG.exception(e)
+            LOG.error(
+                "It is possible that some files requited by %s are missing.\
+                \n    Or that the assets path is not set correctly.",
+                args.model,
+            )
+            LOG.error("Rerun the command as:")
+            LOG.error(
+                "   %s",
+                shlex.join([sys.argv[0], "--download-assets"] + sys.argv[1:]), ## download assets call not nessessary
+            )
+            sys.exit(1)
 
     model.finalise()
 
