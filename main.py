@@ -255,7 +255,7 @@ def _main():
     parser.add_argument(
         "--train",
         help="train model",
-        action="store-true",
+        action="store_true",
     )
     parser.add_argument(
         "--trainingset-start-year",
