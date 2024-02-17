@@ -5,7 +5,7 @@ import xarray as xr
 import numpy as np
 import os
 
-BatchSampler(drop_last=True)
+# BatchSampler(drop_last=True)
 
 class ERA5_galvani(IterableDataset):
     def __init__(
