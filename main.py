@@ -342,7 +342,7 @@ def _main():
         sys.exit(0)
 
     if args.train:
-        model.train(vars(**args))
+        model.train(**vars(args))
     else:
 
         try:
