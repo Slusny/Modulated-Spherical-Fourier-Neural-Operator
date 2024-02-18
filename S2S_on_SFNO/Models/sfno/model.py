@@ -353,9 +353,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
     def training(self,**kwargs):
         dataset = ERA5_galvani(
             self,
-            path=kwargs.trainingdata_path, 
-            start_year=kwargs.trainingset_start_year,
-            end_year=kwargs.trainingset_end_year)
+            path=kwargs["trainingdata_path"], 
+            start_year=kwargs["trainingset_start_year"],
+            end_year=kwargs["trainingset_end_year"])
         x  = dataset[0]
         print(x)
         x2  = dataset[1]
