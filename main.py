@@ -260,7 +260,7 @@ def _main():
     parser.add_argument(
         "--trainingset-start-year",
         help="specify training dataset by start year",
-        action="store"
+        action="store",
         default=1959
     )
     parser.add_argument(
