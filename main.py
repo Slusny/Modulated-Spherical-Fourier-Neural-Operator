@@ -30,7 +30,7 @@ from S2S_on_SFNO.outputs import available_outputs
 
 LOG = logging.getLogger(__name__)
 
-print(torch.cuda.is_available(),flush=True)
+print("cuda available? : ",torch.cuda.is_available(),flush=True)
 
 def _main():
     parser = argparse.ArgumentParser()
@@ -268,7 +268,7 @@ def _main():
         action="store",
     )
     parser.add_argument(
-        "--train-path",
+        "--trainingdata-path",
         help="path to training data zarr file",
         action="store",
         default="/mnt/ceph/goswamicd/datasets/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr"
