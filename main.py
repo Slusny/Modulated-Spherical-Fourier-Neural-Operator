@@ -306,6 +306,7 @@ def _main():
     
     if args.debug: #new
         pdb.set_trace()
+        print("starting debugger")
 
     if args.metadata is None:
         args.metadata = []
@@ -343,7 +344,7 @@ def _main():
 
     if args.train:
         kwargs = vars(args)
-        model.train(**kwargs)
+        model.training(**kwargs)
     else:
 
         try:
