@@ -379,6 +379,15 @@ class Model:
         from .provenance import gather_provenance_info
 
         return gather_provenance_info(self.asset_files)
+    
+    def training(self,**kwargs):
+        """
+        Fallback method for training models.
+        Should be overriden in subclasses with actual training regime.
+        """
+        print("Training method not implemented for this model.")
+        print("Make sure you specified also the --verison of the model you want to train.")
+        sys.exit(1)
 
 def available_models():
     # result = 
@@ -401,4 +410,3 @@ def load_model(name, kwargs):
     
     return get_model(**kwargs)
     # return available_models()[name].load()(**kwargs)
-

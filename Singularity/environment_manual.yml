@@ -49,6 +49,7 @@ dependencies:
   - jupyter
   - jupyter_server>=2.0.0
   - memory_profiler
+  - wandb
 
   - pip:
       - atmodata

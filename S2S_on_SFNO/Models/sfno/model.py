@@ -11,6 +11,7 @@ import os
 
 import numpy as np
 import torch
+from torch.utils.data import DataLoader
 from ..models import Model
 import datetime
 
@@ -163,6 +164,11 @@ class FourCastNetv2(Model):
 
         self.checkpoint_path = os.path.join(self.assets, "weights.tar")
 
+        if kwargs["assets_film"]:
+            self.checkpoint_path_film = os.path.join(self.assets_film, "weights_film.tar")
+        else:
+            self.checkpoint_path_film = None
+
     def load_statistics(self):
         path = os.path.join(self.assets, "global_means.npy")
         LOG.info("Loading %s", path)
@@ -305,16 +311,21 @@ class FourCastNetv2_filmed(FourCastNetv2):
     def __init__(self, precip_flag=False, **kwargs):
         super().__init__(precip_flag, **kwargs)
     
-    def load_model(self, checkpoint_file, checkpoint_file_film):
+    def load_model(self, checkpoint_file):
 
         model = FourierNeuralOperatorNet_Filmed()
 
         model.zero_grad()
-        # Load weights
 
+        #  Load Filmed weights
+        if self.checkpoint_path_film:
+            checkpoint_film = torch.load(self.checkpoint_file_film, map_location=self.device)
+            model.film_gen.load_state_dict(checkpoint_film["model_state"])
+        else:
+            pass
+        
+        # Load SFNO weights
         checkpoint_sfno = torch.load(checkpoint_file, map_location=self.device)
-        checkpoint_film = torch.load(checkpoint_file_film, map_location=self.device)
-
         weights = checkpoint_sfno["model_state"]
         drop_vars = ["module.norm.weight", "module.norm.bias"]
         weights = {k: v for k, v in weights.items() if k not in drop_vars}
@@ -338,9 +349,6 @@ class FourCastNetv2_filmed(FourCastNetv2):
         except Exception:
             model.load_state_dict(checkpoint_sfno["model_state"])
 
-        #  Load Filmed weights
-        model.film_gen.load_state_dict(checkpoint_film["model_state"])
-
         # Set model to eval mode and return
         model.eval()
         model.to(self.device)
@@ -356,10 +364,28 @@ class FourCastNetv2_filmed(FourCastNetv2):
             path=kwargs["trainingdata_path"], 
             start_year=kwargs["trainingset_start_year"],
             end_year=kwargs["trainingset_end_year"])
-        x  = dataset[0]
-        print(x)
-        x2  = dataset[1]
-        print(x2)
+        
+        model = self.load_model(self.checkpoint_path)
+        model.train()
+
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+        loss_fn = torch.nn.CrossEntropyLoss()
+
+        training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
+
+        for i, data in enumerate(training_loader):
+            input, labels = data
+            optimizer.zero_grad()
+
+            # Make predictions for this batch
+            outputs = model(input)
+
+            # Compute the loss and its gradients
+            loss = loss_fn(outputs, labels)
+            loss.backward()
+
+            # Adjust learning weights
+            optimizer.step()
 
 
 

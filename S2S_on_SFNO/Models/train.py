@@ -41,15 +41,19 @@ class ERA5_galvani(IterableDataset):
         level_list = self.model.param_level_pl[1].copy()
         level_list.reverse()
         sample = self.dataset.isel(time=self.start_idx + idx)
-        scf = sample[self.model.param_sfc_ERA5].to_array().to_numpy()
-        pl = sample[list(self.model.levels_per_pl.keys())].sel(level=level_list).to_array().to_numpy()
-        pl = pl.reshape((pl.shape[0]*pl.shape[1], pl.shape[2], pl.shape[3]))
-        u100 = self.dataset_u100.isel(time=self.start_idx + idx)["u100"].to_numpy()[None]
-        v100 = self.dataset_v100.isel(time=self.start_idx + idx)["v100"].to_numpy()[None]
-        return torch.tensor(np.vstack((
-            scf[:2],
-            u100,
-            v100,
-            scf[2:],
-            pl)))
-    
+        g_truth = self.dataset.isel(time=self.start_idx + idx+1)
+
+        def format(sample):
+            scf = sample[self.model.param_sfc_ERA5].to_array().to_numpy()
+            pl = sample[list(self.model.levels_per_pl.keys())].sel(level=level_list).to_array().to_numpy()
+            pl = pl.reshape((pl.shape[0]*pl.shape[1], pl.shape[2], pl.shape[3]))
+            u100 = self.dataset_u100.isel(time=self.start_idx + idx)["u100"].to_numpy()[None]
+            v100 = self.dataset_v100.isel(time=self.start_idx + idx)["v100"].to_numpy()[None]
+            return torch.tensor(np.vstack((
+                scf[:2],
+                u100,
+                v100,
+                scf[2:],
+                pl)))
+        
+        return format(sample), format(g_truth)

@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.checkpoint import checkpoint
 from torch_geometric.nn import GCNConv
+from torch_geometric.nn.pool import global_mean_pool
 
 
 # from apex.normalization import FusedLayerNorm
@@ -679,7 +680,7 @@ class FiLM(nn.Module):
     'FiLM: Visual Reasoning with a General Conditioning Layer'
     """
     def forward(self, x, gammas, betas, block_idx):
-        return (gammas[block_idx] * x) + betas[block_idx]
+        return ((1+gammas[block_idx]) * x) + betas[block_idx]
 
 class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
     def __init__(

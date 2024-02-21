@@ -47,6 +47,12 @@ def _main():
     )
 
     parser.add_argument(
+        "--model-version",
+        default="latest",
+        help="Model versions: \n    SFNO: 0, film\n    Fourcastnet: 0, 1",
+    )
+
+    parser.add_argument(
         "--debug",
         action="store_true",
         help="Turn on debug",
@@ -154,6 +160,12 @@ def _main():
               Model Name gets appended to asset path. E.g. /path/to/assets/{model}\
               Default behaviour is to load from assets-sub-directory.",
     )
+    parser.add_argument(
+        "--assets-film",
+        action="store",
+        help="Absolute path to directory containing the weights and other assets of the Film-Model.",
+        default=None
+    )
 
     parser.add_argument(
         "--assets-sub-directory",
@@ -237,12 +249,6 @@ def _main():
         action="store_true",
     )
 
-    # TODO: make this usefull
-    parser.add_argument(
-        "--model-version",
-        default="latest",
-        help="Model version, set to film to use filmed version",
-    )
     parser.add_argument(
         "--model-args",
         help="specific model arguments for initialization of the model",
@@ -274,6 +280,22 @@ def _main():
         help="path to training data zarr file",
         action="store",
         default="/mnt/ceph/goswamicd/datasets/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr"
+    )
+    parser.add_argument(
+        "--training_workers",
+        help="number of workers to use in dataloader for training",
+        action="store",
+        default=4
+    )
+    parser.add_argument(
+        "--batch_size",
+        action="store",
+        default=8
+    )
+    parser.add_argument(
+        '--wandb', 
+        action='store_true',
+        help='use weights and biases'
     )
 
 
