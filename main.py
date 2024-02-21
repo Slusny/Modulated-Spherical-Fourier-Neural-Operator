@@ -134,17 +134,17 @@ def _main():
         help="Source to use for downloading data, local file or cluster(uni tuebingen) specific data structure",
         choices=available_inputs(),
     )
-    parser.add_argument(
+    data.add_argument(
         "--input-store",
         default=None,
         help="If you download data from cds or mars and want to store it somewhere else, specify a path here. Default behaviour is to only temporary cache the data. The name of the file will be ClimateInputData_{YYYYMMDDHH}.grib at specified path",
         action="store"
     )
-    parser.add_argument(
+    data.add_argument(
         "--file",
         help="Specify path to file with input weather data. Sets source=file automatically",
     )
-    parser.add_argument(
+    data.add_argument(
         "--era5-path",
         default="/mnt/qb/goswami/data/era5",
         help="path to era5 data when using input=localERA5",
@@ -197,13 +197,13 @@ def _main():
         default=12,
         help="For which analysis time to start the inference (default: 12). Format: HHMM",
     )
-    parser.add_argument(
+    running.add_argument(
         "--output",
         default="grib",
         help="choose output format. Default: grib",
         choices=available_outputs(),
     )
-    parser.add_argument(
+    running.add_argument(
         "--output-variables",
         default="./S2S_on_SFNO/outputs/output-variables.json",
         help="Specify path to a json file detailing which variables to output. Default: all.",
