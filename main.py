@@ -13,6 +13,7 @@ import sys
 import pdb
 from pathlib import Path
 import time
+import wandb
 
 import torch
 
@@ -45,114 +46,11 @@ def _main():
         choices=available_models(),
         help="Specify the model to run",
     )
-
     parser.add_argument(
         "--model-version",
         default="latest",
         help="Model versions: \n    SFNO: 0, film\n    Fourcastnet: 0, 1",
     )
-
-    parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Turn on debug",
-    )
-
-    parser.add_argument(
-        "--data",
-        action='store',
-        default="S2S_on_SFNO/inputs",
-        help="If downloaded data is available, specify path here. Otherwise data is downloaded from copernicus",
-    )
-
-    parser.add_argument(
-        "--retrieve-requests",
-        help=(
-            "Print mars requests to stdout."
-            "Use --requests-extra to extend or overide the requests. "
-        ),
-        action="store_true",
-    )
-
-    parser.add_argument(
-        "--archive-requests",
-        help=(
-            "Save mars archive requests to FILE."
-            "Use --requests-extra to extend or overide the requests. "
-        ),
-        metavar="FILE",
-    )
-
-    parser.add_argument(
-        "--requests-extra",
-        help=(
-            "Extends the retrieve or archive requests with a list of key1=value1,key2=value."
-        ),
-    )
-
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help=("Dump the requests in JSON format."),
-    )
-
-    parser.add_argument(
-        "--dump-provenance",
-        action="store_true",
-        help=("Dump information for tracking provenance."),
-    )
-
-    parser.add_argument(
-        "--input",
-        default="cds",
-        help="Source to use",
-        choices=available_inputs(),
-    )
-
-    parser.add_argument(
-        "--input-store",
-        default=None,
-        help="If you download data from cds or mars and want to store it somewhere else, specify a path here. Default behaviour is to only temporary cache the data. The name of the file will be ClimateInputData_{YYYYMMDDHH}.grib at specified path",
-        action="store"
-    )
-
-    parser.add_argument(
-        "--era5-path",
-        default="/mnt/qb/goswami/data/era5",
-        help="path to era5 data when using input=localERA5",
-    )
-
-    parser.add_argument(
-        "--file",
-        help="Source to use, sets source=file automatically",
-    )
-
-    parser.add_argument(
-        "--output",
-        default="grib",
-        help="choose output format. Default: grib",
-        choices=available_outputs(),
-    )
-
-    parser.add_argument(
-        "--output-variables",
-        default="./S2S_on_SFNO/outputs/output-variables.json",
-        help="Specify path to a json file detailing which variables to output. Default: all.",
-    )
-
-    parser.add_argument(
-        "--date",
-        default="-1",
-        help="For which analysis date to start the inference (default: -1 = yesterday). Format: YYYYMMDD",
-    )
-
-    parser.add_argument(
-        "--time",
-        type=int,
-        default=12,
-        help="For which analysis time to start the inference (default: 12). Format: HHMM",
-    )
-
     parser.add_argument(
         "--assets",
         action="store",
@@ -166,7 +64,6 @@ def _main():
         help="Absolute path to directory containing the weights and other assets of the Film-Model.",
         default=None
     )
-
     parser.add_argument(
         "--assets-sub-directory",
         action='store',
@@ -174,129 +71,212 @@ def _main():
         help="Load assets from a subdirectory of this module based on the name of the model. \
               Defaults to ./S2S_on_SFNO/Assets/{model}. Gets overwritten by --assets",
     )
-
-    # parser.parse_args(["--no-assets-sub-directory"])
-
-    parser.add_argument(
-        "--assets-list",
-        help="List the assets used by the model",
-        action="store_true",
-    )
-
-    parser.add_argument(
-        "--download-assets",
-        help="Download assets if they do not exists.",
-        action="store_true",
-    )
-
     parser.add_argument(
         "--path",
         help="Path where to write the output of the model. Default: S2S_on_SFNO/outputs/{model}",
     )
-
-    parser.add_argument(
-        "--fields",
-        help="Show the fields needed as input for the model",
-        action="store_true",
-    )
-
-    parser.add_argument(
-        "--expver",
-        help="Set the experiment version of the model output. Has higher priority than --metadata.",
-    )
-
-    parser.add_argument(
-        "--class",
-        help="Set the 'class' metadata of the model output. Has higher priority than --metadata.",
-        metavar="CLASS",
-        dest="class_",
-    )
-
-    parser.add_argument(
-        "--metadata",
-        help="Set additional metadata metadata in the model output",
-        metavar="KEY=VALUE",
-        action="append",
-    )
-
     parser.add_argument(
         "--num-threads",
         type=int,
         default=1,
         help="Number of threads. Only relevant for some models.",
     )
-
-    parser.add_argument(
-        "--lead-time",
-        type=int,
-        default=240,
-        help="Length of forecast in hours.",
-    )
-
-    parser.add_argument(
-        "--hindcast-reference-year",
-        help="For encoding hincast-like outputs",
-    )
-
-    parser.add_argument(
-        "--staging-dates",
-        help="For encoding hincast-like outputs",
-    )
-
     parser.add_argument(
         "--only-gpu",
         help="Fail if GPU is not available",
         action="store_true",
     )
-
+        # Metadata
+    parser.add_argument(
+        "--expver",
+        help="Set the experiment version of the model output. Has higher priority than --metadata.",
+    )
+    parser.add_argument(
+        "--class",
+        help="Set the 'class' metadata of the model output. Has higher priority than --metadata.",
+        metavar="CLASS",
+        dest="class_",
+    )
+    parser.add_argument(
+        "--metadata",
+        help="Set additional metadata metadata in the model output",
+        metavar="KEY=VALUE",
+        action="append",
+    )
     parser.add_argument(
         "--model-args",
         help="specific model arguments for initialization of the model",
         action="store",
         default=None,
     )
+        # Utilities
+    parser.add_argument(
+        "--assets-list",
+        help="List the assets used by the model",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--fields",
+        help="Show the fields needed as input for the model",
+        action="store_true",
+    )
+
+    # Data
+    data = parser.add_argument_group('options regarding data and data sources')
+    data.add_argument(
+        "--download-assets",
+        help="Download assets (weights and means/std from ecmwf for pretrained models) if they do not exists.",
+        action="store_true",
+    )
+    data.add_argument(
+        "--input",
+        default="cds",
+        help="Source to use for downloading data, local file or cluster(uni tuebingen) specific data structure",
+        choices=available_inputs(),
+    )
+    parser.add_argument(
+        "--input-store",
+        default=None,
+        help="If you download data from cds or mars and want to store it somewhere else, specify a path here. Default behaviour is to only temporary cache the data. The name of the file will be ClimateInputData_{YYYYMMDDHH}.grib at specified path",
+        action="store"
+    )
+    parser.add_argument(
+        "--file",
+        help="Specify path to file with input weather data. Sets source=file automatically",
+    )
+    parser.add_argument(
+        "--era5-path",
+        default="/mnt/qb/goswami/data/era5",
+        help="path to era5 data when using input=localERA5",
+    )
+        # Mars requests options
+    data.add_argument(
+        "--archive-requests",
+        help=(
+            "Save mars archive requests to FILE. Legacy option, only for mars requests."
+            "Use --requests-extra to extend or overide the requests. "
+        ),
+        metavar="FILE",
+    )
+    data.add_argument(
+        "--retrieve-requests",
+        help=(
+            "Print mars requests to stdout."
+            "Use --requests-extra to extend or overide the requests. "
+        ),
+        action="store_true",
+    )
+    data.add_argument(
+        "--requests-extra",
+        help=(
+            "Extends the retrieve or archive requests with a list of key1=value1,key2=value."
+        ),
+    )
+    data.add_argument(
+        "--json",
+        action="store_true",
+        help=("Dump the requests in JSON format."),
+    )
+
+    # Running
+    running = parser.add_argument_group('inference parameters')
+    running.add_argument(
+        "--lead-time",
+        type=int,
+        default=240,
+        help="Length of forecast in hours.",
+    )
+    running.add_argument(
+        "--date",
+        default="-1",
+        help="For which analysis date to start the inference (default: -1 = yesterday). Format: YYYYMMDD",
+    )
+    running.add_argument(
+        "--time",
+        type=int,
+        default=12,
+        help="For which analysis time to start the inference (default: 12). Format: HHMM",
+    )
+    parser.add_argument(
+        "--output",
+        default="grib",
+        help="choose output format. Default: grib",
+        choices=available_outputs(),
+    )
+    parser.add_argument(
+        "--output-variables",
+        default="./S2S_on_SFNO/outputs/output-variables.json",
+        help="Specify path to a json file detailing which variables to output. Default: all.",
+    )
+    running.add_argument(
+        "--dump-provenance",
+        action="store_true",
+        help=("Dump information for tracking provenance."),
+    )
+    running.add_argument(
+        "--hindcast-reference-year",
+        help="For encoding hincast-like outputs",
+    )
+    running.add_argument(
+        "--staging-dates",
+        help="For encoding hincast-like outputs",
+    )
 
     # Training
-
-    parser.add_argument(
+    training = parser.add_argument_group('training parameters')
+    training.add_argument(
         "--train",
         help="train model",
         action="store_true",
     )
-    parser.add_argument(
+    training.add_argument(
         "--trainingset-start-year",
         help="specify training dataset by start year",
         action="store",
         default=1959
     )
-    parser.add_argument(
+    training.add_argument(
         "--trainingset-end-year",
         help="specify training dataset by start year",
         action="store",
         default=1975
     )
-    parser.add_argument(
+    training.add_argument(
         "--trainingdata-path",
         help="path to training data zarr file",
         action="store",
         default="/mnt/ceph/goswamicd/datasets/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr"
     )
-    parser.add_argument(
+    training.add_argument(
         "--training_workers",
         help="number of workers to use in dataloader for training",
         action="store",
         default=4
     )
-    parser.add_argument(
+    training.add_argument(
         "--batch_size",
         action="store",
         default=8
     )
-    parser.add_argument(
+
+    # Logging
+    logging = parser.add_argument_group('Logging')
+    logging.add_argument(
+        "--debug",
+        action="store_true",
+        help="Turn debugger on (pdb).",
+    )
+    logging.add_argument(
         '--wandb', 
         action='store_true',
         help='use weights and biases'
     )
+    logging.add_argument(
+        '--wandb_resume', 
+        action='store', 
+        default=None,             
+        type=str, 
+        help='resume existing weights and biases run')
 
 
     args, unknownargs = parser.parse_known_args()
@@ -365,6 +345,25 @@ def _main():
     if args.assets_list:
         model.print_assets_list()
         sys.exit(0)
+
+    if args.wandb   : 
+        config_wandb = vars(args).copy()
+        for key in ['notes','tags','wandb']:del config_wandb[key]
+        del config_wandb
+        if args.wandb_resume is not None :
+            wandb_run = wandb.init(project=args.model + " - " +args.model_version, 
+                config=args,
+                notes=args.notes,
+                tags=args.tags,
+                resume="must",
+                id=args.wandb_resume)
+        else:
+            wandb_run = wandb.init(project=args.model + " - " +args.model_version, 
+                config=args,
+                notes=args.notes,
+                tags=args.tags)
+    else : wandb_run = None
+
 
     if args.train:
         kwargs = vars(args)
