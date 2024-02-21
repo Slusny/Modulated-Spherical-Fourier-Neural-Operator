@@ -122,7 +122,7 @@ def _main():
     )
 
     # Data
-    data = parser.add_argument_group('options regarding data and data sources')
+    data = parser.add_argument_group('Data and Data Sources')
     data.add_argument(
         "--download-assets",
         help="Download assets (weights and means/std from ecmwf for pretrained models) if they do not exists.",
@@ -179,7 +179,7 @@ def _main():
     )
 
     # Running
-    running = parser.add_argument_group('inference parameters')
+    running = parser.add_argument_group('Inference Parameters')
     running.add_argument(
         "--lead-time",
         type=int,
@@ -223,7 +223,7 @@ def _main():
     )
 
     # Training
-    training = parser.add_argument_group('training parameters')
+    training = parser.add_argument_group('Training Parameters')
     training.add_argument(
         "--train",
         help="train model",
