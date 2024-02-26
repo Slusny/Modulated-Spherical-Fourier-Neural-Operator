@@ -27,6 +27,7 @@ From: continuumio/miniconda3:23.10.0-1
 
 %runscript
 #    exec /opt/conda/envs/$(head -n 1 environment.yml | cut -f 2 -d ' ')/bin/"$@"
+#   . /opt/conda/etc/profile.d/conda.sh # to init conda correctly to be able to use conda activate model e.g.
     exec /opt/conda/envs/model/bin/python
 
 # running with weather
