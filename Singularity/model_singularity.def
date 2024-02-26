@@ -2,7 +2,8 @@
 # functioning version
 # how to build: 
 Bootstrap: docker
-From: continuumio/miniconda3
+#From: continuumio/miniconda3
+From: continuumio/miniconda3:23.10.0-1
 
 %setup
 
@@ -14,9 +15,10 @@ From: continuumio/miniconda3
 
 
 %post
-    /opt/conda/bin/conda env create -f environment_manual.yml
-    /opt/conda/envs/model/bin/pip install -e /opt/atmodata
-
+    #/opt/conda/bin/conda env create -f environment_manual.yml
+    #/opt/conda/envs/model/bin/pip install -e /opt/atmodata
+    conda env create -f environment_manual.yml
+    #pip install -e /opt/atmodata
 
 
 # not installed pynio
