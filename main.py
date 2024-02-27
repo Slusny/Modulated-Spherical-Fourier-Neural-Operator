@@ -38,7 +38,12 @@ def _main():
 
     # See https://github.com/pytorch/pytorch/issues/77764
     os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
-
+    
+    parser.add_argument(
+            "--test",
+            action="store_true",
+            help="execute test code",
+        )
     parser.add_argument(
         "--model",
         action="store",
@@ -280,6 +285,11 @@ def _main():
 
 
     args, unknownargs = parser.parse_known_args()
+
+    if args.test:
+        from S2S_on_SFNO.Models.train import train
+        train(vars(args))
+        sys.exit(0)
 
     # Format Assets path
     if args.assets:

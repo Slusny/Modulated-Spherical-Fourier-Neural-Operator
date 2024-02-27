@@ -374,14 +374,14 @@ class FourCastNetv2_filmed(FourCastNetv2):
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
 
         for i, data in enumerate(training_loader):
-            input, labels = data
+            input, g_truth = data
             optimizer.zero_grad()
 
             # Make predictions for this batch
-            outputs = model(input)
+            outputs = model(input[0],input[1])
 
             # Compute the loss and its gradients
-            loss = loss_fn(outputs, labels)
+            loss = loss_fn(outputs, g_truth[0])
             loss.backward()
 
             # Adjust learning weights

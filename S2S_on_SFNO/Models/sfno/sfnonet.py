@@ -10,6 +10,8 @@ from torch.utils.checkpoint import checkpoint
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn.pool import global_mean_pool
 
+import numpy as np
+import os
 
 # from apex.normalization import FusedLayerNorm
 
@@ -638,10 +640,11 @@ class FourierNeuralOperatorNet(nn.Module):
         return x
 
 class GCN(torch.nn.Module):
-    def __init__(self,out_features=256,num_layers=12):
+    def __init__(self,batch_size,out_features=256,num_layers=12,coarse_level=2,graph_asset_path="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
         super().__init__()
+
+        # Model
         self.num_layers = num_layers
-        num_node_features = 686364
         hidden_size = out_features*2
         self.conv1 = GCNConv(1, hidden_size,cached=True)
         self.conv2 = GCNConv(hidden_size, hidden_size,cached=True)
@@ -651,21 +654,37 @@ class GCN(torch.nn.Module):
         for i in range(self.num_layers):
             self.heads_gamma.append(nn.Linear(hidden_size, out_features))
             self.heads_beta.append(nn.Linear(hidden_size, out_features))
+        
+        # prepare the graph 
 
-    def forward(self, data):
-        x, edge_index, batch = data.x, data.edge_index, data.batch
+        # Nan_mask removes nans from sst-matrix -> 1D array, edge_index and nan_mask loaded from file    
+        edge_index = torch.load(os.path.join(graph_asset_path,"edge_index_coarsen_"+str(coarse_level)+".pt"))
+        nan_mask = np.load("/mnt/V/Master/model/nan_mask_coarsen_"+str(coarse_level)+".npy")
+        num_node_features = 686364
+        num_nodes = np.sum(nan_mask)
+        num_edges = edge_index.shape[1]
 
-        # batch = torch.tensor([0]*x.size().numel(),dtype=torch.long)
+        # repeat nan_mask for each sst-matrix in batch 
+        self.batch_nan_mask = np.repeat(nan_mask[ np.newaxis,: ], batch_size, axis=0)
 
-        x = self.conv1(x, edge_index)
-        x = F.relu(x)
+        # handle batch by appending sst-matrices to long 1D array, edge_index gets repeated and offseted to create the distinct graphs 
+        self.batch = torch.tensor(list(range(batch_size))*num_nodes).reshape((num_nodes,batch_size)).T.flatten()
+        offset_ = torch.tensor(list(range(batch_size))*num_edges).reshape((num_edges,batch_size)).T.flatten()*num_nodes
+        offset = torch.stack([offset_,offset_])
+        self.edge_index_batch = edge_index.repeat((1,batch_size))+offset
+
+    def forward(self, sst):
+        sst_graph_list = sst.reshape(self.batch_size,-1)[self.batch_nan_mask][None].T
+
+        x = self.conv1(sst_graph_list, self.edge_index_batch)
+        x = F.leaky_relu(x)
         # x = F.dropout(x, training=self.training)
-        x = self.conv2(x, edge_index)
-        x = F.relu(x)
-        x = self.conv2(x, edge_index)
-        x = F.relu(x)
-        x = self.conv2(x, edge_index)
-        x = global_mean_pool(x, batch)
+        x = self.conv2(x, self.edge_index_batch)
+        x = F.leaky_relu(x)
+        x = self.conv2(x, self.edge_index_batch)
+        x = F.leaky_relu(x)
+        x = self.conv2(x, self.edge_index_batch)
+        x = global_mean_pool(x, self.batch)
         heads_gamma = []
         heads_beta = []
         for i in range(self.num_layers):
