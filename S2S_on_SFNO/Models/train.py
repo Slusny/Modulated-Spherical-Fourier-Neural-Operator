@@ -5,8 +5,8 @@ import xarray as xr
 import numpy as np
 import os
 
-from S2S_on_SFNO.Models.sfno.model import get_model
-from S2S_on_SFNO.Models.sfno.sfnonet import GCN
+from .sfno.model import get_model
+from .sfno.sfnonet import GCN
 from torch.utils.data import DataLoader
 
 # BatchSampler(drop_last=True)
