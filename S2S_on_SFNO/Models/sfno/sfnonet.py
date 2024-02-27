@@ -640,7 +640,7 @@ class FourierNeuralOperatorNet(nn.Module):
         return x
 
 class GCN(torch.nn.Module):
-    def __init__(self,batch_size,out_features=256,num_layers=12,coarse_level=2,graph_asset_path="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
+    def __init__(self,batch_size,out_features=256,num_layers=12,coarse_level=4,graph_asset_path="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
         super().__init__()
 
         # Model

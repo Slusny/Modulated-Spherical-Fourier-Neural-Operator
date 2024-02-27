@@ -139,3 +139,4 @@ def train(kwargs):
         # Adjust learning weights
         optimizer.step()
 
+train({"training_workers":1,"batch_size":3})
