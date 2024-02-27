@@ -256,12 +256,12 @@ def _main():
         "--training_workers",
         help="number of workers to use in dataloader for training",
         action="store",
-        default=4
+        default=1
     )
     training.add_argument(
         "--batch_size",
         action="store",
-        default=8
+        default=4
     )
 
     # Logging
