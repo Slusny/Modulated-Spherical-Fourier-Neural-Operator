@@ -104,7 +104,7 @@ params = {"param_level_pl":param_level_pl, "param_sfc_ERA5":param_sfc_ERA5, "lev
 
 def train(kwargs):
     # model = get_model(kwargs)
-    model = GCN()
+    model = GCN(kwargs["batch_size"])
 
     # dataset = ERA5_galvani(
     #     params,
