@@ -6,8 +6,8 @@ import numpy as np
 import os
 
 # from .sfno.model import get_model
-# from .sfno.sfnonet import GCN
-# from torch.utils.data import DataLoader
+from .sfno.sfnonet import GCN
+from torch.utils.data import DataLoader
 
 # BatchSampler(drop_last=True)
 
