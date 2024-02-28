@@ -59,7 +59,8 @@ singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gk
 ## juptyer server
 # node=127
 # srun --pty --gres=gpu:1 --partition=2080-galvani -w galvani-cn$node  bash
-# singularity shell --nv --bind /mnt/ceph/goswamicd/datasets,/mnt/qb/work2/goswami0/gkd965,/mnt/qb/goswami/data/era5 /mnt/qb/work2/goswami0/gkd965/sfno_packages6.sif
+# singularity shell --nv --bind /mnt/ceph/goswamicd/datasets,/mnt/qb/work2/goswami0/gkd965,/mnt/qb/goswami/data/era5 /mnt/qb/work2/goswami0/gkd965/sfno_packages7.sif
+# . /opt/conda/etc/profile.d/conda.sh 
 # /opt/conda/envs/model/bin/jupyter-notebook
 
 ## new terminal
