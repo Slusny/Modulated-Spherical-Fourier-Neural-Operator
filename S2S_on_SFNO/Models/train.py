@@ -1,5 +1,5 @@
 import torch
-from torch.utils.data import BatchSampler, IterableDataset
+from torch.utils.data import BatchSampler, DataLoader, Dataset#, IterableDataset
 from calendar import isleap
 import xarray as xr
 import numpy as np
@@ -7,11 +7,10 @@ import os
 
 # from .sfno.model import get_model
 from .sfno.sfnonet import GCN
-from torch.utils.data import DataLoader
 
 # BatchSampler(drop_last=True)
 
-class ERA5_galvani(IterableDataset):
+class ERA5_galvani(Dataset):
     """
         Dataset for the ERA5 data on Galvani cluster at university of tuebingen.
         A time point in the dataset can be selected by a numerical index.

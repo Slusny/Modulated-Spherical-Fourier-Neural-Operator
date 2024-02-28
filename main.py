@@ -413,4 +413,6 @@ def main():
 
 
 if __name__ == "__main__":
+    args = ["--model","sfno","--test","--debug"]
+    for arg in args: sys.argv.append(arg)
     main()
