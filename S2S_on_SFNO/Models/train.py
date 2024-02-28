@@ -100,7 +100,7 @@ levels_per_pl = {"u_component_of_wind":[1000,925,850,700,600,500,400,300,250,200
                      "geopotential":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
                      "temperature":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
                      "relative_humidity":[1000,925,850,700,600,500,400,300,250,200,150,100,50]}
-params = {param_level_pl:param_level_pl, param_sfc_ERA5:param_sfc_ERA5, levels_per_pl:levels_per_pl}
+params = {"param_level_pl":param_level_pl, "param_sfc_ERA5":param_sfc_ERA5, "levels_per_pl":levels_per_pl}
 
 def train(kwargs):
     # model = get_model(kwargs)
