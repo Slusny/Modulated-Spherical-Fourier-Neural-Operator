@@ -659,7 +659,7 @@ class GCN(torch.nn.Module):
 
         # Nan_mask removes nans from sst-matrix -> 1D array, edge_index and nan_mask loaded from file    
         edge_index = torch.load(os.path.join(graph_asset_path,"edge_index_coarsen_"+str(coarse_level)+".pt"))
-        nan_mask = np.load("/mnt/V/Master/model/nan_mask_coarsen_"+str(coarse_level)+".npy")
+        nan_mask = np.load(os.path.join(graph_asset_path,"nan_mask_coarsen_"+str(coarse_level)+".npy"))
         num_node_features = 686364
         num_nodes = np.sum(nan_mask)
         num_edges = edge_index.shape[1]
