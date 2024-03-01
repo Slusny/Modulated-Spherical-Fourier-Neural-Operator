@@ -265,18 +265,18 @@ def _main():
     )
 
     # Logging
-    logging = parser.add_argument_group('Logging')
-    logging.add_argument(
+    logging_parser = parser.add_argument_group('Logging')
+    logging_parser.add_argument(
         "--debug",
         action="store_true",
         help="Turn debugger on (pdb).",
     )
-    logging.add_argument(
+    logging_parser.add_argument(
         '--wandb', 
         action='store_true',
         help='use weights and biases'
     )
-    logging.add_argument(
+    logging_parser.add_argument(
         '--wandb_resume', 
         action='store', 
         default=None,             
