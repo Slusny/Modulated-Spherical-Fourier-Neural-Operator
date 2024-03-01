@@ -238,13 +238,15 @@ def _main():
         "--trainingset-start-year",
         help="specify training dataset by start year",
         action="store",
-        default=1959
+        default=1959,
+        type=int
     )
     training.add_argument(
         "--trainingset-end-year",
         help="specify training dataset by start year",
         action="store",
-        default=1975
+        default=1975,
+        type=int
     )
     training.add_argument(
         "--trainingdata-path",
@@ -253,15 +255,17 @@ def _main():
         default="/mnt/ceph/goswamicd/datasets/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr"
     )
     training.add_argument(
-        "--training_workers",
+        "--training-workers",
         help="number of workers to use in dataloader for training",
         action="store",
-        default=1
+        default=1,
+        type=int
     )
     training.add_argument(
-        "--batch_size",
+        "--batch-size",
         action="store",
-        default=4
+        default=4,
+        type=int
     )
 
     # Logging
@@ -277,7 +281,7 @@ def _main():
         help='use weights and biases'
     )
     logging.add_argument(
-        '--wandb_resume', 
+        '--wandb-resume', 
         action='store', 
         default=None,             
         type=str, 
@@ -285,11 +289,6 @@ def _main():
 
 
     args, unknownargs = parser.parse_known_args()
-
-    if args.test:
-        from S2S_on_SFNO.Models.train import train
-        train(vars(args))
-        sys.exit(0)
 
     # Format Assets path
     if args.assets:
@@ -356,6 +355,11 @@ def _main():
         model.print_assets_list()
         sys.exit(0)
 
+    if args.test:
+        from S2S_on_SFNO.Models.train import train
+        train(vars(args))
+        sys.exit(0)
+        
     if args.wandb   : 
         config_wandb = vars(args).copy()
         for key in ['notes','tags','wandb']:del config_wandb[key]
@@ -413,6 +417,6 @@ def main():
 
 
 if __name__ == "__main__":
-    args = ["--model","sfno","--test","--debug"]
+    args = ["--model","sfno","--test","--training-workers","0","--batch-size","1","--debug"]
     for arg in args: sys.argv.append(arg)
     main()

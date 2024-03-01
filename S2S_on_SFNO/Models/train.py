@@ -32,7 +32,7 @@ class ERA5_galvani(Dataset):
     def __init__(
             self, 
             model,
-            path="/mnt/ceph/goswamicd/datasets/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr",#weatherbench2/era5/1959-2023_01_10-6h-240x121_equiangular_with_poles_conservative.zarr", #1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr", 
+            path="/mnt/ceph/goswamicd/datasets/weatherbench2/era5/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr",#weatherbench2/era5/1959-2023_01_10-6h-240x121_equiangular_with_poles_conservative.zarr", #1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr", 
             path_era5="/mnt/qb/goswami/data/era5/single_pressure_level/",
             start_year=2000,
             end_year=2010,
@@ -99,7 +99,12 @@ levels_per_pl = {"u_component_of_wind":[1000,925,850,700,600,500,400,300,250,200
                      "geopotential":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
                      "temperature":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
                      "relative_humidity":[1000,925,850,700,600,500,400,300,250,200,150,100,50]}
-params = {"param_level_pl":param_level_pl, "param_sfc_ERA5":param_sfc_ERA5, "levels_per_pl":levels_per_pl}
+# params = {"param_level_pl":param_level_pl, "param_sfc_ERA5":param_sfc_ERA5, "levels_per_pl":levels_per_pl}
+class param:
+    param_level_pl = param_level_pl 
+    param_sfc_ERA5 = param_sfc_ERA5
+    levels_per_pl = levels_per_pl
+params = param()
 
 def train(kwargs):
     # model = get_model(kwargs)
