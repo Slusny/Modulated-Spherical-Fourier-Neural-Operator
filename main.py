@@ -280,13 +280,8 @@ def _main():
         action='store_true',
         help='use weights and biases'
     )
-<<<<<<< HEAD
-    logging.add_argument(
-        '--wandb-resume', 
-=======
     logging_parser.add_argument(
         '--wandb_resume', 
->>>>>>> 5d88935f05c5985b4cfdac3fa2e73f49507dcc5c
         action='store', 
         default=None,             
         type=str, 
