@@ -15,6 +15,9 @@ dependencies:
   - packaging
   - pandas
   - scipy
+  - zarr
+  - netcdf4
+  - cftime
   # acceleration
   - numba
   - numbagg
