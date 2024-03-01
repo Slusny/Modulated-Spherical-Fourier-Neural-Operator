@@ -63,6 +63,9 @@ singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gk
 # . /opt/conda/etc/profile.d/conda.sh 
 # /opt/conda/envs/model/bin/jupyter-notebook
 
+
+# srun --pty --gres=gpu:1 --partition=2080-galvani --exclude=galvani-cn[003] --cpus-per-task=2 --mem-per-cpu=40G bash
+
 ## new terminal
 # ssh -AtL $B_PORT:localhost:$B_PORT gkd965@134.2.168.72 "ssh -AtL $B_PORT:localhost:8888 gkd965@slurm-bm-10 bash"
 # don't use the "novalocal" in the hostname, eg. bg-slurmb-bm-3.novalocalssh -AtL $B_PORT:localhost:$B_PORT gkd965@134.2.168.72 "ssh -AtL $B_PORT:localhost:8888 gkd965@bg-slurmb-bm-3 bash"
@@ -117,3 +120,10 @@ echo DONE!
 #    ExtSensorsJoules=n/s ExtSensorsWatts=0 ExtSensorsTemp=n/s
 #    Reason=Moved-to-Galvani-CN [centos@2023-11-21T13:31:02]
 #    Comment=(null)
+
+
+# to get info (cpu,mem) about a job
+# sstat -j  for stats in current job -o (MaxVMSize,MaxRSS)
+# sacct for ended jobs
+
+# 

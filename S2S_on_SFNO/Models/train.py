@@ -82,7 +82,7 @@ class ERA5_galvani(Dataset):
                 data = torch.tensor(np.vstack((scf,pl)))
             if self.sst:
                 sst = sample["sea_surface_temperature"].to_numpy()
-                (data,torch.tensor(sst))
+                return (data,torch.tensor(sst))
             else:
                 return data
         
