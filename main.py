@@ -358,6 +358,7 @@ def _main():
     if args.test:
         from S2S_on_SFNO.Models.train import train
         train(vars(args))
+        print("Test passed")
         sys.exit(0)
         
     if args.wandb   : 
@@ -416,7 +417,7 @@ def main():
         _main()
 
 
-# if __name__ == "__main__":
-#     args = ["--model","sfno","--test","--training-workers","0","--batch-size","1","--debug"]
-#     for arg in args: sys.argv.append(arg)
-#     main()
+if __name__ == "__main__":
+    # args = ["--model","sfno","--test","--training-workers","0","--batch-size","1","--debug"]
+    # for arg in args: sys.argv.append(arg)
+    main()
