@@ -58,15 +58,20 @@ singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gk
 
 ## juptyer server
 # node=127
-# srun --pty --gres=gpu:1 --partition=2080-galvani -w galvani-cn$node  bash
+# srun --pty --gres=gpu:1 --partition=2080-galvani -w galvani-cn$node bash
 # singularity shell --nv --bind /mnt/ceph/goswamicd/datasets,/mnt/qb/work2/goswami0/gkd965,/mnt/qb/goswami/data/era5 /mnt/qb/work2/goswami0/gkd965/sfno_packages7.sif
 # . /opt/conda/etc/profile.d/conda.sh 
 # /opt/conda/envs/model/bin/jupyter-notebook
 
 
-# srun --pty --gres=gpu:1 --partition=2080-galvani --exclude=galvani-cn[003,105] --cpus-per-task=2 --mem-per-cpu=40G bash
+# srun --pty --gres=gpu:1 --partition=2080-galvani --exclude=galvani-cn[003,105,114] --cpus-per-task=2 --mem-per-cpu=40G bash
+# srun --pty --gres=gpu:1 --partition=2080-galvani --exclude=galvani-cn[003,105,114]  bash
+
 # 111 has era5 but no uv100
 # 114 gets Permission denied
+# 104,128 has no era5
+
+# working 127,122
 
 ## new terminal
 # ssh -AtL $B_PORT:localhost:$B_PORT gkd965@134.2.168.72 "ssh -AtL $B_PORT:localhost:8888 gkd965@slurm-bm-10 bash"
