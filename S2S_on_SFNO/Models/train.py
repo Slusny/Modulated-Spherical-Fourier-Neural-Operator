@@ -46,8 +46,11 @@ class ERA5_galvani(Dataset):
         self.uv100 = uv100
         self.dataset = xr.open_dataset(path)
         if self.uv100:
+            #qb
             self.dataset_u100 = xr.open_mfdataset(os.path.join(path_era5+"100m_u_component_of_wind/100m_u_component_of_wind_????.nc"))
             self.dataset_v100 = xr.open_mfdataset(os.path.join(path_era5+"100m_v_component_of_wind/100m_v_component_of_wind_????.nc"))
+            #ceph
+            # self.dataset_uv100 = xr.open_mfdataset("/mnt/ceph/goswamicd/datasets/weatherbench2/era5/1959-2023_01_10-u100mv100m-6h-1440x721"))
 
         print("Training on years:")
         print("    ", start_year," - ", end_year)
@@ -70,19 +73,24 @@ class ERA5_galvani(Dataset):
             pl = pl.reshape((pl.shape[0]*pl.shape[1], pl.shape[2], pl.shape[3]))
             
             if self.uv100:
-                u100 = self.dataset_u100.isel(time=self.start_idx + idx)["u100"].to_numpy()[None]
-                v100 = self.dataset_v100.isel(time=self.start_idx + idx)["v100"].to_numpy()[None]
-                data =  torch.tensor(np.vstack((
+                # ERA5 data on QB
+                u100_t = self.dataset_u100.isel(time=self.start_idx + idx)
+                v100_t = self.dataset_v100.isel(time=self.start_idx + idx)
+                if "expver" in set(u100_t.coords.dims): u100_t = u100_t.sel(expver=1)
+                if "expver" in set(v100_t.coords.dims): v100_t = v100_t.sel(expver=1)
+                u100 = u100_t["u100"].to_numpy()[None]
+                v100 = v100_t["v100"].to_numpy()[None]
+                data =  torch.from_numpy(np.vstack((
                     scf[:2],
                     u100,
                     v100,
                     scf[2:],
                     pl)))
             else: 
-                data = torch.tensor(np.vstack((scf,pl)))
+                data = torch.from_numpy(np.vstack((scf,pl)))
             if self.sst:
                 sst = sample["sea_surface_temperature"].to_numpy()
-                return (data,torch.tensor(sst))
+                return (data,torch.from_numpy(sst))
             else:
                 return data
         
