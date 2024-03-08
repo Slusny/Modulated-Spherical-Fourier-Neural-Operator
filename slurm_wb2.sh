@@ -11,7 +11,7 @@
 
 ##SBATCH --nodes=1
 
-#SBATCH --cpus-per-task=1 # 14 is max for cpu-short
+##SBATCH --cpus-per-task=1 # 14 is max for cpu-short
 # the job can use and see 4 CPUs (from max 24).
 # needet task count -n, maybe there is a better way to specify cores
 
