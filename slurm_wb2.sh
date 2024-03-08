@@ -11,7 +11,7 @@
 
 ##SBATCH --nodes=1
 
-#SBATCH --cpus-per-task=12 # 14 is max for cpu-short
+#SBATCH --cpus-per-task=1 # 14 is max for cpu-short
 # the job can use and see 4 CPUs (from max 24).
 # needet task count -n, maybe there is a better way to specify cores
 
@@ -26,7 +26,7 @@
 ## SBATCH --gres=gpu:1
 #the job can use and see 1 GPUs (4 GPUs are available in total on one node) use SBATCH --gres=gpu:1080ti:1 to explicitly demand a Geforce 1080 Ti GPU. Use SBATCH --gres=gpu:A4000:1 to explicitly demand a RTX A4000 GPU
 
-#SBATCH --time=01-11:00
+#SBATCH --time=00-1:00
 # the maximum time the scripts needs to run
 # "minutes:seconds", "hours:minutes:seconds", "days-hours","days-hours:minutes" and "days-hours:minutes:seconds"
 
