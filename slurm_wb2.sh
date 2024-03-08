@@ -11,11 +11,11 @@
 
 ##SBATCH --nodes=1
 
-##SBATCH --cpus-per-task=1 # 14 is max for cpu-short
+#SBATCH --cpus-per-task=8 # 14 is max for cpu-short
 # the job can use and see 4 CPUs (from max 24).
 # needet task count -n, maybe there is a better way to specify cores
 
-#SBATCH --partition=gpu-2080ti#cpu-short#cpu-short #gpu-v100  #gpu-2080ti #cpu-long
+#SBATCH --partition=cpu-long#cpu-short#cpu-short #gpu-v100  #gpu-2080ti #cpu-long
 # the slurm partition the job is queued to.
 # exits: gpu-2080ti , gpu-v100 ... see sinfo
 
@@ -26,7 +26,7 @@
 ## SBATCH --gres=gpu:1
 #the job can use and see 1 GPUs (4 GPUs are available in total on one node) use SBATCH --gres=gpu:1080ti:1 to explicitly demand a Geforce 1080 Ti GPU. Use SBATCH --gres=gpu:A4000:1 to explicitly demand a RTX A4000 GPU
 
-#SBATCH --time=00-1:00
+#SBATCH --time=01-11:00
 # the maximum time the scripts needs to run
 # "minutes:seconds", "hours:minutes:seconds", "days-hours","days-hours:minutes" and "days-hours:minutes:seconds"
 
@@ -54,7 +54,7 @@
 # singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif /opt/conda/envs/model/bin/python main.py --model sfno --date 20190101 --time 0000 --lead-time 8760 --assets /mnt/qb/work2/goswami0/gkd965/Assets --path /mnt/qb/work2/goswami0/gkd965/outputs --dump-provenance --output netcdf --file /mnt/qb/work2/goswami0/gkd965/ClimateInputData_201901010.grib
 # singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif /opt/conda/envs/model/bin/python convert_to_netcdf.py 
 
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/setup.sif /home/goswami/gkd965/MasterML/download_wb2.sh #parallel_clima_byhand.py 2 #chunky_climatology.py 2
+# singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/setup.sif /home/goswami/gkd965/MasterML/download_wb2.sh #parallel_clima_byhand.py 2 #chunky_climatology.py 2
 singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/setup.sif gsutil -m cp -r "gs://weatherbench2/datasets/era5/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr" /mnt/qb/goswami/data/era5/weatherbench2/
 #parallel_clima_byhand.py 2 #chunky_climatology.py 2
 
