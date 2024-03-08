@@ -55,6 +55,8 @@
 # singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif /opt/conda/envs/model/bin/python convert_to_netcdf.py 
 
 singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/setup.sif /home/goswami/gkd965/MasterML/download_wb2.sh #parallel_clima_byhand.py 2 #chunky_climatology.py 2
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/setup.sif gsutil -m cp -r "gs://weatherbench2/datasets/era5/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr" /mnt/qb/goswami/data/era5/weatherbench2/
+#parallel_clima_byhand.py 2 #chunky_climatology.py 2
 
 
 ## juptyer server
