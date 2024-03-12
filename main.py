@@ -382,7 +382,7 @@ def _main():
 
     if args.train:
         kwargs = vars(args)
-        model.training(**kwargs)
+        model.training(**kwargs,wandb_run=wandb_run)
     else:
 
         try:

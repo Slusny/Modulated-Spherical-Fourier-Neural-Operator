@@ -33,25 +33,31 @@ class ERA5_galvani(Dataset):
             self, 
             model,
             # path="/mnt/ceph/goswamicd/datasets/weatherbench2/era5/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr",#weatherbench2/era5/1959-2023_01_10-6h-240x121_equiangular_with_poles_conservative.zarr", #1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr", 
-            path="/mnt/ceph/goswamicd/datasets/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr",#weatherbench2/era5/1959-2023_01_10-6h-240x121_equiangular_with_poles_conservative.zarr", #1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr", 
+            #path="/mnt/ceph/goswamicd/datasets/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr",#weatherbench2/era5/1959-2023_01_10-6h-240x121_equiangular_with_poles_conservative.zarr", #1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr", 
+            path = "/mnt/qb/goswami/data/era5/weatherbench2/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr", # start date: 1959-01-01 end date : 2023-01-10T18:00
             path_era5="/mnt/qb/goswami/data/era5/single_pressure_level/",
             start_year=2000,
             end_year=2010,
-            total_dataset_year_range=[1959, 2023],
+            total_dataset_year_range=[1959, 2023], # first date is 1/1/1959 last is 12/31/2022
             steps_per_day=4,
             sst=True,
+            coarse_level=4,
             uv100=True,
         ):
         self.model = model
         self.sst = sst
+        self.coarse_level = coarse_level
         self.uv100 = uv100
         self.dataset = xr.open_dataset(path)
         if self.uv100:
             #qb
-            self.dataset_u100 = xr.open_mfdataset(os.path.join(path_era5+"100m_u_component_of_wind/100m_u_component_of_wind_????.nc"))
-            self.dataset_v100 = xr.open_mfdataset(os.path.join(path_era5+"100m_v_component_of_wind/100m_v_component_of_wind_????.nc"))
+            # self.dataset_u100 = xr.open_mfdataset(os.path.join(path_era5+"100m_u_component_of_wind/100m_u_component_of_wind_????.nc"))
+            # self.dataset_v100 = xr.open_mfdataset(os.path.join(path_era5+"100m_v_component_of_wind/100m_v_component_of_wind_????.nc"))
             #ceph
             # self.dataset_uv100 = xr.open_mfdataset("/mnt/ceph/goswamicd/datasets/weatherbench2/era5/1959-2023_01_10-u100mv100m-6h-1440x721"))
+            # qb zarr
+            self.dataset_u100 = xr.open_mfdataset("/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/u100m_1959-2022_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr") # sd: 1959-01-01, end date : 2022-12-30T18
+            self.dataset_v100 = xr.open_mfdataset("/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/v100m_1959-2023-10_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr") # sd: 1959-01-01 end date: 2023-10-31
 
         print("Training on years:")
         print("    ", start_year," - ", end_year)
@@ -90,8 +96,10 @@ class ERA5_galvani(Dataset):
             else: 
                 data = torch.from_numpy(np.vstack((scf,pl)))
             if self.sst:
-                sst = sample["sea_surface_temperature"].to_numpy()
-                return (data,torch.from_numpy(sst))
+                sst = sample["sea_surface_temperature"]
+                if self.coarse_level > 0:
+                    sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean()
+                return (data,torch.from_numpy(sst.to_numpy()))
             else:
                 return data
         
@@ -138,16 +146,19 @@ def train(kwargs):
 
     for i, data in enumerate(training_loader):
         print("Batch: ", i+1, "/", len(training_loader))
-        input, _ = data
-        sst = input[1]
+        input, truth = data
+        sst = input[1] 
+        # # if coarsen isn't already done on disk
+        # corse_deg = 4
+        # sst = sst.coarse_level,longitude=self.coarse_level,boundary='trim').mean().to_array()[0]
         optimizer.zero_grad()
 
         # Make predictions for this batch
         outputs = model(sst)
-        labels = torch.stack([torch.zeros_like(outputs[0]),torch.zeros_like(outputs[1])])
+        # truth = torch.stack([torch.zeros_like(outputs[0]),torch.zeros_like(outputs[1])])
 
         # Compute the loss and its gradients
-        loss = loss_fn(outputs, labels)
+        loss = loss_fn(outputs, truth)
         loss.backward()
 
         # Adjust learning weights

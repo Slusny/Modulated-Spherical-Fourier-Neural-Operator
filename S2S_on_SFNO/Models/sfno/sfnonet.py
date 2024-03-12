@@ -644,6 +644,7 @@ class GCN(torch.nn.Module):
         super().__init__()
 
         # Model
+        self.batch_size = batch_size
         self.num_layers = num_layers
         hidden_size = out_features*2
         self.conv1 = GCNConv(1, hidden_size,cached=True)

@@ -358,7 +358,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
     def run(self):
         pass
 
-    def training(self,**kwargs):
+    def training(self,**kwargs,wandb_run=None):
         dataset = ERA5_galvani(
             self,
             path=kwargs["trainingdata_path"], 
@@ -387,6 +387,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
             # Adjust learning weights
             optimizer.step()
 
+            # logging
+            if self.wandb_run is not None:
+                wandb.log({"loss": loss })
 
 
 def get_model(**kwargs):
