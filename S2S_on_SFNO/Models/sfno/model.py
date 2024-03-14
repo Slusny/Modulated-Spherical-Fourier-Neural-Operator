@@ -358,7 +358,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
     def run(self):
         pass
 
-    def training(self,**kwargs,wandb_run=None):
+    def training(self,wandb_run=None,**kwargs):
         dataset = ERA5_galvani(
             self,
             path=kwargs["trainingdata_path"], 
