@@ -6,8 +6,9 @@ channels:
   - defaults
   - pyg
 dependencies:
-  - python ==3.11.7
+  - python==3.11.7
   # xarray
+  - xarray
   - dask
   - bottleneck
   - cfgrib
