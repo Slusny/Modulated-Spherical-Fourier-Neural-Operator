@@ -149,13 +149,13 @@ def train(kwargs):
     if test:
         model1 = GCN(kwargs["batch_size"])
         model1.eval()
-        model1.load_state_dict(torch.load("/mnt/qb/work2/goswami0/gkd965/GCN/model_10.pth"))
+        model1.load_state_dict(torch.load("/mnt/qb/work2/goswami0/gkd965/GCN/model_2_10.pth"))
         model2 = GCN(kwargs["batch_size"])
         model2.eval()
-        model2.load_state_dict(torch.load("/mnt/qb/work2/goswami0/gkd965/GCN/model_20.pth"))
+        model2.load_state_dict(torch.load("/mnt/qb/work2/goswami0/gkd965/GCN/model_2_20.pth"))
         model3 = GCN(kwargs["batch_size"])
         model3.eval()
-        model3.load_state_dict(torch.load("/mnt/qb/work2/goswami0/gkd965/GCN/model_30.pth"))
+        model3.load_state_dict(torch.load("/mnt/qb/work2/goswami0/gkd965/GCN/model_2_30.pth"))
         while True:
             for i, data in enumerate(training_loader):
                 print("Batch: ", i+1, "/", len(training_loader))
