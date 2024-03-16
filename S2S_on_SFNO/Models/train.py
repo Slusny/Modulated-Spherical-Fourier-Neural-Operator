@@ -139,23 +139,23 @@ def train(kwargs):
     )
 
     #
-    model1 = GCN(kwargs["batch_size"])
-    model1.eval()
-    model1.load_state_dict(torch.load("/mnt/qb/work2/goswami0/gkd965/GCN/model_10.pth"))
-    model2 = GCN(kwargs["batch_size"])
-    model2.eval()
-    model2.load_state_dict(torch.load("/mnt/qb/work2/goswami0/gkd965/GCN/model_20.pth"))
-    model3 = GCN(kwargs["batch_size"])
-    model3.eval()
-    model3.load_state_dict(torch.load("/mnt/qb/work2/goswami0/gkd965/GCN/model_30.pth"))
 
     training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
 
-    # w_run = wandb.init(project="GCN to One",config=kwargs)
+    w_run = wandb.init(project="GCN to One 2",config=kwargs)
 
     l1 = time()
-    test=True
+    test=False
     if test:
+        model1 = GCN(kwargs["batch_size"])
+        model1.eval()
+        model1.load_state_dict(torch.load("/mnt/qb/work2/goswami0/gkd965/GCN/model_10.pth"))
+        model2 = GCN(kwargs["batch_size"])
+        model2.eval()
+        model2.load_state_dict(torch.load("/mnt/qb/work2/goswami0/gkd965/GCN/model_20.pth"))
+        model3 = GCN(kwargs["batch_size"])
+        model3.eval()
+        model3.load_state_dict(torch.load("/mnt/qb/work2/goswami0/gkd965/GCN/model_30.pth"))
         while True:
             for i, data in enumerate(training_loader):
                 print("Batch: ", i+1, "/", len(training_loader))
@@ -209,6 +209,6 @@ def train(kwargs):
         wandb.log({"loss": loss.item()})
 
         # save the model
-        # if i % 10 == 0:
-        #     print("saving model")
-        #     torch.save(model.state_dict(), "/mnt/qb/work2/goswami0/gkd965/GCN/model_{}.pth".format(i))
+        if i % 10 == 0:
+            print("saving model")
+            torch.save(model.state_dict(), "/mnt/qb/work2/goswami0/gkd965/GCN/model_2_{}.pth".format(i))
