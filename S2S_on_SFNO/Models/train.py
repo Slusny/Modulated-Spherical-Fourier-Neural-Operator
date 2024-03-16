@@ -145,7 +145,7 @@ def train(kwargs):
 
     training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
 
-    w_run = wandb.init(project="GCN to One")
+    w_run = wandb.init(project="GCN to One",config=kwargs)
 
     for i, data in enumerate(training_loader):
         print("Batch: ", i+1, "/", len(training_loader))

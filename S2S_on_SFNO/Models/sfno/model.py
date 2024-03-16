@@ -16,6 +16,7 @@ from ..models import Model
 import datetime
 
 import climetlab as cml
+import wandb
 
 # import ai_models_fourcastnetv2.fourcastnetv2 as nvs
 from .sfnonet import FourierNeuralOperatorNet
