@@ -8,6 +8,7 @@ import os
 # from .sfno.model import get_model
 from .sfno.sfnonet import GCN
 import wandb
+from time import time
 
 # BatchSampler(drop_last=True)
 
@@ -147,8 +148,14 @@ def train(kwargs):
 
     w_run = wandb.init(project="GCN to One",config=kwargs)
 
+    l1 = time()
     for i, data in enumerate(training_loader):
         print("Batch: ", i+1, "/", len(training_loader))
+        # time
+        l2 = time()
+        print("Time to load batch: ", l2-l1)
+        l1 = l2
+        
         input, truth = data
         sst = input[1] 
         # # if coarsen isn't already done on disk
@@ -157,7 +164,10 @@ def train(kwargs):
         optimizer.zero_grad()
 
         # Make predictions for this batch
+        s = time()
         outputs = model(sst)
+        e = time()
+        print("Time to run model: ", e-s)
         truth = torch.stack([torch.ones_like(outputs[0]),torch.zeros_like(outputs[1])])
 
         # Compute the loss and its gradients
@@ -172,4 +182,5 @@ def train(kwargs):
 
         # save the model
         if i % 10 == 0:
+            print("saving model")
             torch.save(model.state_dict(), "/mnt/qb/work2/goswami0/gkd965/GCN/model_{}.pth".format(i))
