@@ -127,7 +127,6 @@ params = param()
 
 def train(kwargs):
     # model = get_model(kwargs)
-    model = GCN(kwargs["batch_size"])
 
     # dataset = ERA5_galvani(
     #     params,
@@ -139,14 +138,20 @@ def train(kwargs):
         params
     )
 
-    model.train()
-
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    loss_fn = torch.nn.MSELoss()
+    #
+    model1 = GCN(kwargs["batch_size"])
+    model1.eval()
+    model1.load_state_dict(torch.load("/mnt/qb/work2/goswami0/gkd965/GCN/model_10.pth"))
+    model2 = GCN(kwargs["batch_size"])
+    model2.eval()
+    model2.load_state_dict(torch.load("/mnt/qb/work2/goswami0/gkd965/GCN/model_20.pth"))
+    model3 = GCN(kwargs["batch_size"])
+    model3.eval()
+    model3.load_state_dict(torch.load("/mnt/qb/work2/goswami0/gkd965/GCN/model_30.pth"))
 
     training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
 
-    w_run = wandb.init(project="GCN to One",config=kwargs)
+    # w_run = wandb.init(project="GCN to One",config=kwargs)
 
     l1 = time()
     test=True
@@ -157,9 +162,19 @@ def train(kwargs):
 
                 input, truth = data
                 sst = input[1] 
-                outputs = model(sst)
-                print(outputs)
+                outputs1 = model1(sst)
+                outputs2 = model2(sst)
+                outputs3 = model3(sst)
+                print(outputs1)
+                print(outputs2)
+                print(outputs3)
         sys.exit(0)
+    
+
+    model = GCN(kwargs["batch_size"])
+    model.train()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    loss_fn = torch.nn.MSELoss()
     for i, data in enumerate(training_loader):
         print("Batch: ", i+1, "/", len(training_loader))
         # time
