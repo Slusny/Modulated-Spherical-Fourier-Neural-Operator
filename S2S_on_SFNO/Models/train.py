@@ -153,9 +153,11 @@ def train(kwargs):
         print("Batch: ", i+1, "/", len(training_loader))
         # time
         l2 = time()
-        print("Time to load batch: ", l2-l1)
+        print("Time to load batch: ", l2-l1) 
+        # needs 40s for 1 worker with 4 batch size
+        # needs 10s for 3 workers with 4 batch size
         l1 = l2
-        
+
         input, truth = data
         sst = input[1] 
         # # if coarsen isn't already done on disk
@@ -165,7 +167,7 @@ def train(kwargs):
 
         # Make predictions for this batch
         s = time()
-        outputs = model(sst)
+        outputs = model(sst) # runs 3.3s
         e = time()
         print("Time to run model: ", e-s)
         truth = torch.stack([torch.ones_like(outputs[0]),torch.zeros_like(outputs[1])])
@@ -181,6 +183,6 @@ def train(kwargs):
         wandb.log({"loss": loss.item()})
 
         # save the model
-        if i % 10 == 0:
-            print("saving model")
-            torch.save(model.state_dict(), "/mnt/qb/work2/goswami0/gkd965/GCN/model_{}.pth".format(i))
+        # if i % 10 == 0:
+        #     print("saving model")
+        #     torch.save(model.state_dict(), "/mnt/qb/work2/goswami0/gkd965/GCN/model_{}.pth".format(i))
