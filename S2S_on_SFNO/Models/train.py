@@ -149,6 +149,17 @@ def train(kwargs):
     w_run = wandb.init(project="GCN to One",config=kwargs)
 
     l1 = time()
+    test=True
+    if test:
+        while True:
+            for i, data in enumerate(training_loader):
+                print("Batch: ", i+1, "/", len(training_loader))
+
+                input, truth = data
+                sst = input[1] 
+                outputs = model(sst)
+                print(outputs)
+        sys.exit(0)
     for i, data in enumerate(training_loader):
         print("Batch: ", i+1, "/", len(training_loader))
         # time
@@ -167,7 +178,7 @@ def train(kwargs):
 
         # Make predictions for this batch
         s = time()
-        outputs = model(sst) # runs 3.3s
+        outputs = model(sst) # runs 3.3s, more workers 4.5s
         e = time()
         print("Time to run model: ", e-s)
         truth = torch.stack([torch.ones_like(outputs[0]),torch.zeros_like(outputs[1])])
