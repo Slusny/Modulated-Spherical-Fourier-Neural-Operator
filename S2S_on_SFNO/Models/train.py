@@ -7,6 +7,7 @@ import os
 
 # from .sfno.model import get_model
 from .sfno.sfnonet import GCN
+import wandb
 
 # BatchSampler(drop_last=True)
 
@@ -139,10 +140,12 @@ def train(kwargs):
 
     model.train()
 
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     loss_fn = torch.nn.MSELoss()
 
     training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
+
+    w_run = wandb.init(project="GCN to One")
 
     for i, data in enumerate(training_loader):
         print("Batch: ", i+1, "/", len(training_loader))
@@ -155,7 +158,7 @@ def train(kwargs):
 
         # Make predictions for this batch
         outputs = model(sst)
-        # truth = torch.stack([torch.zeros_like(outputs[0]),torch.zeros_like(outputs[1])])
+        truth = torch.stack([torch.ones_like(outputs[0]),torch.zeros_like(outputs[1])])
 
         # Compute the loss and its gradients
         loss = loss_fn(outputs, truth)
@@ -163,3 +166,10 @@ def train(kwargs):
 
         # Adjust learning weights
         optimizer.step()
+
+        # Log the loss
+        wandb.log({"loss": loss.item()})
+
+        # save the model
+        if i % 10 == 0:
+            torch.save(model.state_dict(), "/mnt/qb/work2/goswami0/gkd965/GCN/model_{}.pth".format(i))
