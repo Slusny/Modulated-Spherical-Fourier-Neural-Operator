@@ -145,7 +145,7 @@ def train(kwargs):
     # w_run = wandb.init(project="GCN to One 2",config=kwargs)
 
     l1 = time()
-    test=False
+    test=True
     if test:
         model1 = GCN(kwargs["batch_size"])
         model1.eval()
