@@ -175,11 +175,14 @@ def train(kwargs):
     model.train()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     loss_fn = torch.nn.MSELoss()
+    mean_batch_time = 0
+    mean_model_time = 0
     for i, data in enumerate(training_loader):
         print("Batch: ", i+1, "/", len(training_loader))
         # time
         l2 = time()
-        print("Time to load batch: ", l2-l1) 
+        tb = l2-l1
+        print("Time to load batch: ", tb , " mean : ", mean_batch_time+(tb - mean_batch_time)/(i+1)) 
         # needs 40s for 1 worker with 4 batch size
         # needs 10s for 3 workers with 4 batch size
         l1 = l2
@@ -195,7 +198,8 @@ def train(kwargs):
         s = time()
         outputs = model(sst) # runs 3.3s, more workers 4.5s
         e = time()
-        print("Time to run model: ", e-s)
+        tm = e-s
+        print("Time to run model: ", tm , " mean : ", mean_model_time+(tm - mean_model_time)/(i+1))
         truth = torch.stack([torch.ones_like(outputs[0]),torch.zeros_like(outputs[1])])
 
         # Compute the loss and its gradients
