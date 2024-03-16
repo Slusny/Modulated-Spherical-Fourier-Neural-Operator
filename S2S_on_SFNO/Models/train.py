@@ -209,6 +209,6 @@ def train(kwargs):
         wandb.log({"loss": loss.item()})
 
         # save the model
-        if i % 10 == 0:
-            print("saving model")
-            torch.save(model.state_dict(), "/mnt/qb/work2/goswami0/gkd965/GCN/model_2_{}.pth".format(i))
+        # if i % 10 == 0:
+        #     print("saving model")
+        #     torch.save(model.state_dict(), "/mnt/qb/work2/goswami0/gkd965/GCN/model_2_{}.pth".format(i))
