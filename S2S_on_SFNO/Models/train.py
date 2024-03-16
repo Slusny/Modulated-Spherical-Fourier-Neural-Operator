@@ -142,7 +142,7 @@ def train(kwargs):
 
     training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
 
-    w_run = wandb.init(project="GCN to One 2",config=kwargs)
+    # w_run = wandb.init(project="GCN to One 2",config=kwargs)
 
     l1 = time()
     test=False
@@ -206,7 +206,7 @@ def train(kwargs):
         optimizer.step()
 
         # Log the loss
-        wandb.log({"loss": loss.item()})
+        # wandb.log({"loss": loss.item()})
 
         # save the model
         # if i % 10 == 0:
