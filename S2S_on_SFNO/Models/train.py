@@ -147,27 +147,44 @@ def train(kwargs):
     l1 = time()
     test=True
     if test:
-        model1 = GCN(kwargs["batch_size"])
-        model1.eval()
-        model1.load_state_dict(torch.load("/mnt/qb/work2/goswami0/gkd965/GCN/model_2_10.pth"))
-        model2 = GCN(kwargs["batch_size"])
-        model2.eval()
-        model2.load_state_dict(torch.load("/mnt/qb/work2/goswami0/gkd965/GCN/model_2_20.pth"))
-        model3 = GCN(kwargs["batch_size"])
-        model3.eval()
-        model3.load_state_dict(torch.load("/mnt/qb/work2/goswami0/gkd965/GCN/model_2_30.pth"))
-        while True:
-            for i, data in enumerate(training_loader):
-                print("Batch: ", i+1, "/", len(training_loader))
+        for i in range(0,100,10):
 
-                input, truth = data
-                sst = input[1] 
-                outputs1 = model1(sst)
-                outputs2 = model2(sst)
-                outputs3 = model3(sst)
-                print(outputs1)
-                print(outputs2)
-                print(outputs3)
+            model1 = GCN(kwargs["batch_size"])
+            model1.eval()
+            model1.load_state_dict(torch.load("/mnt/qb/work2/goswami0/gkd965/GCN/model_2_10.pth"))
+
+        # model2 = GCN(kwargs["batch_size"])
+        # model2.eval()
+        # model2.load_state_dict(torch.load("/mnt/qb/work2/goswami0/gkd965/GCN/model_2_20.pth"))
+        # model3 = GCN(kwargs["batch_size"])
+        # model3.eval()
+        # model3.load_state_dict(torch.load("/mnt/qb/work2/goswami0/gkd965/GCN/model_2_30.pth"))
+        # while True:
+        #     for i, data in enumerate(training_loader):
+        #         print("Batch: ", i+1, "/", len(training_loader))
+
+        #         input, truth = data
+        #         sst = input[1] 
+        #         outputs1 = model1(sst)
+        #         outputs2 = model2(sst)
+        #         outputs3 = model3(sst)
+        #         print(outputs1)
+        #         print(outputs2)
+        #         print(outputs3)
+        data = next(iter(training_loader))
+        input, truth = data
+        sst = input[1] 
+        for i in range(0,110,10):
+            model1 = GCN(kwargs["batch_size"])
+            model1.eval()
+            model1.load_state_dict(torch.load("/mnt/qb/work2/goswami0/gkd965/GCN/model_2_{}.pth".format(i)))
+            outputs1 = model1(sst)
+            print("mean 0",outputs1[0].mean())
+            print("std 0",outputs1[0].std())
+            print("mean 1",outputs1[1].mean())
+            print("std 1",outputs1[1].std())
+            print("---------------------")
+
         sys.exit(0)
     
 
@@ -196,7 +213,8 @@ def train(kwargs):
 
         # Make predictions for this batch
         s = time()
-        outputs = model(sst) # runs 3.3s, more workers 4.5s
+        outputs = model(sst) 
+        # runs 3.3s, more workers 4.5s
         e = time()
         tm = e-s
         print("Time to run model: ", tm , " mean : ", mean_model_time+(tm - mean_model_time)/(i+1))
