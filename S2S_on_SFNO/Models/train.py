@@ -145,7 +145,7 @@ def train(kwargs):
     # w_run = wandb.init(project="GCN to One 2",config=kwargs)
 
     l1 = time()
-    test=True
+    test=False
     if test:
         for i in range(0,100,10):
 
@@ -186,7 +186,62 @@ def train(kwargs):
             print("---------------------")
 
         sys.exit(0)
-    
+# 0 ---------------------
+# mean 0 tensor(0.2065, grad_fn=<MeanBackward0>)
+# std 0 tensor(3.0127, grad_fn=<StdBackward0>)
+# mean 1 tensor(0.0764, grad_fn=<MeanBackward0>)
+# std 1 tensor(2.9966, grad_fn=<StdBackward0>)
+# 10 ---------------------
+# mean 0 tensor(0.1641, grad_fn=<MeanBackward0>)
+# std 0 tensor(0.3530, grad_fn=<StdBackward0>)
+# mean 1 tensor(0.0021, grad_fn=<MeanBackward0>)
+# std 1 tensor(0.3527, grad_fn=<StdBackward0>)
+# 20 ---------------------
+# mean 0 tensor(0.5030, grad_fn=<MeanBackward0>)
+# std 0 tensor(0.3747, grad_fn=<StdBackward0>)
+# mean 1 tensor(-0.0113, grad_fn=<MeanBackward0>)
+# std 1 tensor(0.3448, grad_fn=<StdBackward0>)
+# 30 ---------------------
+# mean 0 tensor(0.8485, grad_fn=<MeanBackward0>)
+# std 0 tensor(0.3082, grad_fn=<StdBackward0>)
+# mean 1 tensor(-0.0072, grad_fn=<MeanBackward0>)
+# std 1 tensor(0.2392, grad_fn=<StdBackward0>)
+# 40 ---------------------
+# mean 0 tensor(0.9506, grad_fn=<MeanBackward0>)
+# std 0 tensor(0.1761, grad_fn=<StdBackward0>)
+# mean 1 tensor(-0.0022, grad_fn=<MeanBackward0>)
+# std 1 tensor(0.1178, grad_fn=<StdBackward0>)
+# 50 ---------------------
+# mean 0 tensor(0.9833, grad_fn=<MeanBackward0>)
+# std 0 tensor(0.1050, grad_fn=<StdBackward0>)
+# mean 1 tensor(0.0017, grad_fn=<MeanBackward0>)
+# std 1 tensor(0.0729, grad_fn=<StdBackward0>)
+# 60 ---------------------/////////////////////////
+# mean 0 tensor(0.9937, grad_fn=<MeanBackward0>)
+# std 0 tensor(0.0602, grad_fn=<StdBackward0>)
+# mean 1 tensor(0.0008, grad_fn=<MeanBackward0>)
+# std 1 tensor(0.0434, grad_fn=<StdBackward0>)
+# 70 ---------------------
+# mean 0 tensor(1.0010, grad_fn=<MeanBackward0>)
+# std 0 tensor(0.0346, grad_fn=<StdBackward0>)
+# mean 1 tensor(7.5858e-05, grad_fn=<MeanBackward0>)
+# std 1 tensor(0.0267, grad_fn=<StdBackward0>)
+# 80 ---------------------
+# mean 0 tensor(0.9971, grad_fn=<MeanBackward0>)
+# std 0 tensor(0.0201, grad_fn=<StdBackward0>)
+# mean 1 tensor(0.0002, grad_fn=<MeanBackward0>)
+# std 1 tensor(0.0160, grad_fn=<StdBackward0>)
+# 90 ---------------------
+# mean 0 tensor(1.0015, grad_fn=<MeanBackward0>)
+# std 0 tensor(0.0121, grad_fn=<StdBackward0>)
+# mean 1 tensor(0.0001, grad_fn=<MeanBackward0>)
+# std 1 tensor(0.0099, grad_fn=<StdBackward0>)
+# 100 ---------------------
+# mean 0 tensor(0.9977, grad_fn=<MeanBackward0>)
+# std 0 tensor(0.0069, grad_fn=<StdBackward0>)
+# mean 1 tensor(5.8214e-05, grad_fn=<MeanBackward0>)
+# std 1 tensor(0.0058, grad_fn=<StdBackward0>)
+# ---------------------
 
     model = GCN(kwargs["batch_size"])
     model.train()
