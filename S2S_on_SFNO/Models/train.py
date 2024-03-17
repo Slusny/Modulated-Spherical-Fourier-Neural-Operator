@@ -254,7 +254,8 @@ def train(kwargs):
         # time
         l2 = time()
         tb = l2-l1
-        print("Time to load batch: ", tb , " mean : ", mean_batch_time+(tb - mean_batch_time)/(i+1)) 
+        mean_batch_time = mean_batch_time+(tb - mean_batch_time)/(i+1)
+        print("Time to load batch: ", tb , " mean : ", mean_batch_time) 
         # needs 40s for 1 worker with 4 batch size
         # needs 10s for 3 workers with 4 batch size
         l1 = l2
@@ -272,7 +273,8 @@ def train(kwargs):
         # runs 3.3s, more workers 4.5s
         e = time()
         tm = e-s
-        print("Time to run model: ", tm , " mean : ", mean_model_time+(tm - mean_model_time)/(i+1))
+        mean_model_time = mean_model_time+(tm - mean_model_time)/(i+1)
+        print("Time to run model: ", tm , " mean : ", mean_model_time)
         truth = torch.stack([torch.ones_like(outputs[0]),torch.zeros_like(outputs[1])])
 
         # Compute the loss and its gradients
