@@ -280,7 +280,7 @@ def _main():
         "--trainingdata-path",
         help="path to training data zarr file",
         action="store",
-        default="/mnt/ceph/goswamicd/datasets/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr"
+        default="/mnt/qb/goswami/data/era5/weatherbench2/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr"
     )
     training.add_argument(
         "--training-workers",
