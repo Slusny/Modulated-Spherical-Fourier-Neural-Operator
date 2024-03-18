@@ -404,6 +404,7 @@ class FourierNeuralOperatorNet(nn.Module):
         spectral_layers=3,
         laplace_weighting=False,
         checkpointing=False,
+        batch_size = 1,
     ):
         super(FourierNeuralOperatorNet, self).__init__()
 
@@ -427,6 +428,7 @@ class FourierNeuralOperatorNet(nn.Module):
         self.spectral_layers = spectral_layers
         self.laplace_weighting = laplace_weighting
         self.checkpointing = checkpointing
+        self.batch_size = batch_size
 
         # compute downsampled image size
         self.h = self.img_size[0] // self.scale_factor
@@ -757,7 +759,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
 
             self.blocks.append(block)
         
-        self.film_gen = GCN(out_features=self.embed_dim,num_layers=12)
+        self.film_gen = GCN(self.batch_size,out_features=self.embed_dim,num_layers=12)
     
     def forward(self, x,sst):
 
