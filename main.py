@@ -66,7 +66,7 @@ def _main():
     parser.add_argument(
         "--assets-film",
         action="store",
-        help="Absolute path to directory containing the weights and other assets of the Film-Model.",
+        help="Absolute path to weights.tar file containing the weights of the Film-Model.",
         default=None
     )
     parser.add_argument(
@@ -243,9 +243,37 @@ def _main():
     )
     training.add_argument(
         "--trainingset-end-year",
-        help="specify training dataset by start year",
+        help="specify training dataset by end year. No dates from the end year specified and later will be used.",
+        action="store",
+        default=2019,
+        type=int
+    )
+    training.add_argument(
+        "--validationset-start-year",
+        help="specify validation dataset by start year",
+        action="store",
+        default=2019,
+        type=int
+    )
+    training.add_argument(
+        "--validationset-end-year",
+        help="specify validation dataset by end year. No dates from the end year specified and later will be used.",
         action="store",
         default=1975,
+        type=int
+    )
+    training.add_argument(
+        "--validation-interval",
+        help="after running ... expochs, validate the model",
+        action="store",
+        default=150,
+        type=int
+    )
+    training.add_argument(
+        "--validation-epochs",
+        help="over how many epochs should be validated",
+        action="store",
+        default=20,
         type=int
     )
     training.add_argument(
@@ -259,6 +287,12 @@ def _main():
         help="number of workers to use in dataloader for training",
         action="store",
         default=1,
+        type=int
+    )
+    training.add_argument(
+        "--val-batch-size",
+        action="store",
+        default=4,
         type=int
     )
     training.add_argument(
@@ -356,9 +390,11 @@ def _main():
         sys.exit(0)
 
     if args.test:
-        from S2S_on_SFNO.Models.train import train
-        train(vars(args))
-        print("Test passed")
+        # from S2S_on_SFNO.Models.train import train
+        # train(vars(args))
+        # print("Test passed")
+        kwargs = vars(args)
+        model.test_training(**kwargs)
         sys.exit(0)
         
     if args.wandb   : 

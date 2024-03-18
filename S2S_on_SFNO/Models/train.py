@@ -258,6 +258,7 @@ def train(kwargs):
         print("Time to load batch: ", tb , " mean : ", mean_batch_time) 
         # needs 40s for 1 worker with 4 batch size
         # needs 10s for 3 workers with 4 batch size
+        # needs 4.6-1.2=3.4s for 3 workers with 1 batch size
         l1 = l2
 
         input, truth = data
@@ -271,6 +272,7 @@ def train(kwargs):
         s = time()
         outputs = model(sst) 
         # runs 3.3s, more workers 4.5s
+        # one batch runs 1.2s
         e = time()
         tm = e-s
         mean_model_time = mean_model_time+(tm - mean_model_time)/(i+1)
@@ -291,3 +293,5 @@ def train(kwargs):
         # if i % 10 == 0:
         #     print("saving model")
         #     torch.save(model.state_dict(), "/mnt/qb/work2/goswami0/gkd965/GCN/model_2_{}.pth".format(i))
+
+    

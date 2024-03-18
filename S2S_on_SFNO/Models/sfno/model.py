@@ -8,6 +8,7 @@
 
 import logging
 import os
+from time import time
 
 import numpy as np
 import torch
@@ -166,7 +167,7 @@ class FourCastNetv2(Model):
         self.checkpoint_path = os.path.join(self.assets, "weights.tar")
 
         if kwargs["assets_film"]:
-            self.checkpoint_path_film = os.path.join(self.assets_film, "weights_film.tar")
+            self.checkpoint_path_film = os.path.join(self.assets_film)
         else:
             self.checkpoint_path_film = None
 
@@ -365,14 +366,20 @@ class FourCastNetv2_filmed(FourCastNetv2):
             path=kwargs["trainingdata_path"], 
             start_year=kwargs["trainingset_start_year"],
             end_year=kwargs["trainingset_end_year"])
+        dataset_validation = ERA5_galvani(
+            self,
+            path=kwargs["trainingdata_path"], 
+            start_year=kwargs["validationset_start_year"],
+            end_year=kwargs["validationset_end_year"])
         
         model = self.load_model(self.checkpoint_path)
         model.train()
 
         optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-        loss_fn = torch.nn.CrossEntropyLoss()
+        loss_fn = torch.nn.MSELoss()
 
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
+        validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["val_batch_size"])
 
         for i, data in enumerate(training_loader):
             input, g_truth = data
@@ -391,6 +398,56 @@ class FourCastNetv2_filmed(FourCastNetv2):
             # logging
             if self.wandb_run is not None:
                 wandb.log({"loss": loss })
+            
+            # Validation
+            if i +1 % kwargs["validation_interval"] == 0:
+                val_loss = []
+                model.eval()
+                with torch.no_grad():
+                    for val_epoch, data in enumerate(validation_loader):
+                        input, g_truth = data
+                        outputs = model(input[0],input[1])
+                        val_loss.append( loss_fn(outputs, g_truth[0]) / kwargs["val_batch_size"])
+                        if val_epoch > kwargs["validation_epochs"]:
+                            break
+                    if self.wandb_run is not None:
+                        wandb.log({"validation_loss": np.array(val_loss).mean() })
+                model.train()
+    
+    def test_training(self,**kwargs):
+        dataset = ERA5_galvani(
+            self,
+            path=kwargs["trainingdata_path"], 
+            start_year=kwargs["trainingset_start_year"],
+            end_year=kwargs["trainingset_end_year"])
+        model = self.load_model(self.checkpoint_path)
+        model.train()
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+        loss_fn = torch.nn.MSELoss()
+        training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
+        mean_batch_time = 0
+        l1 = time()
+        mean_model_time = 0
+        for i, data in enumerate(training_loader):
+            input, g_truth = data
+            optimizer.zero_grad()
+            outputs = model(input[0],input[1])
+            loss = loss_fn(outputs, g_truth[0])
+            loss.backward()
+            optimizer.step()
+            l2 = time()
+            tb = l2-l1
+            mean_batch_time = mean_batch_time+(tb - mean_batch_time)/(i+1)
+            print("Time for epoch: ", tb , " mean : ", mean_batch_time) 
+            t = torch.cuda.get_device_properties(0).total_memory
+            r = torch.cuda.memory_reserved(0)
+            a = torch.cuda.memory_allocated(0)
+            f = r-a  # free inside reserved
+            print("total gpu mem:",t)
+            print("allocated:",a)
+            print("free:",f)    
+
+
 
 
 def get_model(**kwargs):
