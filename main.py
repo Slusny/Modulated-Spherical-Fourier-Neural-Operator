@@ -62,12 +62,14 @@ def _main():
         help="Absolute path to directory containing the weights and other assets of the Model. \
               Model Name gets appended to asset path. E.g. /path/to/assets/{model}\
               Default behaviour is to load from assets-sub-directory.",
+        default="/mnt/qb/work2/goswami0/gkd965/Assets"
     )
     parser.add_argument(
         "--assets-film",
         action="store",
         help="Absolute path to weights.tar file containing the weights of the Film-Model.",
-        default=None
+        default=None,
+        # default="/mnt/qb/work2/goswami0/gkd965/Assets/gcn/weights.tar"
     )
     parser.add_argument(
         "--assets-sub-directory",
