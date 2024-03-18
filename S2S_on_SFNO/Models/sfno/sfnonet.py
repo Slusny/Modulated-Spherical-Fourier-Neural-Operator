@@ -428,7 +428,6 @@ class FourierNeuralOperatorNet(nn.Module):
         self.spectral_layers = spectral_layers
         self.laplace_weighting = laplace_weighting
         self.checkpointing = checkpointing
-        self.batch_size = batch_size
 
         # compute downsampled image size
         self.h = self.img_size[0] // self.scale_factor
