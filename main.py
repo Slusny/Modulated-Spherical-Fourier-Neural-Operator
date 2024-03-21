@@ -300,7 +300,7 @@ def _main():
     training.add_argument(
         "--batch-size",
         action="store",
-        default=4,
+        default=5,
         type=int
     )
     training.add_argument(
