@@ -65,6 +65,9 @@ singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gk
 # . /opt/conda/etc/profile.d/conda.sh 
 # /opt/conda/envs/model/bin/jupyter-notebook
 
+# srun --pty --gres=gpu:1 --partition=gpu-2080ti bash
+# srun --pty --gres=gpu:1 --partition=gpu-v100 bash
+# singularity shell --nv --bind /mnt/qb/work2/goswami0/gkd965,/mnt/qb/goswami/data/era5 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif
 
 # srun --pty --gres=gpu:1 --partition=2080-galvani --exclude=galvani-cn[003,105,114] --cpus-per-task=2 --mem-per-cpu=40G bash
 # srun --pty --gres=gpu:1 --partition=2080-galvani --exclude=galvani-cn[003,105,114]  bash

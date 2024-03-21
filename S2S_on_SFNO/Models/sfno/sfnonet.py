@@ -331,7 +331,7 @@ class FourierNeuralOperatorBlock_Filmed(nn.Module):
         if concat_skip and outer_skip is not None:
             self.outer_skip_conv = nn.Conv2d(2 * embed_dim, embed_dim, 1, bias=False)
 
-    def forward(self, x, gamma, beta):
+    def forward(self, x, gamma, beta, scale=1):
         residual = x
 
         x = self.norm0(x)
@@ -349,7 +349,7 @@ class FourierNeuralOperatorBlock_Filmed(nn.Module):
 
         x = self.norm1(x)
 
-        x = self.film(x,gamma,beta,self.block_idx)
+        x = self.film(x,gamma,beta,self.block_idx, scale)
 
         if hasattr(self, "mlp"):
             x = self.mlp(x)
@@ -678,14 +678,14 @@ class GCN(torch.nn.Module):
     def forward(self, sst):
         sst_graph_list = sst.reshape(self.batch_size,-1)[self.batch_nan_mask][None].T
 
-        x = self.conv1(sst_graph_list, self.edge_index_batch)
-        x = F.leaky_relu(x)
+        x1 = self.conv1(sst_graph_list, self.edge_index_batch)
+        x = x + F.leaky_relu(x1)
         # x = F.dropout(x, training=self.training)
-        x = self.conv2(x, self.edge_index_batch)
-        x = F.leaky_relu(x)
-        x = self.conv2(x, self.edge_index_batch)
-        x = F.leaky_relu(x)
-        x = self.conv2(x, self.edge_index_batch)
+        x2 = self.conv2(x, self.edge_index_batch)
+        x = x + F.leaky_relu(x2)
+        x3 = self.conv2(x, self.edge_index_batch)
+        x = x + F.leaky_relu(x3)
+        x = x + self.conv2(x, self.edge_index_batch)
         x = global_mean_pool(x, self.batch)
         heads_gamma = []
         heads_beta = []
@@ -700,8 +700,8 @@ class FiLM(nn.Module):
     A Feature-wise Linear Modulation Layer from
     'FiLM: Visual Reasoning with a General Conditioning Layer'
     """
-    def forward(self, x, gammas, betas, block_idx):
-        return ((1+gammas[block_idx]) * x) + betas[block_idx]
+    def forward(self, x, gammas, betas, block_idx,scale=1):
+        return ((1+gammas[block_idx]*scale) * x) + betas[block_idx]*scale
 
 class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
     def __init__(
@@ -760,7 +760,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         
         self.film_gen = GCN(self.batch_size,out_features=self.embed_dim,num_layers=12)
     
-    def forward(self, x,sst):
+    def forward(self, x,sst,scale=1):
 
         # calculate gammas and betas for film layers
         gamma,beta = self.film_gen(sst)
@@ -779,7 +779,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         x = self.pos_drop(x)
 
         for blk in self.blocks:
-            x = blk(x,gamma,beta)
+            x = blk(x,gamma,beta,scale)
 
         # concatenate the big skip
         if self.big_skip:

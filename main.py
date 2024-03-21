@@ -261,7 +261,7 @@ def _main():
         "--validationset-end-year",
         help="specify validation dataset by end year. No dates from the end year specified and later will be used.",
         action="store",
-        default=1975,
+        default=2023,
         type=int
     )
     training.add_argument(
@@ -288,13 +288,13 @@ def _main():
         "--training-workers",
         help="number of workers to use in dataloader for training",
         action="store",
-        default=1,
+        default=4,
         type=int
     )
     training.add_argument(
         "--val-batch-size",
         action="store",
-        default=4,
+        default=5,
         type=int
     )
     training.add_argument(
@@ -302,6 +302,12 @@ def _main():
         action="store",
         default=4,
         type=int
+    )
+    training.add_argument(
+        "--save-path",
+        action="store",
+        default="/mnt/qb/work2/goswami0/gkd965/checkpoints",
+        type=str
     )
 
     # Logging
@@ -341,6 +347,7 @@ def _main():
         outputDirPath = os.path.join(args.path,args.model)
     
     args.path  = os.path.join(outputDirPath,save_string+".grib")
+    args.timestr = timestr
     if not os.path.exists(args.path):
         os.makedirs(os.path.dirname(args.path), exist_ok=True)
 

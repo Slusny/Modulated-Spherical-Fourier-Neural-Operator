@@ -381,12 +381,14 @@ class FourCastNetv2_filmed(FourCastNetv2):
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["val_batch_size"])
 
+        scale = 0.0
+
         for i, data in enumerate(training_loader):
             input, g_truth = data
             optimizer.zero_grad()
 
             # Make predictions for this batch
-            outputs = model(input[0],input[1])
+            outputs = model(input[0],input[1],scale)
 
             # Compute the loss and its gradients
             loss = loss_fn(outputs, g_truth[0])
@@ -412,6 +414,12 @@ class FourCastNetv2_filmed(FourCastNetv2):
                             break
                     if self.wandb_run is not None:
                         wandb.log({"validation_loss": np.array(val_loss).mean() })
+                save_file ="checkpoint_"+kwargs["model"]+"_"+kwargs["model_version"]+"_epoch={}".format(i)
+                if wandb_run:
+                    save_file = save_file +"_"+ wandb_run.name + ".pkl"
+                else:
+                     save_file = save_file + kwargs["timestr"] + ".pkl"
+                torch.save(model.state_dict(), os.path.join( kwargs["save_path"],save_file))
                 model.train()
     
     def test_training(self,**kwargs):
