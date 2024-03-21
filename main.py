@@ -329,6 +329,20 @@ def _main():
         type=str, 
         help='resume existing weights and biases run')
 
+    logging_parser.add_argument(
+        '--notes', 
+        action='store', 
+        default=None,             
+        type=str, 
+        help='notes for wandb')
+    
+    logging_parser.add_argument(
+        '--tags', 
+        action='store', 
+        default=None,             
+        type=str, 
+        help='tags for wandb')
+    
 
     args, unknownargs = parser.parse_known_args()
 
@@ -407,9 +421,9 @@ def _main():
         sys.exit(0)
         
     if args.wandb   : 
-        config_wandb = vars(args).copy()
-        for key in ['notes','tags','wandb']:del config_wandb[key]
-        del config_wandb
+        # config_wandb = vars(args).copy()
+        # for key in ['notes','tags','wandb']:del config_wandb[key]
+        # del config_wandb
         if args.wandb_resume is not None :
             wandb_run = wandb.init(project=args.model + " - " +args.model_version, 
                 config=args,
