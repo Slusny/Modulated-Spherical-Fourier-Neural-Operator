@@ -376,7 +376,9 @@ def _main():
     
     if args.debug: #new
         pdb.set_trace()
+        args.training_workers = 0
         print("starting debugger")
+        print("setting training workers to 0")
 
     if args.metadata is None:
         args.metadata = []
