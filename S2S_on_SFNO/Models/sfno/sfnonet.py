@@ -694,7 +694,7 @@ class GCN(torch.nn.Module):
         for i in range(self.num_layers):
             heads_gamma.append(self.heads_gamma[i](x))
             heads_beta.append(self.heads_beta[i](x))
-        return torch.stack([torch.stack(heads_gamma),torch.stack(heads_beta)]).squeeze()
+        return torch.stack([torch.stack(heads_gamma),torch.stack(heads_beta)]).squeeze() # shape: (2,num_layers,batch_size,embed_dim)
 
 
 class FiLM(nn.Module):
@@ -703,7 +703,12 @@ class FiLM(nn.Module):
     'FiLM: Visual Reasoning with a General Conditioning Layer'
     """
     def forward(self, x, gammas, betas, block_idx,scale=1):
-        return ((1+gammas[block_idx]*scale) * x) + betas[block_idx]*scale
+        if len(gammas.shape) == 2:
+            return ((1+gammas*scale) * x) + betas*scale
+        elif gammas.shape[0] == self.num_layers:
+            return ((1+gammas[block_idx]*scale) * x) + betas[block_idx]*scale
+        else:
+            raise ValueError("Invalid FiLM input shapes")
 
 class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
     def __init__(
@@ -760,12 +765,15 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
 
             self.blocks.append(block)
         
-        self.film_gen = GCN(self.batch_size,out_features=self.embed_dim,num_layers=12)
+        self.film_gen = GCN(self.batch_size,out_features=self.embed_dim,num_layers=1)# num layers is 1 for now
     
     def forward(self, x,sst,scale=1):
 
         # calculate gammas and betas for film layers
         gamma,beta = self.film_gen(sst)
+        if gamma.shape[0] != self.num_layers:
+            gamma = gamma.unsqueeze(0)
+            beta = beta.unsqueeze(0)
         
         # save big skip
         if self.big_skip:
