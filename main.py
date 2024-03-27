@@ -279,6 +279,13 @@ def _main():
         type=int
     )
     training.add_argument(
+        "--val-loss-threshold",
+        help="increasing the scaleing of the film layer based on the validation loss. If the validation loss is lower than this threshold, the scaleing is increased by 0.05",
+        action="store",
+        default=20.,
+        type=float
+    )
+    training.add_argument(
         "--trainingdata-path",
         help="path to training data zarr file",
         action="store",

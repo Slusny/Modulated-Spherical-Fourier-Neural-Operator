@@ -400,6 +400,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
             # logging
             if self.wandb_run is not None:
                 wandb.log({"loss": loss })
+            if kwargs["debug"]:
+                print("Epoch: ", i, " Loss: ", loss)
             
             # Validation
             if i +1 % kwargs["validation_interval"] == 0:
@@ -412,8 +414,13 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         val_loss.append( loss_fn(outputs, g_truth[0]) / kwargs["val_batch_size"])
                         if val_epoch > kwargs["validation_epochs"]:
                             break
+                    mean_val_loss = sum(val_loss) / len(val_loss)
+                    # change scale value based on validation loss
+                    if mean_val_loss > kwargs["val_loss_threshold"]:
+                        scale = scale + 0.05
+                    print("Validation loss: ", mean_val_loss)
                     if self.wandb_run is not None:
-                        wandb.log({"validation_loss": np.array(val_loss).mean() })
+                        wandb.log({"validation_loss": mean_val_loss})
                 save_file ="checkpoint_"+kwargs["model"]+"_"+kwargs["model_version"]+"_epoch={}".format(i)
                 if wandb_run:
                     save_file = save_file +"_"+ wandb_run.name + ".pkl"
