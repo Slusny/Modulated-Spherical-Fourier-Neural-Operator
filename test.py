@@ -92,14 +92,41 @@
 # a = kernel(0,1437,-1,-1)
 # print(a)
 
-class test():
-    c = 3
-    def __init__(self):
-        self.a = 1
-        b = 2
+# class test():
+#     c = 3
+#     def __init__(self):
+#         self.a = 1
+#         b = 2
 
-    def print(self):
-        print(self.a, self.c)
+#     def print(self):
+#         print(self.a, self.c)
     
-t = test()
-t.print()
+# t = test()
+# t.print()
+
+import torch
+
+d = (torch.tensor([2,2]),torch.tensor([2,2]))
+# for i in [d[0],d[1]]:
+#     i.to("cuda:0")
+# d[0].to("cuda:0")
+# a,b = d
+# a.to("cuda:0")
+# # d[1].to("cuda:0")
+# print(a.device)
+# # print(d[1])
+# print(torch.tensor([2,2]).to("cuda:0"))
+
+# for a,b in d:
+#     a.to("cuda:0")
+#     b = b.to("cuda:0")
+#     print(a.device)
+#     print(b.device)
+
+# for _ in [d[0],d[1]]:
+#     _ = _.to("cuda:0")
+# print(d[0].device)
+
+input, sst = d[0].to("cuda:0"), d[1].to("cuda:0")
+print(input.device)
+print(sst.device)

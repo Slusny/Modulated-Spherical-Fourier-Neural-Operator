@@ -383,15 +383,17 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
         scale = 0.0
 
-        for i, data in enumerate(training_loader):
-            input, g_truth = data
+        for i, (input, g_truth) in enumerate(training_loader):
+            input_era5, input_sst = input[0].to(self.device), input[1].to(self.device)
+            g_truth_era5, g_truth_sst = g_truth[0].to(self.device), g_truth[1].to(self.device)
+            
             optimizer.zero_grad()
 
             # Make predictions for this batch
-            outputs = model(input[0],input[1],scale)
+            outputs = model(input_era5,input_sst,scale)
 
             # Compute the loss and its gradients
-            loss = loss_fn(outputs, g_truth[0])
+            loss = loss_fn(outputs, g_truth_era5)
             loss.backward()
 
             # Adjust learning weights
@@ -408,10 +410,11 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 val_loss = []
                 model.eval()
                 with torch.no_grad():
-                    for val_epoch, data in enumerate(validation_loader):
-                        input, g_truth = data
-                        outputs = model(input[0],input[1])
-                        val_loss.append( loss_fn(outputs, g_truth[0]) / kwargs["val_batch_size"])
+                    for val_epoch, (val_input, val_g_truth) in enumerate(validation_loader):
+                        val_input_era5, val_input_sst = val_input[0].to(self.device), val_input[1].to(self.device)
+                        val_g_truth_era5, val_g_truth_sst = val_g_truth[0].to(self.device), val_g_truth[1].to(self.device)
+                        outputs = model(val_input_era5,val_input_sst)
+                        val_loss.append( loss_fn(outputs, val_g_truth_era5) / kwargs["val_batch_size"])
                         if val_epoch > kwargs["validation_epochs"]:
                             break
                     mean_val_loss = sum(val_loss) / len(val_loss)
