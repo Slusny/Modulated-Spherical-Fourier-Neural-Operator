@@ -61,7 +61,7 @@ class ERA5_galvani(Dataset):
             self.dataset_u100 = xr.open_mfdataset("/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/u100m_1959-2022_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr") # sd: 1959-01-01, end date : 2022-12-30T18
             self.dataset_v100 = xr.open_mfdataset("/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/v100m_1959-2023-10_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr") # sd: 1959-01-01 end date: 2023-10-31
 
-        print("Training on years:")
+        print("Using years:")
         print("    ", start_year," - ", end_year)
 
         self.start_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(total_dataset_year_range[0], start_year))])

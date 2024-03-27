@@ -405,6 +405,7 @@ class FourierNeuralOperatorNet(nn.Module):
         laplace_weighting=False,
         checkpointing=False,
         batch_size = 1,
+        **overflow
     ):
         super(FourierNeuralOperatorNet, self).__init__()
 
@@ -717,8 +718,9 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
             drop_rate=0.0,
             sparsity_threshold=0.0,
             use_complex_kernels=True,
+            **kwargs
         ):
-        super().__init__()
+        super().__init__(**kwargs)
 
         # new SFNO-Block with Film Layer
         self.blocks = nn.ModuleList([])

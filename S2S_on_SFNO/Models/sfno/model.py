@@ -171,6 +171,9 @@ class FourCastNetv2(Model):
         else:
             self.checkpoint_path_film = None
 
+        # create model
+        self.model = FourierNeuralOperatorNet(**kwargs)
+
     def load_statistics(self):
         path = os.path.join(self.assets, "global_means.npy")
         LOG.info("Loading %s", path)
@@ -186,7 +189,8 @@ class FourCastNetv2(Model):
 
     def load_model(self, checkpoint_file):
         # model = nvs.FourierNeuralOperatorNet()
-        model = FourierNeuralOperatorNet()
+        # model = FourierNeuralOperatorNet()
+        model = self.model
 
         model.zero_grad()
         # Load weights
@@ -312,11 +316,13 @@ class FourCastNetv2(Model):
 class FourCastNetv2_filmed(FourCastNetv2):
     def __init__(self, precip_flag=False, **kwargs):
         super().__init__(precip_flag, **kwargs)
+
+        # init model
+        self.model = FourierNeuralOperatorNet_Filmed(**kwargs)
     
     def load_model(self, checkpoint_file):
-
-        model = FourierNeuralOperatorNet_Filmed()
-
+        
+        model = self.model
         model.zero_grad()
 
         #  Load Filmed weights
@@ -358,7 +364,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         return model
 
     def run(self):
-        pass
+        raise NotImplementedError("Filmed model run not implemented yet. Needs to considder sst input.")
 
     def training(self,wandb_run=None,**kwargs):
         dataset = ERA5_galvani(
@@ -378,35 +384,17 @@ class FourCastNetv2_filmed(FourCastNetv2):
         optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
         loss_fn = torch.nn.MSELoss()
 
+        print("Trainig Dataloader:")
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
+        print("Trainig Dataloader:")
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["val_batch_size"])
 
         scale = 0.0
 
         for i, (input, g_truth) in enumerate(training_loader):
-            input_era5, input_sst = input[0].to(self.device), input[1].to(self.device)
-            g_truth_era5, g_truth_sst = g_truth[0].to(self.device), g_truth[1].to(self.device)
-            
-            optimizer.zero_grad()
 
-            # Make predictions for this batch
-            outputs = model(input_era5,input_sst,scale)
-
-            # Compute the loss and its gradients
-            loss = loss_fn(outputs, g_truth_era5)
-            loss.backward()
-
-            # Adjust learning weights
-            optimizer.step()
-
-            # logging
-            if self.wandb_run is not None:
-                wandb.log({"loss": loss })
-            if kwargs["debug"]:
-                print("Epoch: ", i, " Loss: ", loss)
-            
             # Validation
-            if i +1 % kwargs["validation_interval"] == 0:
+            if i % kwargs["validation_interval"] == 0:
                 val_loss = []
                 model.eval()
                 with torch.no_grad():
@@ -431,6 +419,29 @@ class FourCastNetv2_filmed(FourCastNetv2):
                      save_file = save_file + kwargs["timestr"] + ".pkl"
                 torch.save(model.state_dict(), os.path.join( kwargs["save_path"],save_file))
                 model.train()
+            
+            # Training  
+            input_era5, input_sst = input[0].to(self.device), input[1].to(self.device)
+            g_truth_era5, g_truth_sst = g_truth[0].to(self.device), g_truth[1].to(self.device)
+            
+            optimizer.zero_grad()
+
+            # Make predictions for this batch
+            outputs = model(input_era5,input_sst,scale)
+
+            # Compute the loss and its gradients
+            loss = loss_fn(outputs, g_truth_era5)
+            loss.backward()
+
+            # Adjust learning weights
+            optimizer.step()
+
+            # logging
+            if self.wandb_run is not None:
+                wandb.log({"loss": loss })
+            if kwargs["debug"]:
+                print("Epoch: ", i, " Loss: ", loss)
+            
     
     def test_training(self,**kwargs):
         dataset = ERA5_galvani(

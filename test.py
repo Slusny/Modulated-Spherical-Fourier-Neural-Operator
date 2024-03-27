@@ -127,6 +127,16 @@ d = (torch.tensor([2,2]),torch.tensor([2,2]))
 #     _ = _.to("cuda:0")
 # print(d[0].device)
 
-input, sst = d[0].to("cuda:0"), d[1].to("cuda:0")
-print(input.device)
-print(sst.device)
+# input, sst = d[0].to("cuda:0"), d[1].to("cuda:0")
+# print(input.device)
+# print(sst.device)
+
+class test():
+    def __init__(self,a=1,b=2,**kwargs):
+        self.a = a
+        self.b = b
+    def p(self):
+        print(self.a,self.b)
+
+t = test(a=3,b=4,c=5)
+t.p()
