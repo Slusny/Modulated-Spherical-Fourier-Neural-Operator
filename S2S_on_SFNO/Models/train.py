@@ -66,8 +66,8 @@ class ERA5_galvani(Dataset):
             if file_u100.endswith(".zarr"): self.dataset_v100 = xr.open_zarr(file_v100)
             else:                           self.dataset_v100 = xr.open_mfdataset(file_v100) # sd: 1959-01-01 end date: 2023-10-31
 
-        print("Using years:")
-        print("    ", start_year," - ", end_year)
+        print("Using years: ",start_year," - ", end_year)
+        print("")
 
         self.start_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(total_dataset_year_range[0], start_year))])
         self.end_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(total_dataset_year_range[0], end_year))])
