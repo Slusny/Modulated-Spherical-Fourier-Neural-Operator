@@ -412,7 +412,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     if mean_val_loss > kwargs["val_loss_threshold"]:
                         scale = scale + 0.05
                     print("Validation loss: ", mean_val_loss)
-                    if self.wandb_run is not None:
+                    if wandb_run :
                         wandb.log({"validation_loss": mean_val_loss})
                 save_file ="checkpoint_"+kwargs["model"]+"_"+kwargs["model_version"]+"_epoch={}".format(i)
                 if wandb_run:
