@@ -679,9 +679,9 @@ class GCN(torch.nn.Module):
         self.edge_index_batch = ( edge_index.repeat((1,batch_size))+offset ).to(device)
 
     def forward(self, sst):
-        sst_graph_list = sst.reshape(self.batch_size,-1)[self.batch_nan_mask][None].T
+        x = sst.reshape(self.batch_size,-1)[self.batch_nan_mask][None].T
 
-        x1 = self.conv1(sst_graph_list, self.edge_index_batch)
+        x1 = self.conv1(x, self.edge_index_batch)
         x = x + F.leaky_relu(x1)
         # x = F.dropout(x, training=self.training)
         x2 = self.conv2(x, self.edge_index_batch)
