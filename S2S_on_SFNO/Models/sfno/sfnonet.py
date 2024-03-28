@@ -349,7 +349,7 @@ class FourierNeuralOperatorBlock_Filmed(nn.Module):
 
         x = self.norm1(x)
 
-        x = self.film(x,gamma,beta,self.block_idx, scale)
+        x = self.film(x,gamma,beta, scale)
 
         if hasattr(self, "mlp"):
             x = self.mlp(x)
@@ -703,13 +703,8 @@ class FiLM(nn.Module):
     A Feature-wise Linear Modulation Layer from
     'FiLM: Visual Reasoning with a General Conditioning Layer'
     """
-    def forward(self, x, gammas, betas, block_idx,scale=1):
-        if len(gammas.shape) == 2:
-            return ((1+gammas*scale) * x) + betas*scale
-        elif gammas.shape[0] == self.num_layers:
-            return ((1+gammas[block_idx]*scale) * x) + betas[block_idx]*scale
-        else:
-            raise ValueError("Invalid FiLM input shapes")
+    def forward(self, x, gammas, betas,scale=1):
+        return ((1+gammas*scale) * x) + betas*scale
 
 class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
     def __init__(
@@ -775,8 +770,8 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         # calculate gammas and betas for film layers
         gamma,beta = self.film_gen(sst)
         if gamma.shape[0] != self.num_layers:
-            gamma = gamma.unsqueeze(0)
-            beta = beta.unsqueeze(0)
+            gamma = gamma.repeat(self.num_layers,1)
+            beta = beta.repeat(self.num_layers,1)
         
         # save big skip
         if self.big_skip:
@@ -791,8 +786,8 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         # forward features
         x = self.pos_drop(x)
 
-        for blk in self.blocks:
-            x = blk(x,gamma,beta,scale)
+        for i, blk in enumerate(self.blocks):
+            x = blk(x,gamma[i],beta[i],scale)
 
         # concatenate the big skip
         if self.big_skip:
@@ -803,4 +798,6 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
 
         return x
     
-        
+    # get only the parameters of the film generator
+    def get_film_params(self):
+        return self.film_gen.parameters()

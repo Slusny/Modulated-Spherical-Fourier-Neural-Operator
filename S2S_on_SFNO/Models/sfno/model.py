@@ -385,7 +385,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         model = self.load_model(self.checkpoint_path)
         model.train()
 
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+        optimizer = torch.optim.SGD(model.get_film_params(), lr=0.001, momentum=0.9)
         loss_fn = torch.nn.MSELoss()
 
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
