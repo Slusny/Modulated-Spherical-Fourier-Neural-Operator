@@ -299,12 +299,6 @@ def _main():
         type=int
     )
     training.add_argument(
-        "--val-batch-size",
-        action="store",
-        default=5,
-        type=int
-    )
-    training.add_argument(
         "--batch-size",
         action="store",
         default=5,

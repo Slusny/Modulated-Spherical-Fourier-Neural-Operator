@@ -389,7 +389,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         loss_fn = torch.nn.MSELoss()
 
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
-        validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["val_batch_size"])
+        validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
 
         scale = 0.0
 
