@@ -670,7 +670,7 @@ class GCN(torch.nn.Module):
         num_edges = edge_index.shape[1]
 
         # repeat nan_mask for each sst-matrix in batch 
-        self.batch_nan_mask = np.repeat(nan_mask[ np.newaxis,: ], batch_size, axis=0)
+        self.batch_nan_mask = np.repeat(nan_mask[ np.newaxis,: ], batch_size, axis=1)
 
         # handle batch by appending sst-matrices to long 1D array, edge_index gets repeated and offseted to create the distinct graphs 
         self.batch = torch.tensor(list(range(batch_size))*num_nodes).reshape((num_nodes,batch_size)).T.flatten()
