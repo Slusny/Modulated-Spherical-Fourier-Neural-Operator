@@ -50,7 +50,8 @@ class ERA5_galvani(Dataset):
         self.sst = sst
         self.coarse_level = coarse_level
         self.uv100 = uv100
-        self.dataset = xr.open_dataset(path)
+        if path.endswith(".zarr"):  self.dataset = xr.open_zarr(path)
+        else:                       self.dataset = xr.open_dataset(path)
         if self.uv100:
             #qb
             # self.dataset_u100 = xr.open_mfdataset(os.path.join(path_era5+"100m_u_component_of_wind/100m_u_component_of_wind_????.nc"))
@@ -58,8 +59,12 @@ class ERA5_galvani(Dataset):
             #ceph
             # self.dataset_uv100 = xr.open_mfdataset("/mnt/ceph/goswamicd/datasets/weatherbench2/era5/1959-2023_01_10-u100mv100m-6h-1440x721"))
             # qb zarr
-            self.dataset_u100 = xr.open_mfdataset("/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/u100m_1959-2022_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr") # sd: 1959-01-01, end date : 2022-12-30T18
-            self.dataset_v100 = xr.open_mfdataset("/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/v100m_1959-2023-10_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr") # sd: 1959-01-01 end date: 2023-10-31
+            file_u100 = "/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/u100m_1959-2022_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr"
+            if file_u100.endswith(".zarr"): self.dataset_u100 = xr.open_zarr(file_u100)
+            else:                           self.dataset_u100 = xr.open_mfdataset(file_u100) # sd: 1959-01-01, end date : 2022-12-30T18
+            file_v100 = "/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/v100m_1959-2023-10_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr"
+            if file_u100.endswith(".zarr"): self.dataset_v100 = xr.open_zarr(file_v100)
+            else:                           self.dataset_v100 = xr.open_mfdataset(file_v100) # sd: 1959-01-01 end date: 2023-10-31
 
         print("Using years:")
         print("    ", start_year," - ", end_year)
