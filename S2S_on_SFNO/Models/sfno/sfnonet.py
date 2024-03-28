@@ -718,6 +718,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
             drop_rate=0.0,
             sparsity_threshold=0.0,
             use_complex_kernels=True,
+            device=device
             **kwargs
         ):
         super().__init__(**kwargs)
@@ -767,7 +768,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
 
             self.blocks.append(block)
         
-        self.film_gen = GCN(self.batch_size,out_features=self.embed_dim,num_layers=1)# num layers is 1 for now
+        self.film_gen = GCN(self.batch_size,device,out_features=self.embed_dim,num_layers=1)# num layers is 1 for now
     
     def forward(self, x,sst,scale=1):
 

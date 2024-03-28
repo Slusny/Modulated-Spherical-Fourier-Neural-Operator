@@ -318,7 +318,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         super().__init__(precip_flag, **kwargs)
 
         # init model
-        self.model = FourierNeuralOperatorNet_Filmed(**kwargs)
+        self.model = FourierNeuralOperatorNet_Filmed(**kwargs,device=self.device)
     
     def load_model(self, checkpoint_file):
         
