@@ -714,11 +714,11 @@ class FiLM(nn.Module):
 class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
     def __init__(
             self,
+            device,
             mlp_ratio=2.0,
             drop_rate=0.0,
             sparsity_threshold=0.0,
             use_complex_kernels=True,
-            device=device
             **kwargs
         ):
         super().__init__(**kwargs)
