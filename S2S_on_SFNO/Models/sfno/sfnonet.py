@@ -644,7 +644,7 @@ class FourierNeuralOperatorNet(nn.Module):
         return x
 
 class GCN(torch.nn.Module):
-    def __init__(self,batch_size,out_features=256,num_layers=12,coarse_level=4,graph_asset_path="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
+    def __init__(self,batch_size,device,out_features=256,num_layers=12,coarse_level=4,graph_asset_path="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
         super().__init__()
 
         # Model
@@ -673,10 +673,10 @@ class GCN(torch.nn.Module):
         self.batch_nan_mask = np.repeat(nan_mask[ np.newaxis,: ], batch_size, axis=0)
 
         # handle batch by appending sst-matrices to long 1D array, edge_index gets repeated and offseted to create the distinct graphs 
-        self.batch = torch.tensor(list(range(batch_size))*num_nodes).reshape((num_nodes,batch_size)).T.flatten().to(self.device)
+        self.batch = torch.tensor(list(range(batch_size))*num_nodes).reshape((num_nodes,batch_size)).T.flatten().to(device)
         offset_ = torch.tensor(list(range(batch_size))*num_edges).reshape((num_edges,batch_size)).T.flatten()*num_nodes
         offset = torch.stack([offset_,offset_])
-        self.edge_index_batch = ( edge_index.repeat((1,batch_size))+offset ).to(self.device)
+        self.edge_index_batch = ( edge_index.repeat((1,batch_size))+offset ).to(device)
 
     def forward(self, sst):
         sst_graph_list = sst.reshape(self.batch_size,-1)[self.batch_nan_mask][None].T
