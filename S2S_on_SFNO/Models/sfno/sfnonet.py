@@ -12,6 +12,7 @@ from torch_geometric.nn.pool import global_mean_pool
 
 import numpy as np
 import os
+import einops
 
 # from apex.normalization import FusedLayerNorm
 
@@ -704,7 +705,9 @@ class FiLM(nn.Module):
     'FiLM: Visual Reasoning with a General Conditioning Layer'
     """
     def forward(self, x, gammas, betas,scale=1):
-        return ((1+gammas*scale) * x) + betas*scale
+        _gammas = einops.repeat(gammas, 'j -> i j k l',i=x.shape[0],k=x.shape[2],l=x.shape[3])
+        _betas  = einops.repeat(betas, 'j -> i j k l',i=x.shape[0],k=x.shape[2],l=x.shape[3])
+        return ((1+_gammas*scale) * x) + _betas*scale
 
 class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
     def __init__(
