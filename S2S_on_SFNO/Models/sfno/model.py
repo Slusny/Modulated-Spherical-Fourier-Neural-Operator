@@ -439,7 +439,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
             optimizer.step()
 
             # logging
-            if self.wandb_run is not None:
+            if wandb_run is not None:
                 wandb.log({"loss": loss })
             if kwargs["debug"]:
                 print("Epoch: ", i, " Loss: ", loss)
