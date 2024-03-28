@@ -367,11 +367,15 @@ class FourCastNetv2_filmed(FourCastNetv2):
         raise NotImplementedError("Filmed model run not implemented yet. Needs to considder sst input.")
 
     def training(self,wandb_run=None,**kwargs):
+
+        print("Trainig Data:")
         dataset = ERA5_galvani(
             self,
             path=kwargs["trainingdata_path"], 
             start_year=kwargs["trainingset_start_year"],
-            end_year=kwargs["trainingset_end_year"])
+            end_year=kwargs["trainingset_end_year"]
+        )
+        print("Validation Data:")
         dataset_validation = ERA5_galvani(
             self,
             path=kwargs["trainingdata_path"], 
@@ -384,9 +388,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
         loss_fn = torch.nn.MSELoss()
 
-        print("Trainig Dataloader:")
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
-        print("Trainig Dataloader:")
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["val_batch_size"])
 
         scale = 0.0
