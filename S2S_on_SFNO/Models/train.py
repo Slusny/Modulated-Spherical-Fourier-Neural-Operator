@@ -107,8 +107,8 @@ class ERA5_galvani(Dataset):
                 # if self.coarse_level > 1:
                 #     sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean()
                 if self.coarse_level > 1:
-                    sst = sst[:-1:self.coarse_level,::self.coarse_level]
-                return (data,torch.from_numpy(sst.to_numpy()))
+                    sst = sst.to_numpy()[:-1:self.coarse_level,::self.coarse_level]
+                return (data,torch.from_numpy(sst))
             else:
                 return data
         
@@ -414,7 +414,7 @@ def test(kwargs):
         start_year=1990,
         end_year=2000,
     )
-    for i in range(0,1):
+    for i in range(3,8):
         print("--- Workers: ", i, " ---")
         coarsen_loader = DataLoader(dataset_coarsen,shuffle=True,num_workers=i, batch_size=kwargs["batch_size"])
         masked_loader = DataLoader(dataset_masked,shuffle=True,num_workers=i, batch_size=kwargs["batch_size"])
