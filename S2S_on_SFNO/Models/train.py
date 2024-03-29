@@ -408,15 +408,13 @@ def test(kwargs):
         params,
         start_year=2000,
         end_year=2010,
-        sst=False
     )
     dataset_coarsen = ERA5_galvani_coarsen(
         params,
         start_year=1990,
         end_year=2000,
-        sst=False
     )
-    for i in range(3,8):
+    for i in range(5,8):
         print("--- Workers: ", i, " ---")
         coarsen_loader = DataLoader(dataset_coarsen,shuffle=True,num_workers=i, batch_size=kwargs["batch_size"])
         masked_loader = DataLoader(dataset_masked,shuffle=True,num_workers=i, batch_size=kwargs["batch_size"])
