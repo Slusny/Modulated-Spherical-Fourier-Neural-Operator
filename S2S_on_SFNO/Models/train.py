@@ -424,7 +424,7 @@ def test(kwargs):
     for i, data in enumerate(coarsen_loader):
         count += 1
         if count == end_count: break
-        print(len(data))
+        # print(len(data))
     e_coarsen = time()
     print("Time to load coarsen: ", (e_coarsen-s_coarsen)/count)
 
@@ -433,6 +433,6 @@ def test(kwargs):
     for i, data in enumerate(masked_loader):
         count += 1
         if count == end_count: break
-        print(len(data))
+        # print(len(data))
     e_masked = time()
     print("Time to load masked: ", (e_masked-s_masked)/count)
