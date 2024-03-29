@@ -407,9 +407,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         val_loss.append( loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"])
                         if val_epoch > kwargs["validation_epochs"]:
                             break
-                    val_loss_np = np.array(val_loss)
-                    mean_val_loss = val_loss_np.mean()
-                    std_val_loss = val_loss_np.std()
+                    val_loss_pt = torch.tensor(val_loss)
+                    mean_val_loss = val_loss_pt.mean()
+                    std_val_loss = val_loss_pt.std()
                     # change scale value based on validation loss
                     if mean_val_loss > kwargs["val_loss_threshold"]:
                         scale = scale + 0.05
