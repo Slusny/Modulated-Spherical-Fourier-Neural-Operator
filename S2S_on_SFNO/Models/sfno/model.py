@@ -403,7 +403,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     for val_epoch, (val_input, val_g_truth) in enumerate(validation_loader):
                         val_input_era5, val_input_sst = val_input[0].to(self.device), val_input[1].to(self.device)
                         val_g_truth_era5, val_g_truth_sst = val_g_truth[0].to(self.device), val_g_truth[1].to(self.device)
-                        outputs = model(val_input_era5,val_input_sst)
+                        outputs = model(val_input_era5,val_input_sst,scale)
                         val_loss.append( loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"])
                         if val_epoch > kwargs["validation_epochs"]:
                             break

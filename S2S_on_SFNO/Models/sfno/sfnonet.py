@@ -664,6 +664,7 @@ class GCN(torch.nn.Module):
         # prepare the graph 
 
         # Nan_mask removes nans from sst-matrix -> 1D array, edge_index and nan_mask loaded from file    
+        # !! if numpy masking is used to downsample instead of coarsen, an other edge_index, nan_mask needs to be loaded
         edge_index = torch.load(os.path.join(graph_asset_path,"edge_index_coarsen_"+str(coarse_level)+".pt"))
         nan_mask = np.load(os.path.join(graph_asset_path,"nan_mask_coarsen_"+str(coarse_level)+".npy"))
         num_node_features = 686364
@@ -699,7 +700,8 @@ class GCN(torch.nn.Module):
 
         # Skip
         x1 = self.conv1(x, self.edge_index_batch)
-        x = einops.repeat(x,'i j -> i (repeat j)',repeat=self.hidden_size) + F.leaky_relu(x1)
+        # x = einops.repeat(x,'i j -> i (repeat j)',repeat=self.hidden_size) + F.leaky_relu(x1)
+        x = x + F.leaky_relu(x1)
         # x = F.dropout(x, training=self.training)
         x2 = self.conv2(x, self.edge_index_batch)
         x = x + F.leaky_relu(x2)
