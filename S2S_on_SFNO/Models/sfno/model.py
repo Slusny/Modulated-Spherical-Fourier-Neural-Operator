@@ -407,11 +407,13 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         val_loss.append( loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"])
                         if val_epoch > kwargs["validation_epochs"]:
                             break
-                    mean_val_loss = sum(val_loss) / len(val_loss)
+                    val_loss_np = np.array(val_loss)
+                    mean_val_loss = val_loss_np.mean()
+                    std_val_loss = val_loss_np.std()
                     # change scale value based on validation loss
                     if mean_val_loss > kwargs["val_loss_threshold"]:
                         scale = scale + 0.05
-                    print("Validation loss: ", mean_val_loss)
+                    print("Validation loss: ", mean_val_loss, " +/- ", std_val_loss)
                     if wandb_run :
                         wandb.log({"validation_loss": mean_val_loss})
                 save_file ="checkpoint_"+kwargs["model"]+"_"+kwargs["model_version"]+"_epoch={}".format(i)
