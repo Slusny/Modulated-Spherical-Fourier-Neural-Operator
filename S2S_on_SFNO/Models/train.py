@@ -405,29 +405,34 @@ def train(kwargs):
 def test(kwargs):
 
     dataset_masked = ERA5_galvani(
-        params
+        params,
+        start_year=2000,
+        end_year=2010,
     )
     dataset_coarsen = ERA5_galvani_coarsen(
-        params
+        params,
+        start_year=1990,
+        end_year=2000,
     )
 
     coarsen_loader = DataLoader(dataset_coarsen,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
     masked_loader = DataLoader(dataset_masked,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
 
     s_coarsen = time()
-    count = 0 
+    count = 1
+    end_count = 10
     for i, data in enumerate(coarsen_loader):
         count += 1
-        if count == 100: break
+        if count == end_count: break
         print(len(data))
     e_coarsen = time()
-    print("Time to load coarsen: ", e_coarsen-s_coarsen)
+    print("Time to load coarsen: ", (e_coarsen-s_coarsen)/count)
 
     s_masked = time()
     count = 0
     for i, data in enumerate(masked_loader):
         count += 1
-        if count == 100: break
+        if count == end_count: break
         print(len(data))
     e_masked = time()
-    print("Time to load masked: ", e_masked-s_masked)
+    print("Time to load masked: ", (e_masked-s_masked)/count)
