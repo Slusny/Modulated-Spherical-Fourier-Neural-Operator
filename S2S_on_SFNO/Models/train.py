@@ -422,6 +422,7 @@ def test(kwargs):
     c_times = []
     count = 1
     end_count = 10
+    s_coarsen = time()
     for i, data in enumerate(coarsen_loader):
         e_coarsen = time()
         count += 1
@@ -436,6 +437,7 @@ def test(kwargs):
     # s_masked = time()
     m_times = []
     count = 0
+    s_masked = time()
     for i, data in enumerate(masked_loader):
         e_masked = time()
         count += 1
@@ -446,3 +448,4 @@ def test(kwargs):
     # e_masked = time()
     # print("Time to load masked: ", (e_masked-s_masked)/count)
     print("Time to load masked: ", np.array(m_times).mean())    
+    print(s_masked)
