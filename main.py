@@ -419,9 +419,12 @@ def _main():
         # from S2S_on_SFNO.Models.train import train
         # train(vars(args))
         # print("Test passed")
-        kwargs = vars(args)
-        model.test_training(**kwargs)
-        sys.exit(0)
+        from S2S_on_SFNO.Models.train import test
+        test(vars(args))
+        print("Test passed")
+        # kwargs = vars(args)
+        # model.test_training(**kwargs)
+        # sys.exit(0)
         
     if args.wandb   : 
         # config_wandb = vars(args).copy()

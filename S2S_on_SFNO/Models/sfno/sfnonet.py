@@ -679,6 +679,9 @@ class GCN(torch.nn.Module):
         offset = torch.stack([offset_,offset_])
         self.edge_index_batch = ( edge_index.repeat((1,batch_size))+offset ).to(device)
 
+        # shape anlysis
+        # node values (sst): (num_nodes,1) ...
+
     def forward(self, sst):
         x = sst.reshape(self.batch_size,-1)[self.batch_nan_mask][None].T
         orig = x
