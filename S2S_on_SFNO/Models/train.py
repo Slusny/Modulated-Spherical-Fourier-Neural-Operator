@@ -105,9 +105,9 @@ class ERA5_galvani(Dataset):
             if self.sst:
                 sst = sample["sea_surface_temperature"]
                 if self.coarse_level > 1:
-                    sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean()
+                    sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean().to_numpy()
                 # if self.coarse_level > 1:
-                #     sst = sst.to_numpy()[:-1:self.coarse_level,::self.coarse_level]
+                #     sst = sst.to_numpy()[:-1:self.coarse_level,::self.coarse_level] # or numpy at the end
                 return (data,torch.from_numpy(sst))
             else:
                 return data
