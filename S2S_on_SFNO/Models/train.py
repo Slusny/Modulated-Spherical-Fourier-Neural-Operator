@@ -208,12 +208,12 @@ class ERA5_galvani_coarsen(Dataset):
                 sst = sample["sea_surface_temperature"]
                 if self.coarse_level > 1:
                     s = time()
-                    for i in range(50):
+                    for i in range(500):
                         tst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean()
                     e = time()
                     print("Time to coarsen: ", e-s)
                     s = time()
-                    for i in range(50):
+                    for i in range(500):
                         tst = sst[:-1:self.coarse_level,::self.coarse_level]
                     e = time()
                     print("Time to mask: ", e-s)
