@@ -266,6 +266,10 @@ class FourCastNetv2(Model):
 
         torch.set_grad_enabled(False)
 
+        # Test
+        dataset = ERA5_galvani(self,start_year=2019,end_year=2020)
+        data = dataset[0]
+
         with self.stepper(self.hour_steps) as stepper:
             for i in range(self.lead_time // self.hour_steps):
                 output = model(input_iter)
@@ -401,8 +405,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 model.eval()
                 with torch.no_grad():
                     for val_epoch, (val_input, val_g_truth) in enumerate(validation_loader):
-                        val_input_era5, val_input_sst = val_input[0].to(self.device), val_input[1].to(self.device)
-                        val_g_truth_era5, val_g_truth_sst = val_g_truth[0].to(self.device), val_g_truth[1].to(self.device)
+                        val_input_era5, val_input_sst = self.normalise(val_input[0].to(self.device)), val_input[1].to(self.device)
+                        val_g_truth_era5, val_g_truth_sst = self.normalise(val_g_truth[0].to(self.device)), val_g_truth[1].to(self.device)
                         outputs = model(val_input_era5,val_input_sst,scale)
                         val_loss.append( loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"])
                         if val_epoch > kwargs["validation_epochs"]:

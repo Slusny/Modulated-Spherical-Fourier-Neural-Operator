@@ -19,7 +19,8 @@
 // in cluster:
 // python main.py --model sfno --date 20210101 --time 0000 --lead-time 120 --assets /mnt/qb/work2/goswami0/gkd965/Assets/sfno --input localERA5
 // python main.py --model sfno --date 20210101 --time 0000 --lead-time 120 --input file --file ./S2S_on_SFNO/inputs/ClimateInputData_202101010.grib --output netcdf
-//
+// python main.py --model sfno --date 20210101 --time 0000 --lead-time 120 --input file --file /mnt/qb/work2/goswami0/gkd965/inputs/ClimateInputData_201901010.grib --assets /mnt/qb/work2/goswami0/gkd965/Assets/sfno 
+////
 //test:
 // python main.py --model sfno --model-version film --train --wandb --validation-interval 10 --validation-epochs 3 --training-workers 0 
 // python main.py --model sfno --model-version film --train --validation-interval 10 --validation-epochs 3 --training-workers 0 --batch-size 1
