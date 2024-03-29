@@ -651,15 +651,15 @@ class GCN(torch.nn.Module):
         # Model
         self.batch_size = batch_size
         self.num_layers = num_layers
-        hidden_size = out_features*2
-        self.conv1 = GCNConv(1, hidden_size,cached=True)
-        self.conv2 = GCNConv(hidden_size, hidden_size,cached=True)
-        self.fc1 = torch.nn.Linear(hidden_size, out_features)
+        self.hidden_size = out_features*2
+        self.conv1 = GCNConv(1, self.hidden_size,cached=True)
+        self.conv2 = GCNConv(self.hidden_size, self.hidden_size,cached=True)
+        self.fc1 = torch.nn.Linear(self.hidden_size, out_features)
         self.heads_gamma = nn.ModuleList([])
         self.heads_beta = nn.ModuleList([])
         for i in range(self.num_layers):
-            self.heads_gamma.append(nn.Linear(hidden_size, out_features))
-            self.heads_beta.append(nn.Linear(hidden_size, out_features))
+            self.heads_gamma.append(nn.Linear(self.hidden_size, out_features))
+            self.heads_beta.append(nn.Linear(self.hidden_size, out_features))
         
         # prepare the graph 
 
@@ -681,28 +681,29 @@ class GCN(torch.nn.Module):
 
     def forward(self, sst):
         x = sst.reshape(self.batch_size,-1)[self.batch_nan_mask][None].T
-
+        orig = x
         # No Skip
-        x = self.conv1(x, self.edge_index_batch)
-        x = F.relu(x)
+        h = self.conv1(x, self.edge_index_batch)
+        h = F.relu(h)
         # x = F.dropout(x, training=self.training)
-        x = self.conv2(x, self.edge_index_batch)
-        x = F.relu(x)
-        x = self.conv2(x, self.edge_index_batch)
-        x = F.relu(x)
-        x = self.conv2(x, self.edge_index_batch)
-        x = global_mean_pool(x, self.batch)
+        h = self.conv2(h, self.edge_index_batch)
+        h = F.relu(h)
+        h = self.conv2(h, self.edge_index_batch)
+        h = F.relu(h)
+        h = self.conv2(h, self.edge_index_batch)
+        h = global_mean_pool(h, self.batch)
+        
 
-        # # Skip
-        # x1 = self.conv1(x, self.edge_index_batch)
-        # x = x + F.leaky_relu(x1)
-        # # x = F.dropout(x, training=self.training)
-        # x2 = self.conv2(x, self.edge_index_batch)
-        # x = x + F.leaky_relu(x2)
-        # x3 = self.conv2(x, self.edge_index_batch)
-        # x = x + F.leaky_relu(x3)
-        # x = x + self.conv2(x, self.edge_index_batch)
-        # x = global_mean_pool(x, self.batch)
+        # Skip
+        x1 = self.conv1(x, self.edge_index_batch)
+        x = einops.repeat(x,'i,j -> i (repeat j)',repeat=self.hidden_size) + F.leaky_relu(x1)
+        # x = F.dropout(x, training=self.training)
+        x2 = self.conv2(x, self.edge_index_batch)
+        x = x + F.leaky_relu(x2)
+        x3 = self.conv2(x, self.edge_index_batch)
+        x = x + F.leaky_relu(x3)
+        x = x + self.conv2(x, self.edge_index_batch)
+        x = global_mean_pool(x, self.batch)
         heads_gamma = []
         heads_beta = []
         for i in range(self.num_layers):
