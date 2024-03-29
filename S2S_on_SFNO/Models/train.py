@@ -414,7 +414,7 @@ def test(kwargs):
         start_year=1990,
         end_year=2000,
     )
-    for i in range(1,2):
+    for i in range(0,1):
         print("--- Workers: ", i, " ---")
         coarsen_loader = DataLoader(dataset_coarsen,shuffle=True,num_workers=i, batch_size=kwargs["batch_size"])
         masked_loader = DataLoader(dataset_masked,shuffle=True,num_workers=i, batch_size=kwargs["batch_size"])
