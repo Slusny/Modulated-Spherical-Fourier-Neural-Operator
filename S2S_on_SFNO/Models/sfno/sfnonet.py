@@ -699,7 +699,7 @@ class GCN(torch.nn.Module):
 
         # Skip
         x1 = self.conv1(x, self.edge_index_batch)
-        x = einops.repeat(x,'i,j -> i (repeat j)',repeat=self.hidden_size) + F.leaky_relu(x1)
+        x = einops.repeat(x,'i j -> i (repeat j)',repeat=self.hidden_size) + F.leaky_relu(x1)
         # x = F.dropout(x, training=self.training)
         x2 = self.conv2(x, self.edge_index_batch)
         x = x + F.leaky_relu(x2)
