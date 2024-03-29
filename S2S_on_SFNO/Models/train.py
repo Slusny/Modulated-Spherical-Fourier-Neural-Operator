@@ -414,38 +414,40 @@ def test(kwargs):
         start_year=1990,
         end_year=2000,
     )
+    for i in range(1,2):
+        print("--- Workers: ", i, " ---")
+        coarsen_loader = DataLoader(dataset_coarsen,shuffle=True,num_workers=i, batch_size=kwargs["batch_size"])
+        masked_loader = DataLoader(dataset_masked,shuffle=True,num_workers=i, batch_size=kwargs["batch_size"])
 
-    coarsen_loader = DataLoader(dataset_coarsen,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
-    masked_loader = DataLoader(dataset_masked,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
-
-    # s_coarsen = time()
-    c_times = []
-    count = 1
-    end_count = 10
-    s_coarsen = time()
-    for i, data in enumerate(coarsen_loader):
-        e_coarsen = time()
-        count += 1
-        if count == end_count: break
-        # print(len(data))
-        c_times.append(e_coarsen-s_coarsen)
+        # s_coarsen = time()
+        c_times = []
+        count = 1
+        end_count = 20
         s_coarsen = time()
-    # e_coarsen = time()
-    # print("Time to load coarsen: ", (e_coarsen-s_coarsen)/count)
-    print("Time to load coarsen: ", np.array(c_times).mean())    
+        for i, data in enumerate(coarsen_loader):
+            e_coarsen = time()
+            count += 1
+            if count == end_count: break
+            # print(len(data))
+            c_times.append(e_coarsen-s_coarsen)
+            s_coarsen = time()
+        # e_coarsen = time()
+        # print("Time to load coarsen: ", (e_coarsen-s_coarsen)/count)
+        print("Time to load coarsen: ", np.array(c_times).mean())  
+        print(c_times)  
 
-    # s_masked = time()
-    m_times = []
-    count = 0
-    s_masked = time()
-    for i, data in enumerate(masked_loader):
-        e_masked = time()
-        count += 1
-        if count == end_count: break
-        # print(len(data))
-        m_times.append(e_masked-s_masked)
+        # s_masked = time()
+        m_times = []
+        count = 0
         s_masked = time()
-    # e_masked = time()
-    # print("Time to load masked: ", (e_masked-s_masked)/count)
-    print("Time to load masked: ", np.array(m_times).mean())    
-    print(s_masked)
+        for i, data in enumerate(masked_loader):
+            e_masked = time()
+            count += 1
+            if count == end_count: break
+            # print(len(data))
+            m_times.append(e_masked-s_masked)
+            s_masked = time()
+        # e_masked = time()
+        # print("Time to load masked: ", (e_masked-s_masked)/count)
+        print("Time to load masked: ", np.array(m_times).mean())    
+        print(m_times)

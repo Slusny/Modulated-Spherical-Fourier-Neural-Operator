@@ -684,17 +684,17 @@ class GCN(torch.nn.Module):
 
     def forward(self, sst):
         x = sst.reshape(self.batch_size,-1)[self.batch_nan_mask][None].T
-        orig = x
-        # No Skip
-        h = self.conv1(x, self.edge_index_batch)
-        h = F.relu(h)
-        # x = F.dropout(x, training=self.training)
-        h = self.conv2(h, self.edge_index_batch)
-        h = F.relu(h)
-        h = self.conv2(h, self.edge_index_batch)
-        h = F.relu(h)
-        h = self.conv2(h, self.edge_index_batch)
-        h = global_mean_pool(h, self.batch)
+        # orig = x
+        # # No Skip
+        # h = self.conv1(x, self.edge_index_batch)
+        # h = F.relu(h)
+        # # x = F.dropout(x, training=self.training)
+        # h = self.conv2(h, self.edge_index_batch)
+        # h = F.relu(h)
+        # h = self.conv2(h, self.edge_index_batch)
+        # h = F.relu(h)
+        # h = self.conv2(h, self.edge_index_batch)
+        # h = global_mean_pool(h, self.batch)
         
 
         # Skip
@@ -705,7 +705,8 @@ class GCN(torch.nn.Module):
         x = x + F.leaky_relu(x2)
         x3 = self.conv2(x, self.edge_index_batch)
         x = x + F.leaky_relu(x3)
-        x = x + self.conv2(x, self.edge_index_batch)
+        # x = x + self.conv2(x, self.edge_index_batch)
+        x =  self.conv2(x, self.edge_index_batch)
         x = global_mean_pool(x, self.batch)
         heads_gamma = []
         heads_beta = []
