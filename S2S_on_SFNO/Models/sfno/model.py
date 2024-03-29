@@ -371,7 +371,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
         raise NotImplementedError("Filmed model run not implemented yet. Needs to considder sst input.")
 
     def training(self,wandb_run=None,**kwargs):
-
+        self.load_statistics()
+        
         print("Trainig Data:")
         dataset = ERA5_galvani(
             self,
