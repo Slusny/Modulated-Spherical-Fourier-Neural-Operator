@@ -455,7 +455,7 @@ def test(kwargs):
         print(system_monitor())#
         for i, data in enumerate(masked_loader):
             print("--after--")
-            print(system_monitor())#
+            print(system_monitor(),flush=True)#
             len(data)#
             e_masked = time()
             count += 1
