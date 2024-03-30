@@ -419,17 +419,17 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     mean_val_loss = val_loss_pt.mean()
                     std_val_loss = val_loss_pt.std()
                     # change scale value based on validation loss
-                    if mean_val_loss > kwargs["val_loss_threshold"]:
+                    if mean_val_loss < kwargs["val_loss_threshold"] and scale < 1.0:
                         scale = scale + 0.05
                     print("Validation loss: ", mean_val_loss, " +/- ", std_val_loss)
                     if wandb_run :
                         wandb.log({"validation_loss": mean_val_loss})
                 save_file ="checkpoint_"+kwargs["model"]+"_"+kwargs["model_version"]+"_epoch={}".format(i)
                 if wandb_run:
-                    save_file = save_file +"_"+ wandb_run.name + ".pkl"
+                    save_file =  wandb_run.name + "/" + save_file + ".pkl"
                 else:
                      save_file = save_file + kwargs["timestr"] + ".pkl"
-                torch.save(model.state_dict(), os.path.join( kwargs["save_path"],save_file))
+                torch.save(model.film_gen.state_dict(), os.path.join( kwargs["save_path"],save_file))
                 model.train()
             
             # Training  

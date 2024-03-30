@@ -282,7 +282,7 @@ def _main():
         "--val-loss-threshold",
         help="increasing the scaleing of the film layer based on the validation loss. If the validation loss is lower than this threshold, the scaleing is increased by 0.05",
         action="store",
-        default=20.,
+        default=0.5,
         type=float
     )
     training.add_argument(
@@ -442,6 +442,8 @@ def _main():
                 config=args,
                 notes=args.notes,
                 tags=args.tags)
+        # create checkpoint folder for run name
+        os.mkdir(os.path.join(args.save_path,wandb_run.name))
     else : wandb_run = None
 
 
