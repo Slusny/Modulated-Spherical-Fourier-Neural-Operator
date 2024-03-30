@@ -228,24 +228,24 @@ class ERA5_galvani(Dataset):
         
 #         return format(input), format(g_truth)
 
-param_level_pl = (
-        [ "u", "v", "z", "t", "r"],
-        [1000, 925, 850, 700, 600, 500, 400, 300, 250, 200, 150, 100, 50],
-    )
-param_sfc_ERA5 = ["10m_u_component_of_wind", "10m_v_component_of_wind", "2m_temperature", "surface_pressure", "mean_sea_level_pressure", "total_column_water_vapour"]
-levels_per_pl = {"u_component_of_wind":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
-                     "v_component_of_wind":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
-                     "geopotential":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
-                     "temperature":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
-                     "relative_humidity":[1000,925,850,700,600,500,400,300,250,200,150,100,50]}
-# params = {"param_level_pl":param_level_pl, "param_sfc_ERA5":param_sfc_ERA5, "levels_per_pl":levels_per_pl}
-class param:
-    param_level_pl = param_level_pl 
-    param_sfc_ERA5 = param_sfc_ERA5
-    levels_per_pl = levels_per_pl
-params = param()
+# param_level_pl = (
+#         [ "u", "v", "z", "t", "r"],
+#         [1000, 925, 850, 700, 600, 500, 400, 300, 250, 200, 150, 100, 50],
+#     )
+# param_sfc_ERA5 = ["10m_u_component_of_wind", "10m_v_component_of_wind", "2m_temperature", "surface_pressure", "mean_sea_level_pressure", "total_column_water_vapour"]
+# levels_per_pl = {"u_component_of_wind":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
+#                      "v_component_of_wind":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
+#                      "geopotential":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
+#                      "temperature":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
+#                      "relative_humidity":[1000,925,850,700,600,500,400,300,250,200,150,100,50]}
+# # params = {"param_level_pl":param_level_pl, "param_sfc_ERA5":param_sfc_ERA5, "levels_per_pl":levels_per_pl}
+# class param:
+#     param_level_pl = param_level_pl 
+#     param_sfc_ERA5 = param_sfc_ERA5
+#     levels_per_pl = levels_per_pl
+# params = param()
 
-def train(kwargs):
+def train_test(kwargs):
     # model = get_model(kwargs)
 
     # dataset = ERA5_galvani(
@@ -447,23 +447,23 @@ def test(kwargs):
         # print("Time to load coarsen: ", np.array(c_times).mean())  
         # print(c_times)  
 
-        m_times = []
-        count = 1
-        end_count = 3
-        s_masked = time()
-        print("--before--")
-        print(system_monitor())#
-        for i, data in enumerate(masked_loader):
-            print("--after--")
-            print(system_monitor(),flush=True)#
-            len(data)#
-            e_masked = time()
-            count += 1
-            if count == end_count: break
-            # print(len(data))
-            m_times.append(e_masked-s_masked)
-            s_masked = time()
-        # e_masked = time()
-        # print("Time to load masked: ", (e_masked-s_masked)/count)
-        print("Time to load masked: ", np.array(m_times).mean())    
-        print(m_times)
+        # m_times = []
+        # count = 1
+        # end_count = 3
+        # s_masked = time()
+        # print("--before--")
+        # print(system_monitor())#
+        # for i, data in enumerate(masked_loader):
+        #     print("--after--")
+        #     print(system_monitor(),flush=True)#
+        #     len(data)#
+        #     e_masked = time()
+        #     count += 1
+        #     if count == end_count: break
+        #     # print(len(data))
+        #     m_times.append(e_masked-s_masked)
+        #     s_masked = time()
+        # # e_masked = time()
+        # # print("Time to load masked: ", (e_masked-s_masked)/count)
+        # print("Time to load masked: ", np.array(m_times).mean())    
+        # print(m_times)
