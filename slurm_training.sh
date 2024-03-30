@@ -19,12 +19,11 @@
 # the slurm partition the job is queued to.
 # exits: gpu-2080ti , gpu-v100 ... see sinfo
 
-## SBATCH --mem-per-cpu=40G # Per CPU -> Per Core
 #SBATCH --mem-per-cpu=6G # Per CPU -> Per Core
 # the job will need 12GB of memory equally distributed on 4 cpus.(251GB are available in total on one node)
 
-## SBATCH --gres=gpu:1
-#the job can use and see 1 GPUs (4 GPUs are available in total on one node) use SBATCH --gres=gpu:1080ti:1 to explicitly demand a Geforce 1080 Ti GPU. Use SBATCH --gres=gpu:A4000:1 to explicitly demand a RTX A4000 GPU
+#SBATCH --gres=gpu:1
+# the job can use and see 1 GPUs (4 GPUs are available in total on one node) use SBATCH --gres=gpu:1080ti:1 to explicitly demand a Geforce 1080 Ti GPU. Use SBATCH --gres=gpu:A4000:1 to explicitly demand a RTX A4000 GPU
 
 #SBATCH --time=01-11:00
 # the maximum time the scripts needs to run
@@ -37,7 +36,7 @@
 # write the standard output to job.*jobID*.out
 
 #SBATCH --mail-type=ALL
-#write a mail if a job begins, ends, fails, gets requeued or stages out
+# write a mail if a job begins, ends, fails, gets requeued or stages out
 
 #SBATCH --mail-user=lennart.slusny@student.uni-tuebingen.de
 # your mail address
@@ -54,7 +53,7 @@
 # singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif /opt/conda/envs/model/bin/python main.py --model sfno --date 20190101 --time 0000 --lead-time 8760 --assets /mnt/qb/work2/goswami0/gkd965/Assets --path /mnt/qb/work2/goswami0/gkd965/outputs --dump-provenance --output netcdf --file /mnt/qb/work2/goswami0/gkd965/ClimateInputData_201901010.grib
 # singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif /opt/conda/envs/model/bin/python convert_to_netcdf.py 
 
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif /opt/conda/envs/model/bin/python main.py --model sfno --model-version film --train --validation-interval 30 --validation-epochs 5 --training-workers 6 --batch-size 1 --wandb
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python main.py --model sfno --model-version film --train --validation-interval 30 --validation-epochs 5 --training-workers 6 --batch-size 1 --wandb
 
 
 ## juptyer server
