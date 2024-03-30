@@ -12,6 +12,8 @@ from time import time
 
 # BatchSampler(drop_last=True)
 
+from S2S_on_SFNO.Models.provenance import system_monitor
+
 class ERA5_galvani(Dataset):
     """
         Dataset for the ERA5 data on Galvani cluster at university of tuebingen.
@@ -114,117 +116,117 @@ class ERA5_galvani(Dataset):
         
         return format(input), format(g_truth)
 
-class ERA5_galvani_coarsen(Dataset):
-    """
-        Dataset for the ERA5 data on Galvani cluster at university of tuebingen.
-        A time point in the dataset can be selected by a numerical index.
-        The index is counted from the first year in param:total_dataset_year_range in 6hr increments (default steps_per_day=4),
-        e.g. if the first year in the range is 1959, the 1.1.1959 0:00 is index 0, 1.1.1959 6:00 is index 1, etc.
+# class ERA5_galvani_coarsen(Dataset):
+#     """
+#         Dataset for the ERA5 data on Galvani cluster at university of tuebingen.
+#         A time point in the dataset can be selected by a numerical index.
+#         The index is counted from the first year in param:total_dataset_year_range in 6hr increments (default steps_per_day=4),
+#         e.g. if the first year in the range is 1959, the 1.1.1959 0:00 is index 0, 1.1.1959 6:00 is index 1, etc.
 
-        :param class    model       : reference to the model class the dataset is instanciated for (e.g. FourCastNetv2)
-        :param str      path        : Path to the zarr weatherbench dataset on the Galvani cluster
-        :param str      path_era5   : Path to the era5 dataset on the /mnt/qb/... , this is nessessary since u100/v100 are not available in the weatherbench dataset 
-        :param int      start_year  : The year from which the training data should start
-        :param int      end_year    : Years later than end_year won't be included in the training data
-        :param list     total_dataset_year_range  : the range of years the overall dataset at path.
-        :param int      steps_per_day: How many datapoints per day in the dataset. For a 6hr increment we have 4 steps per day.
-        :param bool     sst         : wether to include sea surface temperature in the data as seperate tuple element (used for filmed models)
-        :param bool     uv100       : wether to include u100 and v100 in the data 
+#         :param class    model       : reference to the model class the dataset is instanciated for (e.g. FourCastNetv2)
+#         :param str      path        : Path to the zarr weatherbench dataset on the Galvani cluster
+#         :param str      path_era5   : Path to the era5 dataset on the /mnt/qb/... , this is nessessary since u100/v100 are not available in the weatherbench dataset 
+#         :param int      start_year  : The year from which the training data should start
+#         :param int      end_year    : Years later than end_year won't be included in the training data
+#         :param list     total_dataset_year_range  : the range of years the overall dataset at path.
+#         :param int      steps_per_day: How many datapoints per day in the dataset. For a 6hr increment we have 4 steps per day.
+#         :param bool     sst         : wether to include sea surface temperature in the data as seperate tuple element (used for filmed models)
+#         :param bool     uv100       : wether to include u100 and v100 in the data 
         
-        :return: weather data as torch.tensor or tuple (weather data, sea surface temperature)   
-    """
-    def __init__(
-            self, 
-            model,
-            # path="/mnt/ceph/goswamicd/datasets/weatherbench2/era5/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr",#weatherbench2/era5/1959-2023_01_10-6h-240x121_equiangular_with_poles_conservative.zarr", #1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr", 
-            #path="/mnt/ceph/goswamicd/datasets/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr",#weatherbench2/era5/1959-2023_01_10-6h-240x121_equiangular_with_poles_conservative.zarr", #1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr", 
-            path = "/mnt/qb/goswami/data/era5/weatherbench2/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr", # start date: 1959-01-01 end date : 2023-01-10T18:00
-            path_era5="/mnt/qb/goswami/data/era5/single_pressure_level/",
-            start_year=2000,
-            end_year=2010,
-            total_dataset_year_range=[1959, 2023], # first date is 1/1/1959 last is 12/31/2022
-            steps_per_day=4,
-            sst=True,
-            coarse_level=4,
-            uv100=True,
-        ):
-        self.model = model
-        self.sst = sst
-        self.coarse_level = coarse_level
-        self.uv100 = uv100
-        if path.endswith(".zarr"):  self.dataset = xr.open_zarr(path)
-        else:                       self.dataset = xr.open_dataset(path)
-        if self.uv100:
-            #qb
-            # self.dataset_u100 = xr.open_mfdataset(os.path.join(path_era5+"100m_u_component_of_wind/100m_u_component_of_wind_????.nc"))
-            # self.dataset_v100 = xr.open_mfdataset(os.path.join(path_era5+"100m_v_component_of_wind/100m_v_component_of_wind_????.nc"))
-            #ceph
-            # self.dataset_uv100 = xr.open_mfdataset("/mnt/ceph/goswamicd/datasets/weatherbench2/era5/1959-2023_01_10-u100mv100m-6h-1440x721"))
-            # qb zarr
-            file_u100 = "/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/u100m_1959-2022_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr"
-            if file_u100.endswith(".zarr"): self.dataset_u100 = xr.open_zarr(file_u100)
-            else:                           self.dataset_u100 = xr.open_mfdataset(file_u100) # sd: 1959-01-01, end date : 2022-12-30T18
-            file_v100 = "/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/v100m_1959-2023-10_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr"
-            if file_u100.endswith(".zarr"): self.dataset_v100 = xr.open_zarr(file_v100)
-            else:                           self.dataset_v100 = xr.open_mfdataset(file_v100) # sd: 1959-01-01 end date: 2023-10-31
+#         :return: weather data as torch.tensor or tuple (weather data, sea surface temperature)   
+#     """
+#     def __init__(
+#             self, 
+#             model,
+#             # path="/mnt/ceph/goswamicd/datasets/weatherbench2/era5/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr",#weatherbench2/era5/1959-2023_01_10-6h-240x121_equiangular_with_poles_conservative.zarr", #1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr", 
+#             #path="/mnt/ceph/goswamicd/datasets/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr",#weatherbench2/era5/1959-2023_01_10-6h-240x121_equiangular_with_poles_conservative.zarr", #1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr", 
+#             path = "/mnt/qb/goswami/data/era5/weatherbench2/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr", # start date: 1959-01-01 end date : 2023-01-10T18:00
+#             path_era5="/mnt/qb/goswami/data/era5/single_pressure_level/",
+#             start_year=2000,
+#             end_year=2010,
+#             total_dataset_year_range=[1959, 2023], # first date is 1/1/1959 last is 12/31/2022
+#             steps_per_day=4,
+#             sst=True,
+#             coarse_level=4,
+#             uv100=True,
+#         ):
+#         self.model = model
+#         self.sst = sst
+#         self.coarse_level = coarse_level
+#         self.uv100 = uv100
+#         if path.endswith(".zarr"):  self.dataset = xr.open_zarr(path)
+#         else:                       self.dataset = xr.open_dataset(path)
+#         if self.uv100:
+#             #qb
+#             # self.dataset_u100 = xr.open_mfdataset(os.path.join(path_era5+"100m_u_component_of_wind/100m_u_component_of_wind_????.nc"))
+#             # self.dataset_v100 = xr.open_mfdataset(os.path.join(path_era5+"100m_v_component_of_wind/100m_v_component_of_wind_????.nc"))
+#             #ceph
+#             # self.dataset_uv100 = xr.open_mfdataset("/mnt/ceph/goswamicd/datasets/weatherbench2/era5/1959-2023_01_10-u100mv100m-6h-1440x721"))
+#             # qb zarr
+#             file_u100 = "/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/u100m_1959-2022_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr"
+#             if file_u100.endswith(".zarr"): self.dataset_u100 = xr.open_zarr(file_u100)
+#             else:                           self.dataset_u100 = xr.open_mfdataset(file_u100) # sd: 1959-01-01, end date : 2022-12-30T18
+#             file_v100 = "/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/v100m_1959-2023-10_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr"
+#             if file_u100.endswith(".zarr"): self.dataset_v100 = xr.open_zarr(file_v100)
+#             else:                           self.dataset_v100 = xr.open_mfdataset(file_v100) # sd: 1959-01-01 end date: 2023-10-31
 
-        print("Using years: ",start_year," - ", end_year)
-        print("")
+#         print("Using years: ",start_year," - ", end_year)
+#         print("")
 
-        self.start_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(total_dataset_year_range[0], start_year))])
-        self.end_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(total_dataset_year_range[0], end_year))])
+#         self.start_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(total_dataset_year_range[0], start_year))])
+#         self.end_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(total_dataset_year_range[0], end_year))])
 
-    def __len__(self):
-        return self.end_idx - self.start_idx
+#     def __len__(self):
+#         return self.end_idx - self.start_idx
     
-    def __getitem__(self, idx):
-        level_list = self.model.param_level_pl[1].copy()
-        level_list.reverse()
-        input = self.dataset.isel(time=self.start_idx + idx)
-        g_truth = self.dataset.isel(time=self.start_idx + idx+1)
+#     def __getitem__(self, idx):
+#         level_list = self.model.param_level_pl[1].copy()
+#         level_list.reverse()
+#         input = self.dataset.isel(time=self.start_idx + idx)
+#         g_truth = self.dataset.isel(time=self.start_idx + idx+1)
 
-        def format(sample):
-            scf = sample[self.model.param_sfc_ERA5].to_array().to_numpy()
-            pl = sample[list(self.model.levels_per_pl.keys())].sel(level=level_list).to_array().to_numpy()
-            pl = pl.reshape((pl.shape[0]*pl.shape[1], pl.shape[2], pl.shape[3]))
+#         def format(sample):
+#             scf = sample[self.model.param_sfc_ERA5].to_array().to_numpy()
+#             pl = sample[list(self.model.levels_per_pl.keys())].sel(level=level_list).to_array().to_numpy()
+#             pl = pl.reshape((pl.shape[0]*pl.shape[1], pl.shape[2], pl.shape[3]))
             
-            if self.uv100:
-                # ERA5 data on QB
-                u100_t = self.dataset_u100.isel(time=self.start_idx + idx)
-                v100_t = self.dataset_v100.isel(time=self.start_idx + idx)
-                if "expver" in set(u100_t.coords.dims): u100_t = u100_t.sel(expver=1)
-                if "expver" in set(v100_t.coords.dims): v100_t = v100_t.sel(expver=1)
-                u100 = u100_t["u100"].to_numpy()[None]
-                v100 = v100_t["v100"].to_numpy()[None]
-                data =  torch.from_numpy(np.vstack((
-                    scf[:2],
-                    u100,
-                    v100,
-                    scf[2:],
-                    pl)))
-            else: 
-                data = torch.from_numpy(np.vstack((scf,pl)))
-            if self.sst:
-                sst = sample["sea_surface_temperature"]
-                if self.coarse_level > 1:
-                        sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean()
-                    # s = time()
-                    # for i in range(500):
-                    #     tst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean()
-                    # e = time()
-                    # print("Time to coarsen: ", e-s)
-                    # s = time()
-                    # for i in range(500):
-                    #     tst = sst[:-1:self.coarse_level,::self.coarse_level]
-                    # e = time()
-                    # print("Time to mask: ", e-s)
-                # if self.coarse_level > 1:
-                    # sst = sst[:-1:self.coarse_level,::self.coarse_level]
-                return (data,torch.from_numpy(sst.to_numpy()))
-            else:
-                return data
+#             if self.uv100:
+#                 # ERA5 data on QB
+#                 u100_t = self.dataset_u100.isel(time=self.start_idx + idx)
+#                 v100_t = self.dataset_v100.isel(time=self.start_idx + idx)
+#                 if "expver" in set(u100_t.coords.dims): u100_t = u100_t.sel(expver=1)
+#                 if "expver" in set(v100_t.coords.dims): v100_t = v100_t.sel(expver=1)
+#                 u100 = u100_t["u100"].to_numpy()[None]
+#                 v100 = v100_t["v100"].to_numpy()[None]
+#                 data =  torch.from_numpy(np.vstack((
+#                     scf[:2],
+#                     u100,
+#                     v100,
+#                     scf[2:],
+#                     pl)))
+#             else: 
+#                 data = torch.from_numpy(np.vstack((scf,pl)))
+#             if self.sst:
+#                 sst = sample["sea_surface_temperature"]
+#                 if self.coarse_level > 1:
+#                         sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean()
+#                     # s = time()
+#                     # for i in range(500):
+#                     #     tst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean()
+#                     # e = time()
+#                     # print("Time to coarsen: ", e-s)
+#                     # s = time()
+#                     # for i in range(500):
+#                     #     tst = sst[:-1:self.coarse_level,::self.coarse_level]
+#                     # e = time()
+#                     # print("Time to mask: ", e-s)
+#                 # if self.coarse_level > 1:
+#                     # sst = sst[:-1:self.coarse_level,::self.coarse_level]
+#                 return (data,torch.from_numpy(sst.to_numpy()))
+#             else:
+#                 return data
         
-        return format(input), format(g_truth)
+#         return format(input), format(g_truth)
 
 param_level_pl = (
         [ "u", "v", "z", "t", "r"],
@@ -419,36 +421,40 @@ def test(kwargs):
         start_year=2000,
         end_year=2010,
     )
-    dataset_coarsen = ERA5_galvani_coarsen(
-        params,
-        start_year=1990,
-        end_year=2000,
-    )
+    # dataset_coarsen = ERA5_galvani_coarsen(
+    #     params,
+    #     start_year=1990,
+    #     end_year=2000,
+    # )
     for i in range(4,10):
         print("--- Workers: ", i, " ---")
-        coarsen_loader = DataLoader(dataset_coarsen,shuffle=True,num_workers=i, batch_size=kwargs["batch_size"])
+        # coarsen_loader = DataLoader(dataset_coarsen,shuffle=True,num_workers=i, batch_size=kwargs["batch_size"])
         masked_loader = DataLoader(dataset_masked,shuffle=True,num_workers=i, batch_size=kwargs["batch_size"])
 
-        c_times = []
-        count = 1
-        end_count = 10
-        s_coarsen = time()
-        for i, data in enumerate(coarsen_loader):
-            e_coarsen = time()
-            count += 1
-            if count == end_count: break
-            # print(len(data))
-            c_times.append(e_coarsen-s_coarsen)
-            s_coarsen = time()
-        # e_coarsen = time()
-        # print("Time to load coarsen: ", (e_coarsen-s_coarsen)/count)
-        print("Time to load coarsen: ", np.array(c_times).mean())  
-        print(c_times)  
+        # c_times = []
+        # count = 1
+        # end_count = 10
+        # s_coarsen = time()
+        # for i, data in enumerate(coarsen_loader):
+        #     e_coarsen = time()
+        #     count += 1
+        #     if count == end_count: break
+        #     # print(len(data))
+        #     c_times.append(e_coarsen-s_coarsen)
+        #     s_coarsen = time()
+        # # e_coarsen = time()
+        # # print("Time to load coarsen: ", (e_coarsen-s_coarsen)/count)
+        # print("Time to load coarsen: ", np.array(c_times).mean())  
+        # print(c_times)  
 
         m_times = []
         count = 1
+        end_count = 3
         s_masked = time()
+        print(system_monitor())#
         for i, data in enumerate(masked_loader):
+            print(system_monitor())#
+            len(data)#
             e_masked = time()
             count += 1
             if count == end_count: break
