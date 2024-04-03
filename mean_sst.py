@@ -9,9 +9,9 @@ save_path = "/mnt/qb/work2/goswami0/gkd965/Assets/sfno"
 
 mean = sst.mean()
 print("mean sst: ", mean)
-np.save(os.path.join(save_path,"global_means_sst3.npy"), mean)
+np.save(os.path.join(save_path,"global_means_sst5.npy"), mean)
 std = sst.std()
 print("std sst: ", std)
-np.save(os.path.join(save_path,"global_std_sst3.npy"), std)
+np.save(os.path.join(save_path,"global_std_sst5.npy"), std)
 print("done")
 
