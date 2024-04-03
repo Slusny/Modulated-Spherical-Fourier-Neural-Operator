@@ -724,7 +724,7 @@ class GCN(torch.nn.Module):
 
 class GCN_custom(nn.Module):
     def __init__(self,device,out_features=256,num_layers=12,coarse_level=4,graph_asset_path="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
-        super(GCN, self).__init__()
+        super().__init__()
 
         self.device = device
         self.num_layers = num_layers
