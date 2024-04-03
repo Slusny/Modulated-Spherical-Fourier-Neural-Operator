@@ -829,7 +829,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
 
             self.blocks.append(block)
         
-        self.film_gen = GCN(self.batch_size,device,out_features=self.embed_dim,num_layers=1)# num layers is 1 for now
+        # self.film_gen = GCN(self.batch_size,device,out_features=self.embed_dim,num_layers=1)# num layers is 1 for now
         self.film_gen = GCN_custom(device,out_features=self.embed_dim,num_layers=1)# num layers is 1 for now
     
     def forward(self, x,sst,scale=1):
