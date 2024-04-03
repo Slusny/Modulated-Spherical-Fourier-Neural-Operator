@@ -657,7 +657,6 @@ class GCN(torch.nn.Module):
         self.hidden_size = out_features*2
         self.conv1 = GCNConv(1, self.hidden_size,cached=True)
         self.conv2 = GCNConv(self.hidden_size, self.hidden_size,cached=True)
-        self.fc1 = torch.nn.Linear(self.hidden_size, out_features)
         self.heads_gamma = nn.ModuleList([])
         self.heads_beta = nn.ModuleList([])
         for i in range(self.num_layers):
@@ -669,7 +668,7 @@ class GCN(torch.nn.Module):
         # Nan_mask removes nans from sst-matrix -> 1D array, edge_index and nan_mask loaded from file    
         # !! if numpy masking is used to downsample instead of coarsen, an other edge_index, nan_mask needs to be loaded
         edge_index = torch.load(os.path.join(graph_asset_path,"edge_index_coarsen_"+str(coarse_level)+".pt"))
-        nan_mask = np.load(os.path.join(graph_asset_path,"nan_mask_coarsen_"+str(coarse_level)+".npy"))
+        nan_mask = np.load(os.path.join(graph_asset_path,"nan_mask_coarsen_"+str(coarse_level)+"_notflatten.npy"))
         num_node_features = 686364
         num_nodes = np.sum(nan_mask)
         num_edges = edge_index.shape[1]
@@ -687,7 +686,7 @@ class GCN(torch.nn.Module):
         # node values (sst): (num_nodes,1) ...
 
     def forward(self, sst):
-        x = sst.reshape(self.batch_size,-1)[self.batch_nan_mask][None].T
+        x = sst[self.batch_nan_mask][None].T
         # orig = x
         # # No Skip
         # h = self.conv1(x, self.edge_index_batch)
@@ -723,25 +722,36 @@ class GCN(torch.nn.Module):
 
 
 class GCN_custom(nn.Module):
-    def __init__(self,device,out_features=256,num_layers=12,coarse_level=4,graph_asset_path="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
+    def __init__(self,batch_size,device,out_features=256,num_layers=12,coarse_level=4,graph_asset_path="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
         super().__init__()
-
+        self.batch_size = batch_size
         self.device = device
         self.num_layers = num_layers
         self.hidden_size = out_features*2
         self.conv1 = GraphConvolution(1, self.hidden_size)
         self.conv2 = GraphConvolution(self.hidden_size, self.hidden_size)
-        self.adj = torch.load(os.path.join(graph_asset_path,"adj_coarsen_"+str(coarse_level)+"_sparse.pt"))
-        self.activation = nn.LeakyReLU()
-        self.fc1 = torch.nn.Linear(self.hidden_size, out_features)
+        self.activation = nn.LeakyReLU() # change parameter for leaky relu also in initalization of GraphConvolution layer
         self.heads_gamma = nn.ModuleList([])
         self.heads_beta = nn.ModuleList([])
         for i in range(self.num_layers):
             self.heads_gamma.append(nn.Linear(self.hidden_size, out_features))
             self.heads_beta.append(nn.Linear(self.hidden_size, out_features))
 
+        ## Prepare Graph
+        # load sparse adjacentcy matrix from file ( shape: num_node x num_nodes )
+        # self.adj = torch.load(os.path.join(graph_asset_path,"adj_coarsen_"+str(coarse_level)+"_sparse.pt")).to(device)
+        # dense 
+        self.adj = torch.load(os.path.join(graph_asset_path,"adj_coarsen_"+str(coarse_level)+"_fully.pt")).to(device)
+        
+        # nan mask masks out every nan value on land ( shape: 180x360 for 1° data )
+        self.nan_mask = np.load(os.path.join(graph_asset_path,"nan_mask_coarsen_"+str(coarse_level)+"_notflatten.npy"))
+        # repeat nan mask in batch size dimension ( shape: batch_sizex180x360 )
+        self.batch_nan_mask = np.repeat(self.nan_mask[ np.newaxis,: ], batch_size, axis=0)
+        
     def forward(self, sst):
-         x = sst.reshape(self.batch_size,-1).T
+        # x.shape: batch_size x num_nodes x features
+        x = sst[self.batch_nan_mask].reshape(self.batch_size,-1,1)
+        
         # No Skip
         # x = self.activation(self.conv1(x, self.adj))
         # x = self.activation(self.conv2(x, self.adj))
@@ -752,9 +762,9 @@ class GCN_custom(nn.Module):
         x = x + self.activation(self.conv1(x, self.adj))
         x = x + self.activation(self.conv2(x, self.adj))
         x = self.activation(self.conv2(x, self.adj))
-        h = x.mean(dim=-2)
+        x = x.mean(dim=-2)
     
-        # heads
+        # Film Heads
         heads_gamma = []
         heads_beta = []
         for i in range(self.num_layers):
@@ -831,7 +841,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
             self.blocks.append(block)
         
         # self.film_gen = GCN(self.batch_size,device,out_features=self.embed_dim,num_layers=1)# num layers is 1 for now
-        self.film_gen = GCN_custom(device,out_features=self.embed_dim,num_layers=1)# num layers is 1 for now
+        self.film_gen = GCN_custom(self.batch_size,device,out_features=self.embed_dim,num_layers=1)# num layers is 1 for now
     
     def forward(self, x,sst,scale=1):
 
