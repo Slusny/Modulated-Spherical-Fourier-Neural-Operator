@@ -18,6 +18,7 @@ import einops
 
 from torch.utils.checkpoint import checkpoint
 
+
 # helpers
 from .layers import (
     trunc_normal_,
@@ -32,6 +33,8 @@ from .layers import (
     SpectralAttention2d,
     SpectralConv2d,
 )
+
+from .layers import GraphConvolution
 
 import torch_harmonics as harmonics
 
@@ -718,6 +721,47 @@ class GCN(torch.nn.Module):
         return torch.stack([torch.stack(heads_gamma),torch.stack(heads_beta)]).squeeze() # shape: (2,num_layers,batch_size,embed_dim)
 
 
+
+class GCN_custom(nn.Module):
+    def __init__(self,device,out_features=256,num_layers=12,coarse_level=4,graph_asset_path="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
+        super(GCN, self).__init__()
+
+        self.device = device
+        self.num_layers = num_layers
+        self.hidden_size = out_features*2
+        self.conv1 = GraphConvolution(1, self.hidden_size)
+        self.conv2 = GraphConvolution(self.hidden_size, self.hidden_size)
+        self.adj = torch.load(os.path.join(graph_asset_path,"adj_coarsen_"+str(coarse_level)+"_sparse.pt"))
+        self.activation = nn.LeakyReLU()
+        self.fc1 = torch.nn.Linear(self.hidden_size, out_features)
+        self.heads_gamma = nn.ModuleList([])
+        self.heads_beta = nn.ModuleList([])
+        for i in range(self.num_layers):
+            self.heads_gamma.append(nn.Linear(self.hidden_size, out_features))
+            self.heads_beta.append(nn.Linear(self.hidden_size, out_features))
+
+    def forward(self, x):
+        # No Skip
+        # x = self.activation(self.conv1(x, self.adj))
+        # x = self.activation(self.conv2(x, self.adj))
+        # x = self.activation(self.conv2(x, self.adj))
+        # x = x.mean(dim=-2)
+
+        # Skip
+        x = x + self.activation(self.conv1(x, self.adj))
+        x = x + self.activation(self.conv2(x, self.adj))
+        x = self.activation(self.conv2(x, self.adj))
+        h = x.mean(dim=-2)
+    
+        # heads
+        heads_gamma = []
+        heads_beta = []
+        for i in range(self.num_layers):
+            heads_gamma.append(self.heads_gamma[i](x))
+            heads_beta.append(self.heads_beta[i](x))
+        return torch.stack([torch.stack(heads_gamma),torch.stack(heads_beta)]).squeeze() # shape: (2,num_layers,batch_size,embed_dim)
+
+
 class FiLM(nn.Module):
     """
     A Feature-wise Linear Modulation Layer from
@@ -786,6 +830,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
             self.blocks.append(block)
         
         self.film_gen = GCN(self.batch_size,device,out_features=self.embed_dim,num_layers=1)# num layers is 1 for now
+        self.film_gen = GCN_custom(device,out_features=self.embed_dim,num_layers=1)# num layers is 1 for now
     
     def forward(self, x,sst,scale=1):
 
