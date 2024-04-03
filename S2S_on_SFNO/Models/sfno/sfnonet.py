@@ -655,8 +655,10 @@ class GCN(torch.nn.Module):
         self.batch_size = batch_size
         self.num_layers = num_layers
         self.hidden_size = out_features*2
+        self.activation = nn.LeakyReLU()
         self.conv1 = GCNConv(1, self.hidden_size,cached=True)
-        self.conv2 = GCNConv(self.hidden_size, self.hidden_size,cached=True)
+        self.perceptive_field = 3
+        self.conv_layers = [GCNConv(self.hidden_size, self.hidden_size,cached=True) for _ in range(self.perceptive_field)]
         self.heads_gamma = nn.ModuleList([])
         self.heads_beta = nn.ModuleList([])
         for i in range(self.num_layers):
@@ -698,20 +700,32 @@ class GCN(torch.nn.Module):
         # h = F.relu(h)
         # h = self.conv2(h, self.edge_index_batch)
         # h = global_mean_pool(h, self.batch)
+
+        # # No Skip
+        # x = self.activation(self.conv1(x, self.edge_index_batch))
+        # for conv in self.conv_layers:
+        #     x =  self.activation(conv(x, self.edge_index_batch))
+        # x = global_mean_pool(x, self.batch)
         
 
         # Skip
-        x1 = self.conv1(x, self.edge_index_batch)
-        # x = einops.repeat(x,'i j -> i (repeat j)',repeat=self.hidden_size) + F.leaky_relu(x1)
-        x = x + F.leaky_relu(x1)
-        # x = F.dropout(x, training=self.training)
-        x2 = self.conv2(x, self.edge_index_batch)
-        x = x + F.leaky_relu(x2)
-        x3 = self.conv2(x, self.edge_index_batch)
-        x = x + F.leaky_relu(x3)
-        # x = x + self.conv2(x, self.edge_index_batch)
-        x =  self.conv2(x, self.edge_index_batch)
+        x = x + self.activation(self.conv1(x, self.edge_index_batch))
+        for conv in self.conv_layers:
+            x = x + self.activation(conv(x, self.edge_index_batch))
         x = global_mean_pool(x, self.batch)
+
+        # # Skip
+        # x1 = self.conv1(x, self.edge_index_batch)
+        # # x = einops.repeat(x,'i j -> i (repeat j)',repeat=self.hidden_size) + F.leaky_relu(x1)
+        # x = x + F.leaky_relu(x1)
+        # # x = F.dropout(x, training=self.training)
+        # x2 = self.conv2(x, self.edge_index_batch)
+        # x = x + F.leaky_relu(x2)
+        # x3 = self.conv2(x, self.edge_index_batch)
+        # x = x + F.leaky_relu(x3)
+        # # x = x + self.conv2(x, self.edge_index_batch)
+        # x =  self.conv2(x, self.edge_index_batch)
+        # x = global_mean_pool(x, self.batch)
         heads_gamma = []
         heads_beta = []
         for i in range(self.num_layers):
@@ -729,7 +743,8 @@ class GCN_custom(nn.Module):
         self.num_layers = num_layers
         self.hidden_size = out_features*2
         self.conv1 = GraphConvolution(1, self.hidden_size)
-        self.conv2 = GraphConvolution(self.hidden_size, self.hidden_size)
+        self.perceptive_field = 3
+        self.conv_layers = [GCNConv(self.hidden_size, self.hidden_size,cached=True) for _ in range(self.perceptive_field)]
         self.activation = nn.LeakyReLU() # change parameter for leaky relu also in initalization of GraphConvolution layer
         self.heads_gamma = nn.ModuleList([])
         self.heads_beta = nn.ModuleList([])
@@ -754,14 +769,14 @@ class GCN_custom(nn.Module):
         
         # No Skip
         # x = self.activation(self.conv1(x, self.adj))
-        # x = self.activation(self.conv2(x, self.adj))
-        # x = self.activation(self.conv2(x, self.adj))
+        # for conv in self.conv_layers:
+        #     x = self.activation(conv(x, self.adj))
         # x = x.mean(dim=-2)
 
         # Skip
         x = x + self.activation(self.conv1(x, self.adj))
-        x = x + self.activation(self.conv2(x, self.adj))
-        x = self.activation(self.conv2(x, self.adj))
+        for conv in self.conv_layers:
+            x = x + self.activation(conv(x, self.adj))
         x = x.mean(dim=-2)
     
         # Film Heads
