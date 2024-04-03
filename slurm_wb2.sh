@@ -11,22 +11,22 @@
 
 ##SBATCH --nodes=1
 
-#SBATCH --cpus-per-task=12 # 14 is max for cpu-short
+#SBATCH --cpus-per-task=4 # 14 is max for cpu-short
 # the job can use and see 4 CPUs (from max 24).
 # needet task count -n, maybe there is a better way to specify cores
 
-#SBATCH --partition=gpu-2080ti#cpu-short#cpu-short #gpu-v100  #gpu-2080ti #cpu-long
+#SBATCH --partition=2080-galvani#gpu-2080ti#cpu-short#cpu-short #gpu-v100  #gpu-2080ti #cpu-long
 # the slurm partition the job is queued to.
 # exits: gpu-2080ti , gpu-v100 ... see sinfo
 
 ## SBATCH --mem-per-cpu=2G # Per CPU -> Per Core
-#SBATCH --mem-per-cpu=2G # Per CPU -> Per Core
+#SBATCH --mem-per-cpu=8G # Per CPU -> Per Core
 # the job will need 12GB of memory equally distributed on 4 cpus.(251GB are available in total on one node)
 
 ## SBATCH --gres=gpu:1
 #the job can use and see 1 GPUs (4 GPUs are available in total on one node) use SBATCH --gres=gpu:1080ti:1 to explicitly demand a Geforce 1080 Ti GPU. Use SBATCH --gres=gpu:A4000:1 to explicitly demand a RTX A4000 GPU
 
-#SBATCH --time=02-10:00
+#SBATCH --time=01-10:00
 # the maximum time the scripts needs to run
 # "minutes:seconds", "hours:minutes:seconds", "days-hours","days-hours:minutes" and "days-hours:minutes:seconds"
 
@@ -55,7 +55,11 @@
 # singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages5.sif /opt/conda/envs/model/bin/python convert_to_netcdf.py 
 
 # singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/setup.sif /home/goswami/gkd965/MasterML/download_wb2.sh #parallel_clima_byhand.py 2 #chunky_climatology.py 2
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/setup.sif gsutil -m cp -r gsutil -m cp -r gs://weatherbench2/datasets/era5/1959-2023_01_10-1h-240x121_equiangular_with_poles_conservative.zarr gs://weatherbench2/datasets/era5-hourly-climatology/1990-2019_6h_1440x721.zarr gs://weatherbench2/datasets/era5-hourly-climatology/1990-2019_6h_240x121_equiangular_with_poles_conservative.zarr /mnt/qb/goswami/data/era5/weatherbench2/
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/setup.sif gsutil -m cp -r "gs://weatherbench2/datasets/era5/1959-2022-wb13-6h-0p25deg-chunk-1.zarr-v2" /mnt/qb/goswami/data/era5/weatherbench2/
+  .
+
+
+#gsutil -m cp -r gsutil -m cp -r gs://weatherbench2/datasets/era5/1959-2023_01_10-1h-240x121_equiangular_with_poles_conservative.zarr gs://weatherbench2/datasets/era5-hourly-climatology/1990-2019_6h_1440x721.zarr gs://weatherbench2/datasets/era5-hourly-climatology/1990-2019_6h_240x121_equiangular_with_poles_conservative.zarr /mnt/qb/goswami/data/era5/weatherbench2/
 #parallel_clima_byhand.py 2 #chunky_climatology.py 2
 
 
