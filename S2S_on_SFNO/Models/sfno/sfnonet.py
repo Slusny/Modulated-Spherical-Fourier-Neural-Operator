@@ -740,7 +740,8 @@ class GCN_custom(nn.Module):
             self.heads_gamma.append(nn.Linear(self.hidden_size, out_features))
             self.heads_beta.append(nn.Linear(self.hidden_size, out_features))
 
-    def forward(self, x):
+    def forward(self, sst):
+         x = sst.reshape(self.batch_size,-1).T
         # No Skip
         # x = self.activation(self.conv1(x, self.adj))
         # x = self.activation(self.conv2(x, self.adj))
