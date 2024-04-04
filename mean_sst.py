@@ -26,6 +26,7 @@ save_path = "/mnt/qb/work2/goswami0/gkd965/Assets/sfno"
 
 idx = np.arange(93544)
 np.random.shuffle(idx)
+np.save(os.path.join(save_path,"sst_gen_idx.npy"), idx)
 
 count = 0
 total_count = 0
