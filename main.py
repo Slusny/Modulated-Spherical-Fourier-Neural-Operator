@@ -57,6 +57,12 @@ def _main():
         help="Model versions: \n    SFNO: 0, film\n    Fourcastnet: 0, 1",
     )
     parser.add_argument(
+        "--film-gen-type",
+        default=None,
+        help="Which type of generator to use in the film model.",
+        choices=["None","gcn","gcn_custom","transformer"]
+    )
+    parser.add_argument(
         "--assets",
         action="store",
         help="Absolute path to directory containing the weights and other assets of the Model. \
@@ -488,3 +494,9 @@ if __name__ == "__main__":
     # args = ["--model","sfno","--test","--training-workers","0","--batch-size","1","--debug"]
     # for arg in args: sys.argv.append(arg)
     main()
+
+
+'''
+# Test / Work
+are all kwargs added to model: e.g. film_gen_type is part of model.film_gen_type
+'''

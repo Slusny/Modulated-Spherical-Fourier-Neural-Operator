@@ -174,7 +174,7 @@ class FourCastNetv2(Model):
         # create model
         self.model = FourierNeuralOperatorNet(**kwargs)
 
-    def load_statistics(self):
+    def load_statistics(self, film_gen_type=None):
         path = os.path.join(self.assets, "global_means.npy")
         LOG.info("Loading %s", path)
         self.means = np.load(path)
@@ -186,6 +186,14 @@ class FourCastNetv2(Model):
         self.stds = np.load(path)
         self.stds = self.stds[:, : self.backbone_channels, ...]
         self.stds = self.stds.astype(np.float32)
+
+        if film_gen_type == None:
+            self.means_film = np.load(os.path.join(self.assets, "global_means_sst.npy"))
+            self.means_film = self.means[:, : self.backbone_channels, ...]
+            self.means_film = self.means.astype(np.float32)
+            self.stds_film = np.load(os.path.join(self.assets, "global_stds_sst.npy"))
+            self.stds_film = self.stds[:, : self.backbone_channels, ...]
+            self.stds_film = self.stds.astype(np.float32)
 
     def load_model(self, checkpoint_file):
         # model = nvs.FourierNeuralOperatorNet()
@@ -230,6 +238,14 @@ class FourCastNetv2(Model):
             new_data = data * self.stds + self.means
         else:
             new_data = (data - self.means) / self.stds
+        return new_data
+
+    def normalise_film(self, data, reverse=False):
+        """Normalise data using pre-saved global statistics"""
+        if reverse:
+            new_data = data * self.stds_film + self.means_film
+        else:
+            new_data = (data - self.means_film) / self.stds_film
         return new_data
 
     def run(self):
@@ -371,7 +387,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         raise NotImplementedError("Filmed model run not implemented yet. Needs to considder sst input.")
 
     def training(self,wandb_run=None,**kwargs):
-        self.load_statistics()
+        self.load_statistics(kwargs["film_gen_type"])
         
         print("Trainig Data:")
         dataset = ERA5_galvani(
@@ -407,7 +423,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 with torch.no_grad():
                     for val_epoch, (val_input, val_g_truth) in enumerate(validation_loader):
                         # s = time()
-                        val_input_era5, val_input_sst = self.normalise(val_input[0]).to(self.device), val_input[1].to(self.device)
+                        val_input_era5, val_input_sst = self.normalise(val_input[0]).to(self.device), self.normalise_film(val_input[1]).to(self.device)
                         val_g_truth_era5, val_g_truth_sst = self.normalise(val_g_truth[0]).to(self.device), val_g_truth[1].to(self.device)
                         outputs = model(val_input_era5,val_input_sst,scale)
                         val_loss.append( loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"])
@@ -423,7 +439,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         scale = scale + 0.05
                     print("Validation loss: ", mean_val_loss, " +/- ", std_val_loss)
                     if wandb_run :
-                        wandb.log({"validation_loss": mean_val_loss})
+                        wandb.log({"validation_loss": mean_val_loss,"film_scale":scale})
                 save_file ="checkpoint_"+kwargs["model"]+"_"+kwargs["model_version"]+"_epoch={}".format(i)
                 if wandb_run:
                     save_file =  wandb_run.name + "/" + save_file + ".pkl"
@@ -433,7 +449,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 model.train()
             
             # Training  
-            input_era5, input_sst = self.normalise(input[0]).to(self.device), input[1].to(self.device)
+            input_era5, input_sst = self.normalise(input[0]).to(self.device), self.normalise_film(input[1]).to(self.device)
             g_truth_era5, g_truth_sst = self.normalise(g_truth[0]).to(self.device), g_truth[1].to(self.device)
             
             optimizer.zero_grad()
