@@ -54,13 +54,14 @@ def _main():
     parser.add_argument(
         "--model-version",
         default="latest",
-        help="Model versions: \n    SFNO: 0, film\n    Fourcastnet: 0, 1",
+        help="Model versions: \n    SFNO: [0, film]\n    Fourcastnet: [0, 1]",
     )
     parser.add_argument(
         "--film-gen-type",
         default=None,
-        help="Which type of generator to use in the film model.",
-        choices=["None","gcn","gcn_custom","transformer"]
+        type=str,
+        help="Which type of film generator to use in the filmed model.",
+        choices=["none","gcn","gcn_custom","transformer"]
     )
     parser.add_argument(
         "--assets",
@@ -395,6 +396,13 @@ def _main():
 
     if args.class_ is not None:
         args.metadata["class"] = args.class_
+
+    # set film_gen_type if model version film is selected but no generator to default value
+    if args.film_gen_type:
+        if args.film_gen_type.lower() == "none" : args.film_gen_type = None
+    if args.model_version == "film" and args.film_gen_type is None: 
+        print("using film generator: gcn_custom")
+        args.film_gen_type = "gcn_custom"
 
     # Manipulation on args
     args.metadata = dict(kv.split("=") for kv in args.metadata)

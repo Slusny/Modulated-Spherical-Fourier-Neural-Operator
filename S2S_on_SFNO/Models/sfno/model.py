@@ -187,7 +187,7 @@ class FourCastNetv2(Model):
         self.stds = self.stds[:, : self.backbone_channels, ...]
         self.stds = self.stds.astype(np.float32)
 
-        if film_gen_type == None:
+        if film_gen_type is not None:
             self.means_film = np.load(os.path.join(self.assets, "global_means_sst.npy"))
             self.means_film = self.means[:, : self.backbone_channels, ...]
             self.means_film = self.means.astype(np.float32)

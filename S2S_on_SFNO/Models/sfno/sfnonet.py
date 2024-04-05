@@ -855,9 +855,9 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
 
             self.blocks.append(block)
         
-        if kwargs["film_gen"] == "gcn":
+        if kwargs["film_gen_type"] == "gcn":
             self.film_gen = GCN(self.batch_size,device,out_features=self.embed_dim,num_layers=1)# num layers is 1 for now
-        elif kwargs["film_gen"] == "transformer":
+        elif kwargs["film_gen_type"] == "transformer":
             pass
         else:
             self.film_gen = GCN_custom(self.batch_size,device,out_features=self.embed_dim,num_layers=1)# num layers is 1 for now
