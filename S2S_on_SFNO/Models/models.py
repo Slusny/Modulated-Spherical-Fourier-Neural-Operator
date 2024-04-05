@@ -62,6 +62,7 @@ class Model:
         self.output = get_output(output, self, **kwargs)                        
         # self.output2 = get_output("grib", self, **kwargs) #! redundant, test
 
+        # here the kwargs of the parser become model properties
         for k, v in kwargs.items():
             setattr(self, k, v)
 

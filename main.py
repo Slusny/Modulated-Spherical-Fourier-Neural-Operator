@@ -87,7 +87,7 @@ def _main():
     )
     parser.add_argument(
         "--path",
-        help="Path where to write the output of the model. Default: S2S_on_SFNO/outputs/{model}",
+        help="Path where to write the output of the model if it is run. For training data output look for save-path. Default: S2S_on_SFNO/outputs/{model}",
     )
     parser.add_argument(
         "--num-threads",
@@ -289,7 +289,7 @@ def _main():
         "--val-loss-threshold",
         help="increasing the scaleing of the film layer based on the validation loss. If the validation loss is lower than this threshold, the scaleing is increased by 0.05",
         action="store",
-        default=0.5,
+        default=0.4,
         type=float
     )
     training.add_argument(
@@ -315,7 +315,8 @@ def _main():
         "--save-path",
         action="store",
         default="/mnt/qb/work2/goswami0/gkd965/checkpoints",
-        type=str
+        type=str,
+        help="path to save checkpoints and training data, not used for running the model"
     )
 
     # Logging
@@ -352,6 +353,8 @@ def _main():
         help='tags for wandb')
     
 
+    # !! args from parser become model properties (whatch that no conflicting model properties/methods exist)
+    # !! happens in S2S_on_SFNO/Models/models.py:66
     args, unknownargs = parser.parse_known_args()
 
     # Format Assets path
@@ -362,6 +365,7 @@ def _main():
 
     # Format Output path
     timestr = time.strftime("%Y%m%dT%H%M")
+    # save_string to save output data if model.run is called (only for runs not for training)
     save_string = "leadtime_"+str(args.lead_time)+"_startDate_"+str(args.date)+str(args.time) +"_createdOn_"+timestr
     if args.path is None:
         outputDirPath = os.path.join(Path(".").absolute(),"S2S_on_SFNO/outputs",args.model)
@@ -369,6 +373,7 @@ def _main():
         outputDirPath = os.path.join(args.path,args.model)
     
     args.path  = os.path.join(outputDirPath,save_string+".grib")
+    # timestring for logging and saveing purposes
     args.timestr = timestr
     if not os.path.exists(args.path):
         os.makedirs(os.path.dirname(args.path), exist_ok=True)
@@ -406,6 +411,34 @@ def _main():
 
     # Manipulation on args
     args.metadata = dict(kv.split("=") for kv in args.metadata)
+      
+    if args.wandb   : 
+        # config_wandb = vars(args).copy()
+        # for key in ['notes','tags','wandb']:del config_wandb[key]
+        # del config_wandb
+        if args.wandb_resume is not None :
+            wandb_run = wandb.init(project=args.model + " - " +args.model_version, 
+                config=args,
+                notes=args.notes,
+                tags=args.tags,
+                resume="must",
+                id=args.wandb_resume)
+        else:
+            wandb_run = wandb.init(project=args.model + " - " +args.model_version, 
+                config=args,
+                notes=args.notes,
+                tags=args.tags)
+        # create checkpoint folder for run name
+        new_save_path = os.path.join(args.save_path,wandb_run.name)
+        os.mkdir(new_save_path)
+        args.save_path = new_save_path
+    else : 
+        wandb_run = None
+        new_save_path = os.path.join(args.save_path,args.model+"_"+args.model_version+"_"+args.film_gen_type+"_"+timestr)
+        os.mkdir(new_save_path)
+        args.save_path = new_save_path
+
+
     
     model = load_model(args.model, vars(args))
 
@@ -439,31 +472,13 @@ def _main():
         # kwargs = vars(args)
         # model.test_training(**kwargs)
         # sys.exit(0)
-        
-    if args.wandb   : 
-        # config_wandb = vars(args).copy()
-        # for key in ['notes','tags','wandb']:del config_wandb[key]
-        # del config_wandb
-        if args.wandb_resume is not None :
-            wandb_run = wandb.init(project=args.model + " - " +args.model_version, 
-                config=args,
-                notes=args.notes,
-                tags=args.tags,
-                resume="must",
-                id=args.wandb_resume)
-        else:
-            wandb_run = wandb.init(project=args.model + " - " +args.model_version, 
-                config=args,
-                notes=args.notes,
-                tags=args.tags)
-        # create checkpoint folder for run name
-        os.mkdir(os.path.join(args.save_path,wandb_run.name))
-    else : wandb_run = None
-
-
+      
     if args.train:
-        kwargs = vars(args)
-        model.training(wandb_run=wandb_run,**kwargs)
+        try:
+            kwargs = vars(args)
+            model.training(wandb_run=wandb_run,**kwargs)
+        except KeyboardInterrupt:
+            model.save_and_exit()
     else:
 
         try:

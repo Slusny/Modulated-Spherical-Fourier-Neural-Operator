@@ -189,11 +189,9 @@ class FourCastNetv2(Model):
 
         if film_gen_type is not None:
             self.means_film = np.load(os.path.join(self.assets, "global_means_sst.npy"))
-            self.means_film = self.means[:, : self.backbone_channels, ...]
-            self.means_film = self.means.astype(np.float32)
+            self.means_film = self.means_film.astype(np.float32)
             self.stds_film = np.load(os.path.join(self.assets, "global_stds_sst.npy"))
-            self.stds_film = self.stds[:, : self.backbone_channels, ...]
-            self.stds_film = self.stds.astype(np.float32)
+            self.stds_film = self.stds_film.astype(np.float32)
 
     def load_model(self, checkpoint_file):
         # model = nvs.FourierNeuralOperatorNet()
@@ -332,6 +330,98 @@ class FourCastNetv2(Model):
                 )
 
                 stepper(i, step)
+    def training(self,wandb_run=None,**kwargs):
+        self.load_statistics()
+        
+        print("Trainig Data:")
+        dataset = ERA5_galvani(
+            self,
+            path=kwargs["trainingdata_path"], 
+            start_year=kwargs["trainingset_start_year"],
+            end_year=kwargs["trainingset_end_year"],
+            sst=False
+        )
+        print("Validation Data:")
+        dataset_validation = ERA5_galvani(
+            self,
+            path=kwargs["trainingdata_path"], 
+            start_year=kwargs["validationset_start_year"],
+            end_year=kwargs["validationset_end_year"],
+            sst=False)
+        
+        model = self.load_model(self.checkpoint_path)
+        model.train()
+
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+        loss_fn = torch.nn.MSELoss()
+
+        training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
+        validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
+
+        for i, (input, g_truth) in enumerate(training_loader):
+
+            # Validation
+            if i % kwargs["validation_interval"] == 0:
+                val_loss = []
+                model.eval()
+                with torch.no_grad():
+                    for val_epoch, (val_input, val_g_truth) in enumerate(validation_loader):
+                        # s = time()
+                        val_input_era5 = self.normalise(val_input).to(self.device)
+                        val_g_truth_era5 = self.normalise(val_g_truth).to(self.device)
+                        outputs = model(val_input_era5)
+                        val_loss.append( loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"])
+                        # e = time()
+                        # print("run time for validation batch: ", e-s)
+                        if val_epoch > kwargs["validation_epochs"]:
+                            break
+                    val_loss_pt = torch.tensor(val_loss)
+                    mean_val_loss = round(val_loss_pt.mean().item(),5)
+                    std_val_loss = round(val_loss_pt.std().item(),5)
+                    LOG.info("Validation loss: "+str(mean_val_loss)+" +/- "+str(std_val_loss)+" (n={})".format(kwargs["validation_epochs"]))
+                    if wandb_run :
+                        wandb.log({"validation_loss": mean_val_loss})
+                save_file ="checkpoint_"+kwargs["model"]+"_"+kwargs["model_version"]+"_"+kwargs["film_gen_type"]+"_epoch={}.pkl".format(i)
+                # if wandb_run:
+                #     save_file =  save_file + ".pkl"
+                # else:
+                #      save_file = save_file + kwargs["timestr"] + ".pkl"
+                torch.save(model.state_dict(), os.path.join( kwargs["save_path"],save_file))
+                model.train()
+            
+            # Training  
+            input_era5 = self.normalise(input).to(self.device)
+            g_truth_era5 = self.normalise(g_truth).to(self.device)
+            
+            optimizer.zero_grad()
+
+            # Make predictions for this batch
+            outputs = model(input_era5)
+
+            # Compute the loss and its gradients
+            loss = loss_fn(outputs, g_truth_era5)
+            loss.backward()
+
+            # Adjust learning weights
+            optimizer.step()
+
+            # logging
+            loss_value = round(loss.item(),5)
+            if wandb_run is not None:
+                wandb.log({"loss": loss_value })
+            if kwargs["debug"]:
+                print("Epoch: ", i, " Loss: ", loss_value)
+
+    
+    def save_and_exit(self):
+        print(self.save_path)
+        np.save(os.path.join( self.save_path,"val_means.npy"),self.val_means)
+        np.save(os.path.join( self.save_path,"val_stds.npy"),self.val_stds)
+        np.save(os.path.join( self.save_path,"losses.npy"),self.losses)
+        # self.model is the trained model?? or self.state_dict()??
+        # save_file ="checkpoint_"+self.timestr+"_final.pkl"
+        # torch.save(self.model.state_dict(), os.path.join( self.save_path,save_file))
+
 
 class FourCastNetv2_filmed(FourCastNetv2):
     def __init__(self, precip_flag=False, **kwargs):
@@ -413,6 +503,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
 
         scale = 0.0
+        self.val_means = []
+        self.val_stds  = []
+        self.losses    = []
 
         for i, (input, g_truth) in enumerate(training_loader):
 
@@ -432,20 +525,23 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         if val_epoch > kwargs["validation_epochs"]:
                             break
                     val_loss_pt = torch.tensor(val_loss)
-                    mean_val_loss = val_loss_pt.mean()
-                    std_val_loss = val_loss_pt.std()
+                    mean_val_loss = round(val_loss_pt.mean().item(),5)
+                    std_val_loss = round(val_loss_pt.std().item(),5)
                     # change scale value based on validation loss
                     if mean_val_loss < kwargs["val_loss_threshold"] and scale < 1.0:
                         scale = scale + 0.05
-                    print("Validation loss: ", mean_val_loss, " +/- ", std_val_loss)
+                    #
+                    self.val_means.append(mean_val_loss)
+                    self.val_stds.append(std_val_loss)
+                    LOG.info("Validation loss: "+str(mean_val_loss)+" +/- "+str(std_val_loss)+" (n={})".format(kwargs["validation_epochs"]))
                     if wandb_run :
                         wandb.log({"validation_loss": mean_val_loss,"film_scale":scale})
-                save_file ="checkpoint_"+kwargs["model"]+"_"+kwargs["model_version"]+"_epoch={}".format(i)
-                if wandb_run:
-                    save_file =  wandb_run.name + "/" + save_file + ".pkl"
-                else:
-                     save_file = save_file + kwargs["timestr"] + ".pkl"
-                torch.save(model.film_gen.state_dict(), os.path.join( kwargs["save_path"],save_file))
+                save_file ="checkpoint_"+kwargs["model"]+"_"+kwargs["model_version"]+"_"+kwargs["film_gen_type"]+"_epoch={}.pkl".format(i)
+                # if wandb_run:
+                #     save_file =  save_file + ".pkl"
+                # else:
+                #      save_file = save_file + kwargs["timestr"] + ".pkl"
+                torch.save(model.state_dict(), os.path.join( kwargs["save_path"],save_file))
                 model.train()
             
             # Training  
@@ -465,12 +561,13 @@ class FourCastNetv2_filmed(FourCastNetv2):
             optimizer.step()
 
             # logging
+            loss_value = round(loss.item(),5)
+            self.losses.append(loss_value)
             if wandb_run is not None:
-                wandb.log({"loss": loss })
+                wandb.log({"loss": loss_value })
             if kwargs["debug"]:
-                print("Epoch: ", i, " Loss: ", loss)
-            
-    
+                print("Epoch: ", i, " Loss: ", loss_value," - scale: ",scale)
+        
     def test_training(self,**kwargs):
         dataset = ERA5_galvani(
             self,
