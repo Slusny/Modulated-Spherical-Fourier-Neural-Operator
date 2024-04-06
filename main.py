@@ -14,7 +14,7 @@ import pdb
 from pathlib import Path
 import time
 import wandb
-
+import traceback
 import torch
 
 # to get eccodes working on Ubuntu 20.04
@@ -477,7 +477,9 @@ def _main():
         try:
             kwargs = vars(args)
             model.training(wandb_run=wandb_run,**kwargs)
-        except :
+        except Exception as e:
+            LOG.error(traceback.format_exc())
+            print(e)
             print("shutting down training")
             model.save_and_exit()
             sys.exit(0)
