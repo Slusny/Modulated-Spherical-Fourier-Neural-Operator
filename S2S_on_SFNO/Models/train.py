@@ -72,7 +72,7 @@ class ERA5_galvani(Dataset):
         print("")
 
         self.start_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(total_dataset_year_range[0], start_year))])
-        self.end_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(total_dataset_year_range[0], end_year))])
+        self.end_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(total_dataset_year_range[0], end_year))]) -1
 
     def __len__(self):
         return self.end_idx - self.start_idx

@@ -352,7 +352,10 @@ class FourCastNetv2(Model):
         model = self.load_model(self.checkpoint_path)
         model.train()
 
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+        # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+        scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,T_0=2)
+        iters = 3000
         loss_fn = torch.nn.MSELoss()
 
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
@@ -382,9 +385,12 @@ class FourCastNetv2(Model):
                     val_loss_pt = torch.tensor(val_loss)
                     mean_val_loss = round(val_loss_pt.mean().item(),5)
                     std_val_loss = round(val_loss_pt.std().item(),5)
+                    if scheduler: 
+                        lr = scheduler.get_last_lr()
+                        scheduler.step(i / iters)
                     LOG.info("Validation loss: "+str(mean_val_loss)+" +/- "+str(std_val_loss)+" (n={})".format(kwargs["validation_epochs"]))
                     if wandb_run :
-                        wandb.log({"validation_loss": mean_val_loss,"std_val_loss":std_val_loss})
+                        wandb.log({"validation_loss": mean_val_loss,"std_val_loss":std_val_loss,"learning_rate":lr})
                 if kwargs["film_gen_type"]:
                     gentype = kwargs["film_gen_type"] + "_"
                 else: gentype = ""
@@ -504,7 +510,10 @@ class FourCastNetv2_filmed(FourCastNetv2):
         model = self.load_model(self.checkpoint_path)
         model.train()
 
-        optimizer = torch.optim.SGD(model.get_film_params(), lr=0.001, momentum=0.9)
+        # optimizer = torch.optim.SGD(model.get_film_params(), lr=0.001, momentum=0.9)
+        optimizer = torch.optim.Adam(model.get_film_params(), lr=0.001)
+        scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,T_0=2)
+        iters = 3000
         loss_fn = torch.nn.MSELoss()
 
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
@@ -535,6 +544,10 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     val_loss_pt = torch.tensor(val_loss)
                     mean_val_loss = round(val_loss_pt.mean().item(),5)
                     std_val_loss = round(val_loss_pt.std().item(),5)
+                    
+                    if scheduler: 
+                        lr = scheduler.get_last_lr()
+                        scheduler.step(i / iters)
                     # change scale value based on validation loss
                     if mean_val_loss < kwargs["val_loss_threshold"] and scale < 1.0:
                         scale = scale + 0.05
@@ -543,7 +556,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     self.val_stds.append(std_val_loss)
                     LOG.info("Validation loss: "+str(mean_val_loss)+" +/- "+str(std_val_loss)+" (n={})".format(kwargs["validation_epochs"]))
                     if wandb_run :
-                        wandb.log({"validation_loss": mean_val_loss,"std_val_loss":std_val_loss,"film_scale":scale})
+                        wandb.log({"validation_loss": mean_val_loss,"std_val_loss":std_val_loss,"film_scale":scale,"learning_rate":lr})
                 save_file ="checkpoint_"+kwargs["model"]+"_"+kwargs["model_version"]+"_"+kwargs["film_gen_type"]+"_epoch={}.pkl".format(i)
                 # if wandb_run:
                 #     save_file =  save_file + ".pkl"
@@ -567,6 +580,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
             # Adjust learning weights
             optimizer.step()
+            scheduler.step(i)
 
             # logging
             loss_value = round(loss.item(),5)
