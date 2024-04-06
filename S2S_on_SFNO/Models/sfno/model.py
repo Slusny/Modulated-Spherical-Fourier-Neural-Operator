@@ -354,7 +354,7 @@ class FourCastNetv2(Model):
 
         # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-        scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,T_0=2)
+        scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,T_0=20)
         iters = 3000
         loss_fn = torch.nn.MSELoss()
 
