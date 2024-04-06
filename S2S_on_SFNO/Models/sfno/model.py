@@ -386,7 +386,7 @@ class FourCastNetv2(Model):
                     mean_val_loss = round(val_loss_pt.mean().item(),5)
                     std_val_loss = round(val_loss_pt.std().item(),5)
                     if scheduler: 
-                        lr = scheduler.get_last_lr()
+                        lr = scheduler.get_last_lr()[0]
                         scheduler.step(i / iters)
                     LOG.info("Validation loss: "+str(mean_val_loss)+" +/- "+str(std_val_loss)+" (n={})".format(kwargs["validation_epochs"]))
                     if wandb_run :
@@ -546,7 +546,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     std_val_loss = round(val_loss_pt.std().item(),5)
                     
                     if scheduler: 
-                        lr = scheduler.get_last_lr()
+                        lr = scheduler.get_last_lr()[0]
                         scheduler.step(i / iters)
                     # change scale value based on validation loss
                     if mean_val_loss < kwargs["val_loss_threshold"] and scale < 1.0:
