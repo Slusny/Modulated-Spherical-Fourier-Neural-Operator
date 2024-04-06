@@ -526,4 +526,5 @@ if __name__ == "__main__":
 '''
 # Test / Work
 are all kwargs added to model: e.g. film_gen_type is part of model.film_gen_type
+- validation loss in autoregressive steps
 '''
