@@ -354,7 +354,7 @@ class FourCastNetv2(Model):
 
         # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
         optimizer = torch.optim.Adam(model.parameters(), lr=2*0.001)
-        scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,T_0=2)
+        scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,T_0=200)
         iters = 3000
         loss_fn = torch.nn.MSELoss()
 
@@ -512,7 +512,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
         # optimizer = torch.optim.SGD(model.get_film_params(), lr=0.001, momentum=0.9)
         optimizer = torch.optim.Adam(model.get_film_params(), lr=2*0.001)
-        scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,T_0=2)
+        scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,T_0=200)
         iters = 3000
         loss_fn = torch.nn.MSELoss()
 
