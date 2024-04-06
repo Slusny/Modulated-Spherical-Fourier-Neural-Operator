@@ -357,6 +357,10 @@ class FourCastNetv2(Model):
 
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
+        
+        self.val_means = []
+        self.val_stds  = []
+        self.losses    = []
 
         for i, (input, g_truth) in enumerate(training_loader):
 
@@ -380,7 +384,7 @@ class FourCastNetv2(Model):
                     std_val_loss = round(val_loss_pt.std().item(),5)
                     LOG.info("Validation loss: "+str(mean_val_loss)+" +/- "+str(std_val_loss)+" (n={})".format(kwargs["validation_epochs"]))
                     if wandb_run :
-                        wandb.log({"validation_loss": mean_val_loss})
+                        wandb.log({"validation_loss": mean_val_loss,"std_val_loss":std_val_loss})
                 save_file ="checkpoint_"+kwargs["model"]+"_"+kwargs["model_version"]+"_"+kwargs["film_gen_type"]+"_epoch={}.pkl".format(i)
                 # if wandb_run:
                 #     save_file =  save_file + ".pkl"
@@ -411,10 +415,11 @@ class FourCastNetv2(Model):
                 wandb.log({"loss": loss_value })
             if kwargs["debug"]:
                 print("Epoch: ", i, " Loss: ", loss_value)
-
+        
+        self.save_and_exit()
     
     def save_and_exit(self):
-        print(self.save_path)
+        print(" -> saving to : ",self.save_path)
         np.save(os.path.join( self.save_path,"val_means.npy"),self.val_means)
         np.save(os.path.join( self.save_path,"val_stds.npy"),self.val_stds)
         np.save(os.path.join( self.save_path,"losses.npy"),self.losses)
@@ -535,7 +540,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     self.val_stds.append(std_val_loss)
                     LOG.info("Validation loss: "+str(mean_val_loss)+" +/- "+str(std_val_loss)+" (n={})".format(kwargs["validation_epochs"]))
                     if wandb_run :
-                        wandb.log({"validation_loss": mean_val_loss,"film_scale":scale})
+                        wandb.log({"validation_loss": mean_val_loss,"std_val_loss":std_val_loss,"film_scale":scale})
                 save_file ="checkpoint_"+kwargs["model"]+"_"+kwargs["model_version"]+"_"+kwargs["film_gen_type"]+"_epoch={}.pkl".format(i)
                 # if wandb_run:
                 #     save_file =  save_file + ".pkl"
@@ -567,6 +572,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 wandb.log({"loss": loss_value })
             if kwargs["debug"]:
                 print("Epoch: ", i, " Loss: ", loss_value," - scale: ",scale)
+
+        self.save_and_exit()
         
     def test_training(self,**kwargs):
         dataset = ERA5_galvani(

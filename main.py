@@ -477,8 +477,10 @@ def _main():
         try:
             kwargs = vars(args)
             model.training(wandb_run=wandb_run,**kwargs)
-        except KeyboardInterrupt:
+        except :
+            print("shutting down training")
             model.save_and_exit()
+            sys.exit(0)
     else:
 
         try:
