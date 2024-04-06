@@ -385,7 +385,10 @@ class FourCastNetv2(Model):
                     LOG.info("Validation loss: "+str(mean_val_loss)+" +/- "+str(std_val_loss)+" (n={})".format(kwargs["validation_epochs"]))
                     if wandb_run :
                         wandb.log({"validation_loss": mean_val_loss,"std_val_loss":std_val_loss})
-                save_file ="checkpoint_"+kwargs["model"]+"_"+kwargs["model_version"]+"_"+kwargs["film_gen_type"]+"_epoch={}.pkl".format(i)
+                if kwargs["film_gen_type"]:
+                    gentype = kwargs["film_gen_type"] + "_"
+                else: gentype = ""
+                save_file ="checkpoint_"+kwargs["model"]+"_"+kwargs["model_version"]+"_"+gentype+"epoch={}.pkl".format(i)
                 # if wandb_run:
                 #     save_file =  save_file + ".pkl"
                 # else:
