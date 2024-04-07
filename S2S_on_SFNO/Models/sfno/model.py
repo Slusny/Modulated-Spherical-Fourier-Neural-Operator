@@ -591,6 +591,20 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 print("Epoch: ", i, " Loss: ", loss_value," - scale: ",scale)
 
         self.save_and_exit()
+
+    def autoregressive_validation(self,era5_data,sst_data,steps=6):
+        outputs = model(val_input_era5,val_input_sst,scale)
+                val_loss.append( loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"])
+                # e =
+        model = self.load_model(self.checkpoint_path)
+        model.eval()
+        model.to(self.device)
+        input_era5, input_sst = self.normalise(era5_data).to(self.device), self.normalise_film(sst_data).to(self.device)
+        with torch.no_grad():
+            for i in range(steps):
+                outputs = model(input_era5,input_sst)
+                input_era5 = outputs
+        return outputs
         
     def test_training(self,**kwargs):
         dataset = ERA5_galvani(
