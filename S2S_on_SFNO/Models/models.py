@@ -59,7 +59,7 @@ class Model:
 
     def __init__(self, input, output, download_assets, **kwargs):
         self.input = get_input(input, self, **kwargs)
-        self.output = get_output(output, self, **kwargs)                        
+        if not kwargs['train']: self.output = get_output(output, self, **kwargs)                        
         # self.output2 = get_output("grib", self, **kwargs) #! redundant, test
 
         # here the kwargs of the parser become model properties

@@ -286,6 +286,13 @@ def _main():
         type=int
     )
     training.add_argument(
+        "--autoregressive-steps",
+        help="how many consecutive datapoints should be loaded to used to calculate an autoregressive loss ",
+        action="store",
+        default=0,
+        type=int
+    )
+    training.add_argument(
         "--val-loss-threshold",
         help="increasing the scaleing of the film layer based on the validation loss. If the validation loss is lower than this threshold, the scaleing is increased by 0.05",
         action="store",
@@ -434,7 +441,9 @@ def _main():
         args.save_path = new_save_path
     else : 
         wandb_run = None
-        new_save_path = os.path.join(args.save_path,args.model+"_"+args.model_version+"_"+args.film_gen_type+"_"+timestr)
+        if args.film_gen_type: film_gen_str = "_"+args.film_gen_type
+        else:                  film_gen_str = ""
+        new_save_path = os.path.join(args.save_path,args.model+"_"+args.model_version+film_gen_str+"_"+timestr)
         os.mkdir(new_save_path)
         args.save_path = new_save_path
 

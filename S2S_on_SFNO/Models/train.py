@@ -4,7 +4,7 @@ from calendar import isleap
 import xarray as xr
 import numpy as np
 import os
-
+import sys
 # from .sfno.model import get_model
 from .sfno.sfnonet import GCN
 import wandb
@@ -26,10 +26,10 @@ class ERA5_galvani(Dataset):
         :param str      path_era5   : Path to the era5 dataset on the /mnt/qb/... , this is nessessary since u100/v100 are not available in the weatherbench dataset 
         :param int      start_year  : The year from which the training data should start
         :param int      end_year    : Years later than end_year won't be included in the training data
-        :param list     total_dataset_year_range  : the range of years the overall dataset at path.
         :param int      steps_per_day: How many datapoints per day in the dataset. For a 6hr increment we have 4 steps per day.
         :param bool     sst         : wether to include sea surface temperature in the data as seperate tuple element (used for filmed models)
         :param bool     uv100       : wether to include u100 and v100 in the data 
+        :param int      auto_regressive_steps : how many consecutive datapoints should be loaded to used to calculate an autoregressive loss 
         
         :return: weather data as torch.tensor or tuple (weather data, sea surface temperature)   
     """
@@ -45,7 +45,6 @@ class ERA5_galvani(Dataset):
             path_era5="/mnt/qb/goswami/data/era5/single_pressure_level/",
             start_year=2000,
             end_year=2022,
-            total_dataset_year_range=[1959, 2023], # first date is 1/1/1959 last is 12/31/2022
             steps_per_day=4,
             sst=True,
             coarse_level=4,
@@ -75,35 +74,44 @@ class ERA5_galvani(Dataset):
 
         # check if the 100uv-datasets and era5 have same start and end date
         # Check if set Start date to be viable
-        startdate = np.array([self.dataset.time[0].to_numpy() ,self.dataset_v100.time[0].to_numpy() ,self.dataset_u100.time[0].to_numpy()]).min()
+        startdate = np.array([self.dataset.time[0].to_numpy() ,self.dataset_v100.time[0].to_numpy() ,self.dataset_u100.time[0].to_numpy()])
         possible_startdate = startdate.max()
-        if self.start_year < int(np.datetime_as_string(possible_startdate,"Y")):
+        if not (startdate == startdate[0]).all(): 
+            print("Start dates of all arrays need to be the same! Otherwise changes to the Dataset class are needed!")
+            print("For ERA5, 100v, 100u the end dates are",startdate)
+            sys.exit(0)
+        # if int(np.datetime_as_string(possible_startdate,"M")) != 1 and int(np.datetime_as_string(possible_startdate,"D")) != 1 :
+        #     print("Start dates need to be the 1/1 of a year! Otherwise changes to the Dataset class are needed!")
+        #     print("For ERA5, 100v, 100u the end dates are",startdate)
+        #     sys.exit(0)
+        dataset_start = int(np.datetime_as_string(possible_startdate,"Y"))
+        if start_year < int(np.datetime_as_string(possible_startdate,"Y")):
             print("chosen start year is earlier than the earliest common start date to all of the datasets")
             print("Start year is set to ",int(np.datetime_as_string(possible_startdate,"Y")))
             print("For ERA5, 100v, 100u the end dates are",startdate)
-            self.end_year = int(np.datetime_as_string(possible_startdate,"Y"))
+            start_year = dataset_start
         
         # Check if set Start date to be viable
-        enddate = np.array([self.dataset.time[-1].to_numpy() ,self.dataset_v100.time[-1].to_numpy() ,self.dataset_u100.time[-1].to_numpy()]).min()
+        enddate = np.array([self.dataset.time[-1].to_numpy() ,self.dataset_v100.time[-1].to_numpy() ,self.dataset_u100.time[-1].to_numpy()])
         possible_enddate = enddate.min()
-        if self.end_year > int(np.datetime_as_string(possible_enddate,"Y")):
+        if end_year > int(np.datetime_as_string(possible_enddate,"Y")):
             print("chosen end year is later than the latest common end date to all of the datasets")
             print("End year is set to ",int(np.datetime_as_string(possible_enddate,"Y")))
             print("For ERA5, 100v, 100u the end dates are",enddate)
-            self.end_year = int(np.datetime_as_string(possible_enddate,"Y"))
+            end_year = int(np.datetime_as_string(possible_enddate,"Y"))
 
-        print("Using years: ",start_year," - ", end_year,"  (availabe date range: ",np.datetime_as_string(possible_enddate,"Y"),"-",np.datetime_as_string(possible_startdate,"Y"),")")
+        print("Using years: ",start_year," - ", end_year,"  (availabe date range: ",np.datetime_as_string(possible_startdate,"Y"),"-",np.datetime_as_string(possible_enddate,"Y"),")")
         print("")
 
-        self.start_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(total_dataset_year_range[0], start_year))])
-        self.end_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(total_dataset_year_range[0], end_year))]) -1
+        self.start_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(dataset_start, start_year))])
+        self.end_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(dataset_start, end_year))]) -1
 
     def __len__(self):
         return self.end_idx - self.start_idx
     
     def __getitem__(self, idx):
-            level_list = self.model.param_level_pl[1].copy()
-            level_list.reverse()
+        level_list = self.model.param_level_pl[1].copy()
+        level_list.reverse()
 
         def format(sample):
             scf = sample[self.model.param_sfc_ERA5].to_array().to_numpy()
@@ -135,10 +143,10 @@ class ERA5_galvani(Dataset):
                 return (data,torch.from_numpy(sst))
             else:
                 return data
-        if self.auto_regressive_steps > 1:
+        if self.auto_regressive_steps > 0:
             data = []
-            for i in range(self.auto_regressive_steps):
-                data.append(self.dataset.isel(time=self.start_idx + idx + i)
+            for i in range(self.auto_regressive_steps+2):
+                data.append(format(self.dataset.isel(time=self.start_idx + idx + i)))
             return data
         else:
             input = self.dataset.isel(time=self.start_idx + idx)
