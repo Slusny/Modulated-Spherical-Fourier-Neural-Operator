@@ -427,11 +427,13 @@ class FourCastNetv2(Model):
         
         self.save_and_exit()
     
+    # needed only for offline logging, commented out atm
     def save_and_exit(self):
-        print(" -> saving to : ",self.save_path)
-        np.save(os.path.join( self.save_path,"val_means.npy"),self.val_means)
-        np.save(os.path.join( self.save_path,"val_stds.npy"),self.val_stds)
-        np.save(os.path.join( self.save_path,"losses.npy"),self.losses)
+        
+        # print(" -> saving to : ",self.save_path)
+        # np.save(os.path.join( self.save_path,"val_means.npy"),self.val_means)
+        # np.save(os.path.join( self.save_path,"val_stds.npy"),self.val_stds)
+        # np.save(os.path.join( self.save_path,"losses.npy"),self.losses)
         # self.model is the trained model?? or self.state_dict()??
         # save_file ="checkpoint_"+self.timestr+"_final.pkl"
         # torch.save(self.model.state_dict(), os.path.join( self.save_path,save_file))
@@ -520,43 +522,61 @@ class FourCastNetv2_filmed(FourCastNetv2):
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
 
         scale = 0.0
-        self.val_means = []
-        self.val_stds  = []
-        self.losses    = []
+        # for logging offline (no wandb)
+        # self.val_means = []
+        # self.val_stds  = []
+        # self.losses    = []
 
         for i, (input, g_truth) in enumerate(training_loader):
 
             # Validation
             if i % kwargs["validation_interval"] == 0:
-                val_loss = []
+                val_loss = {}
+                val_log  = {}
                 model.eval()
                 with torch.no_grad():
-                    for val_epoch, (val_input, val_g_truth) in enumerate(validation_loader):
-                        # s = time()
-                        val_input_era5, val_input_sst = self.normalise(val_input[0]).to(self.device), self.normalise_film(val_input[1]).to(self.device)
-                        val_g_truth_era5, val_g_truth_sst = self.normalise(val_g_truth[0]).to(self.device), val_g_truth[1].to(self.device)
-                        outputs = model(val_input_era5,val_input_sst,scale)
-                        val_loss.append( loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"])
-                        # e = time()
-                        # print("run time for validation batch: ", e-s)
+                    # For loop over validation dataset, calculates the validation loss mean for number of kwargs["validation_epochs"]
+                    for val_epoch, val_data in enumerate(validation_loader):
+                        # Calculates the validation loss for autoregressive model evaluation
+                        # if self.auto_regressive_steps = 0 the dataloader only outputs 2 datapoint 
+                        # and the for loop only runs once (calculating the ordinary validation loss with no auto regressive evaluation
+                        val_input_era5 = None
+                        for val_idx in range(len(val_data)-1):
+                            if val_input_era5 is None: val_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
+                            else: val_input_era5 = outputs
+                            val_input_sst  = self.normalise_film(val_data[val_idx][1]).to(self.device)
+                            val_g_truth_era5 = self.normalise(val_data[val_idx+1][0])
+                            outputs = model(val_input_era5,val_input_sst,scale)
+                            val_loss_value = loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"]
+                            if val_epoch == 0: 
+                                val_loss["validation loss (n={}, autoregress={})".format(
+                                    kwargs["validation_epochs"],val_idx)] = [val_loss_value]
+                            else:
+                                val_loss["validation loss (n={}, autoregress={})".format(
+                                    kwargs["validation_epochs"],val_idx)].append(val_loss_value)
+
+                        # end of validation 
                         if val_epoch > kwargs["validation_epochs"]:
+                            for k in val_loss.keys():
+                                val_log[k]          = round(np.array(val_loss[k]).mean(),5)
+                                val_log["std " + k] = round(np.array(val_loss[k]).std(),5)
                             break
-                    val_loss_pt = torch.tensor(val_loss)
-                    mean_val_loss = round(val_loss_pt.mean().item(),5)
-                    std_val_loss = round(val_loss_pt.std().item(),5)
                     
                     if scheduler: 
                         lr = scheduler.get_last_lr()[0]
+                        val_log["learning rate"] = lr
                         scheduler.step(i / iters)
                     # change scale value based on validation loss
                     if mean_val_loss < kwargs["val_loss_threshold"] and scale < 1.0:
+                        val_log["scale"] = lr
                         scale = scale + 0.05
-                    #
-                    self.val_means.append(mean_val_loss)
-                    self.val_stds.append(std_val_loss)
-                    LOG.info("Validation loss: "+str(mean_val_loss)+" +/- "+str(std_val_loss)+" (n={})".format(kwargs["validation_epochs"]))
+                    # logging offline
+                    # self.val_means.append(mean_val_loss)
+                    # self.val_stds.append(std_val_loss)
+                    # LOG.info("Validation loss: "+str(mean_val_loss)+" +/- "+str(std_val_loss)+" (n={})".format(kwargs["validation_epochs"]))
+                    LOG.info(str(val_log))
                     if wandb_run :
-                        wandb.log({"validation_loss": mean_val_loss,"std_val_loss":std_val_loss,"film_scale":scale,"learning_rate":lr})
+                        wandb.log(val_log)
                 save_file ="checkpoint_"+kwargs["model"]+"_"+kwargs["model_version"]+"_"+kwargs["film_gen_type"]+"_epoch={}.pkl".format(i)
                 # if wandb_run:
                 #     save_file =  save_file + ".pkl"
@@ -567,7 +587,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
             
             # Training  
             input_era5, input_sst = self.normalise(input[0]).to(self.device), self.normalise_film(input[1]).to(self.device)
-            g_truth_era5, g_truth_sst = self.normalise(g_truth[0]).to(self.device), g_truth[1].to(self.device)
+            g_truth_era5, g_truth_sst = self.normalise(g_truth[0]).to(self.device), self.normalise_film(g_truth[1]).to(self.device)
             
             optimizer.zero_grad()
 
@@ -591,20 +611,6 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 print("Epoch: ", i, " Loss: ", loss_value," - scale: ",scale)
 
         self.save_and_exit()
-
-    def autoregressive_validation(self,era5_data,sst_data,steps=6):
-        outputs = model(val_input_era5,val_input_sst,scale)
-                val_loss.append( loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"])
-                # e =
-        model = self.load_model(self.checkpoint_path)
-        model.eval()
-        model.to(self.device)
-        input_era5, input_sst = self.normalise(era5_data).to(self.device), self.normalise_film(sst_data).to(self.device)
-        with torch.no_grad():
-            for i in range(steps):
-                outputs = model(input_era5,input_sst)
-                input_era5 = outputs
-        return outputs
         
     def test_training(self,**kwargs):
         dataset = ERA5_galvani(

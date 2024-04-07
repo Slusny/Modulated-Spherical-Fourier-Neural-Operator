@@ -102,10 +102,8 @@ class ERA5_galvani(Dataset):
         return self.end_idx - self.start_idx
     
     def __getitem__(self, idx):
-        level_list = self.model.param_level_pl[1].copy()
-        level_list.reverse()
-        input = self.dataset.isel(time=self.start_idx + idx)
-        g_truth = self.dataset.isel(time=self.start_idx + idx+1)
+            level_list = self.model.param_level_pl[1].copy()
+            level_list.reverse()
 
         def format(sample):
             scf = sample[self.model.param_sfc_ERA5].to_array().to_numpy()
@@ -134,14 +132,18 @@ class ERA5_galvani(Dataset):
                     sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean().to_numpy()
                 # if self.coarse_level > 1:
                 #     sst = sst.to_numpy()[:-1:self.coarse_level,::self.coarse_level] # or numpy at the end
-                if self.auto_regressive_steps > 1:
-                    ssts = self.autoregressive_sst(idx)
-                    return (data,torch.from_numpy(sst),ssts)
-                else:
-                    return (data,torch.from_numpy(sst))
+                return (data,torch.from_numpy(sst))
             else:
                 return data
-        return format(input), format(g_truth)
+        if self.auto_regressive_steps > 1:
+            data = []
+            for i in range(self.auto_regressive_steps):
+                data.append(self.dataset.isel(time=self.start_idx + idx + i)
+            return data
+        else:
+            input = self.dataset.isel(time=self.start_idx + idx)
+            g_truth = self.dataset.isel(time=self.start_idx + idx+1)
+            return format(input), format(g_truth)
 
     def autoregressive_sst(self,idx):
         ssts = []
