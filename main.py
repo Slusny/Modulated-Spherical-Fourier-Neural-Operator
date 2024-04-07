@@ -268,7 +268,7 @@ def _main():
         "--validationset-end-year",
         help="specify validation dataset by end year. No dates from the end year specified and later will be used.",
         action="store",
-        default=2023,
+        default=2022,
         type=int
     )
     training.add_argument(

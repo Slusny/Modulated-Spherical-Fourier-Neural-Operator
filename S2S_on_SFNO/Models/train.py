@@ -38,18 +38,23 @@ class ERA5_galvani(Dataset):
             model,
             # path="/mnt/ceph/goswamicd/datasets/weatherbench2/era5/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr",#weatherbench2/era5/1959-2023_01_10-6h-240x121_equiangular_with_poles_conservative.zarr", #1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr", 
             #path="/mnt/ceph/goswamicd/datasets/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr",#weatherbench2/era5/1959-2023_01_10-6h-240x121_equiangular_with_poles_conservative.zarr", #1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr", 
-            path = "/mnt/qb/goswami/data/era5/weatherbench2/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr", # start date: 1959-01-01 end date : 2023-01-10T18:00
+            # path = "/mnt/qb/goswami/data/era5/weatherbench2/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr", # start date: 1959-01-01 end date : 2023-01-10T18:00
+            # chunked
+            path = "/mnt/qb/goswami/data/era5/weatherbench2/1959-2022-wb13-6h-0p25deg-chunk-1.zarr-v2", # start date: 1959-01-01 end date : 2023-01-10T18:00
+            
             path_era5="/mnt/qb/goswami/data/era5/single_pressure_level/",
             start_year=2000,
-            end_year=2010,
+            end_year=2022,
             total_dataset_year_range=[1959, 2023], # first date is 1/1/1959 last is 12/31/2022
             steps_per_day=4,
             sst=True,
             coarse_level=4,
             uv100=True,
+            auto_regressive_steps=0
         ):
         self.model = model
         self.sst = sst
+        self.auto_regressive_steps = auto_regressive_steps
         self.coarse_level = coarse_level
         self.uv100 = uv100
         if path.endswith(".zarr"):  self.dataset = xr.open_zarr(path)
@@ -68,7 +73,26 @@ class ERA5_galvani(Dataset):
             if file_u100.endswith(".zarr"): self.dataset_v100 = xr.open_zarr(file_v100)
             else:                           self.dataset_v100 = xr.open_mfdataset(file_v100) # sd: 1959-01-01 end date: 2023-10-31
 
-        print("Using years: ",start_year," - ", end_year)
+        # check if the 100uv-datasets and era5 have same start and end date
+        # Check if set Start date to be viable
+        startdate = np.array([self.dataset.time[0].to_numpy() ,self.dataset_v100.time[0].to_numpy() ,self.dataset_u100.time[0].to_numpy()]).min()
+        possible_startdate = startdate.max()
+        if self.start_year < int(np.datetime_as_string(possible_startdate,"Y")):
+            print("chosen start year is earlier than the earliest common start date to all of the datasets")
+            print("Start year is set to ",int(np.datetime_as_string(possible_startdate,"Y")))
+            print("For ERA5, 100v, 100u the end dates are",startdate)
+            self.end_year = int(np.datetime_as_string(possible_startdate,"Y"))
+        
+        # Check if set Start date to be viable
+        enddate = np.array([self.dataset.time[-1].to_numpy() ,self.dataset_v100.time[-1].to_numpy() ,self.dataset_u100.time[-1].to_numpy()]).min()
+        possible_enddate = enddate.min()
+        if self.end_year > int(np.datetime_as_string(possible_enddate,"Y")):
+            print("chosen end year is later than the latest common end date to all of the datasets")
+            print("End year is set to ",int(np.datetime_as_string(possible_enddate,"Y")))
+            print("For ERA5, 100v, 100u the end dates are",enddate)
+            self.end_year = int(np.datetime_as_string(possible_enddate,"Y"))
+
+        print("Using years: ",start_year," - ", end_year,"  (availabe date range: ",np.datetime_as_string(possible_enddate,"Y"),"-",np.datetime_as_string(possible_startdate,"Y"),")")
         print("")
 
         self.start_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(total_dataset_year_range[0], start_year))])
@@ -110,11 +134,25 @@ class ERA5_galvani(Dataset):
                     sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean().to_numpy()
                 # if self.coarse_level > 1:
                 #     sst = sst.to_numpy()[:-1:self.coarse_level,::self.coarse_level] # or numpy at the end
-                return (data,torch.from_numpy(sst))
+                if self.auto_regressive_steps > 1:
+                    ssts = self.autoregressive_sst(idx)
+                    return (data,torch.from_numpy(sst),ssts)
+                else:
+                    return (data,torch.from_numpy(sst))
             else:
                 return data
-        
         return format(input), format(g_truth)
+
+    def autoregressive_sst(self,idx):
+        ssts = []
+        for step in range(1,self.auto_regressive_steps):
+            sst = self.dataset.isel(time=self.start_idx + idx + step)["sea_surface_temperature"]
+            if self.coarse_level > 1:
+                sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean().to_numpy()
+                # if self.coarse_level > 1:
+                #     sst = sst.to_numpy()[:-1:self.coarse_level,::self.coarse_level] # or numpy at the end
+            ssts.append(torch.from_numpy(sst))
+        return ssts
 
 # class ERA5_galvani_coarsen(Dataset):
 #     """
