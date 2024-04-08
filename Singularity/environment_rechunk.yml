@@ -1,0 +1,33 @@
+name: model
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python ==3.11.7
+  - xarray
+  - rechunker 
+  - dask
+  - bottleneck
+  - cfgrib
+  - pandas
+  - scipy
+  - zarr
+  - netcdf4
+  - cftime
+  # acceleration
+  - numbagg
+  - flox
+
+  # general
+  - git
+  - gitpython
+  - pip
+  - python-dateutil
+  - setuptools
+  - yaml
+  - matplotlib
+  - cartopy
+  - jupyter
+  - jupyter_server>=2.0.0
+
+# may needed trition
