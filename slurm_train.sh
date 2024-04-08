@@ -11,7 +11,7 @@
 
 ##SBATCH --nodes=1
 
-#SBATCH --cpus-per-task=6 # 14 is max for cpu-short
+#SBATCH --cpus-per-task=10 # 14 is max for cpu-short
 # the job can use and see 4 CPUs (from max 24).
 # needet task count -n, maybe there is a better way to specify cores
 
@@ -39,7 +39,7 @@
 #SBATCH --mail-user=lennart.slusny@student.uni-tuebingen.de
 # your mail address
 
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version latest --train --validation-interval 20 --validation-epochs 5 --training-workers 6 --batch-size 1 --autoregressive-steps 3 --wandb --notes "scheduler cosinewarmup t_0=200, ADAM,"
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version latest --train --validation-interval 30 --validation-epochs 3 --training-workers 8 --batch-size 1 --autoregressive-steps 3 --wandb --notes "scheduler horizon 2000"
 
 echo DONE!
 
