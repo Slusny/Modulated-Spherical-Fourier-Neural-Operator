@@ -25,7 +25,7 @@ from .sfnonet import FourierNeuralOperatorNet_Filmed
 from ..train import ERA5_galvani
 
 LOG = logging.getLogger(__name__)
-
+local_logging = False
 
 class FourCastNetv2(Model):
     # Download
@@ -367,10 +367,10 @@ class FourCastNetv2(Model):
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
         
-        # for logging offline (no wandb)
+        ## for logging offline (no wandb)
         # self.val_means = []
         # self.val_stds  = []
-        # self.losses    = []
+        self.losses    = []
 
         for i, (input, g_truth) in enumerate(training_loader):
 
@@ -447,6 +447,7 @@ class FourCastNetv2(Model):
 
             # logging
             loss_value = round(loss.item(),5)
+            if local_logging : self.losses.append(loss_value)
             if wandb_run is not None:
                 wandb.log({"loss": loss_value })
             if kwargs["debug"]:
@@ -456,11 +457,11 @@ class FourCastNetv2(Model):
     
     # needed only for offline logging, commented out atm
     def save_and_exit(self):
-        pass
-        # print(" -> saving to : ",self.save_path)
-        # np.save(os.path.join( self.save_path,"val_means.npy"),self.val_means)
-        # np.save(os.path.join( self.save_path,"val_stds.npy"),self.val_stds)
-        # np.save(os.path.join( self.save_path,"losses.npy"),self.losses)
+        if local_logging : 
+            print(" -> saving to : ",self.save_path)
+            # np.save(os.path.join( self.save_path,"val_means.npy"),self.val_means)
+            # np.save(os.path.join( self.save_path,"val_stds.npy"),self.val_stds)
+            np.save(os.path.join( self.save_path,"losses.npy"),self.losses)
         # self.model is the trained model?? or self.state_dict()??
         # save_file ="checkpoint_"+self.timestr+"_final.pkl"
         # torch.save(self.model.state_dict(), os.path.join( self.save_path,save_file))
@@ -554,10 +555,10 @@ class FourCastNetv2_filmed(FourCastNetv2):
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
 
         scale = 0.0
-        # for logging offline (no wandb)
+        ## for logging offline (no wandb)
         # self.val_means = []
         # self.val_stds  = []
-        # self.losses    = []
+        self.losses    = []
 
         for i, (input, g_truth) in enumerate(training_loader):
 
@@ -644,7 +645,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
             # logging
             loss_value = round(loss.item(),5)
-            self.losses.append(loss_value)
+            if local_logging : self.losses.append(loss_value)
             if wandb_run is not None:
                 wandb.log({"loss": loss_value })
             if kwargs["debug"]:
