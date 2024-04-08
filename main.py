@@ -339,7 +339,6 @@ def _main():
         help="defines the horizon on which the scheduler should reset the learning rate. In case of CosineAnnealingWarmRestarts this modifies the parameter T_0",
         type=int
     )
-    kwargs[""]
     training.add_argument(
         "--save-path",
         action="store",
@@ -557,5 +556,5 @@ if __name__ == "__main__":
 '''
 # Test / Work
 are all kwargs added to model: e.g. film_gen_type is part of model.film_gen_type
-- validation loss in autoregressive steps
+- add "iter" 'epoch' "optimizer_state_dict" "scheduler_state_dict" and "model_state" to checkpoint file
 '''

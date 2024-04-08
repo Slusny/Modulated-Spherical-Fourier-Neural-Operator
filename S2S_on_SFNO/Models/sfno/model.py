@@ -206,7 +206,8 @@ class FourCastNetv2(Model):
 
         checkpoint = torch.load(checkpoint_file, map_location=self.device)
 
-        weights = checkpoint["model_state"]
+        if "model_state" in checkpoint.keys(): weights = checkpoint["model_state"]
+        else: weights = checkpoint
         drop_vars = ["module.norm.weight", "module.norm.bias"]
         weights = {k: v for k, v in weights.items() if k not in drop_vars}
 
@@ -219,13 +220,15 @@ class FourCastNetv2(Model):
         try:
             # Try adding model weights as dictionary
             new_state_dict = dict()
-            for k, v in checkpoint["model_state"].items():
+            # for k, v in checkpoint["model_state"].items():
+            for k, v in weights.items():
                 name = k[7:]
                 if name != "ged":
                     new_state_dict[name] = v
             model.load_state_dict(new_state_dict)
         except Exception:
-            model.load_state_dict(checkpoint["model_state"])
+            # model.load_state_dict(checkpoint["model_state"])
+             model.load_state_dict(weights)
 
         # Set model to eval mode and return
         model.eval()
@@ -399,8 +402,9 @@ class FourCastNetv2(Model):
                         # end of validation 
                         if val_epoch > kwargs["validation_epochs"]:
                             for k in val_loss.keys():
-                                val_log[k]          = round(np.array(val_loss[k]).mean(),5)
-                                val_log["std " + k] = round(np.array(val_loss[k]).std(),5)
+                                val_loss_array      = np.array(val_loss[k])
+                                val_log[k]          = round(val_loss_array.mean(),5)
+                                val_log["std " + k] = round(val_loss_array.std(),5)
                             break
                     
                     if scheduler: 
@@ -477,13 +481,15 @@ class FourCastNetv2_filmed(FourCastNetv2):
         #  Load Filmed weights
         if self.checkpoint_path_film:
             checkpoint_film = torch.load(self.checkpoint_file_film, map_location=self.device)
-            model.film_gen.load_state_dict(checkpoint_film["model_state"])
+            # model.film_gen.load_state_dict(checkpoint_film["model_state"])
+            model.film_gen.load_state_dict(checkpoint_film)
         else:
             pass
         
         # Load SFNO weights
         checkpoint_sfno = torch.load(checkpoint_file, map_location=self.device)
-        weights = checkpoint_sfno["model_state"]
+        if "model_state" in checkpoint_sfno.keys(): weights = checkpoint_sfno["model_state"]
+        else: weights = checkpoint_sfno
         drop_vars = ["module.norm.weight", "module.norm.bias"]
         weights = {k: v for k, v in weights.items() if k not in drop_vars}
 
@@ -498,13 +504,15 @@ class FourCastNetv2_filmed(FourCastNetv2):
         try:
             # Try adding model weights as dictionary
             new_state_dict = dict()
-            for k, v in checkpoint_sfno["model_state"].items():
+            # for k, v in checkpoint_sfno["model_state"].items():
+            for k, v in weights.items():
                 name = k[7:]
                 if name != "ged":
                     new_state_dict[name] = v
             model.load_state_dict(new_state_dict,strict=False)
         except Exception:
-            model.load_state_dict(checkpoint_sfno["model_state"])
+            # model.load_state_dict(checkpoint_sfno["model_state"])
+            model.load_state_dict(weights)
 
         # Set model to eval mode and return
         model.eval()
@@ -539,7 +547,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         # optimizer = torch.optim.SGD(model.get_film_params(), lr=0.001, momentum=0.9)
         optimizer = torch.optim.Adam(model.get_film_params(), lr=2*0.001)
         scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,T_0=kwargs["scheduler_horizon"])
-        iters = 3000
+        
         loss_fn = torch.nn.MSELoss()
 
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
@@ -574,16 +582,17 @@ class FourCastNetv2_filmed(FourCastNetv2):
                             val_loss_value = loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"]
                             if val_epoch == 0: 
                                 val_loss["validation loss (n={}, autoregress={})".format(
-                                    kwargs["validation_epochs"],val_idx)] = [val_loss_value]
+                                    kwargs["validation_epochs"],val_idx)] = [val_loss_value.cpu()]
                             else:
                                 val_loss["validation loss (n={}, autoregress={})".format(
-                                    kwargs["validation_epochs"],val_idx)].append(val_loss_value)
+                                    kwargs["validation_epochs"],val_idx)].append(val_loss_value.cpu())
 
                         # end of validation 
                         if val_epoch > kwargs["validation_epochs"]:
                             for k in val_loss.keys():
-                                val_log[k]          = round(np.array(val_loss[k]).mean(),5)
-                                val_log["std " + k] = round(np.array(val_loss[k]).std(),5)
+                                val_loss_array      = np.array(val_loss[k])
+                                val_log[k]          = round(val_loss_array.mean(),5)
+                                val_log["std " + k] = round(val_loss_array.std(),5)
                             break
                     
                     if scheduler: 
@@ -591,7 +600,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         val_log["learning rate"] = lr
                         scheduler.step(i)
                     # change scale value based on validation loss
-                    if mean_val_loss < kwargs["val_loss_threshold"] and scale < 1.0:
+                    if list(val_log.values())[0] < kwargs["val_loss_threshold"] and scale < 1.0:
                         val_log["scale"] = lr
                         scale = scale + 0.05
                     # logging offline
