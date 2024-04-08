@@ -355,8 +355,7 @@ class FourCastNetv2(Model):
 
         # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
         optimizer = torch.optim.Adam(model.parameters(), lr=2*0.001)
-        scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,T_0=200)
-        iters = 3000
+        scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,T_0=kwargs["scheduler_horizon"])
         loss_fn = torch.nn.MSELoss()
 
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
@@ -404,7 +403,7 @@ class FourCastNetv2(Model):
                     if scheduler: 
                         lr = scheduler.get_last_lr()[0]
                         val_log["learning rate"] = lr
-                        scheduler.step(i / iters)
+                        scheduler.step(i)
                     # logging offline
                     # self.val_means.append(mean_val_loss)
                     # self.val_stds.append(std_val_loss)
@@ -539,7 +538,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
         # optimizer = torch.optim.SGD(model.get_film_params(), lr=0.001, momentum=0.9)
         optimizer = torch.optim.Adam(model.get_film_params(), lr=2*0.001)
-        scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,T_0=200)
+        scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,T_0=kwargs["scheduler_horizon"])
         iters = 3000
         loss_fn = torch.nn.MSELoss()
 
@@ -590,7 +589,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     if scheduler: 
                         lr = scheduler.get_last_lr()[0]
                         val_log["learning rate"] = lr
-                        scheduler.step(i / iters)
+                        scheduler.step(i)
                     # change scale value based on validation loss
                     if mean_val_loss < kwargs["val_loss_threshold"] and scale < 1.0:
                         val_log["scale"] = lr

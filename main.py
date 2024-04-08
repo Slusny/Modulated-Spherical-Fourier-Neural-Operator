@@ -319,6 +319,14 @@ def _main():
         type=int
     )
     training.add_argument(
+        "--scheduler-horizon",
+        action="store",
+        default=2000,
+        help="defines the horizon on which the scheduler should reset the learning rate. In case of CosineAnnealingWarmRestarts this modifies the parameter T_0"
+        type=int
+    )
+    kwargs[""]
+    training.add_argument(
         "--save-path",
         action="store",
         default="/mnt/qb/work2/goswami0/gkd965/checkpoints",
