@@ -72,9 +72,16 @@ def _main():
         default="/mnt/qb/work2/goswami0/gkd965/Assets"
     )
     parser.add_argument(
-        "--assets-film",
+        "--film-weights",
         action="store",
         help="Absolute path to weights.tar file containing the weights of the Film-Model.",
+        default=None,
+        # default="/mnt/qb/work2/goswami0/gkd965/Assets/gcn/weights.tar"
+    )
+    parser.add_argument(
+        "--sfno-weights",
+        action="store",
+        help="Absolute path to weights.tar file containing the weights of the SFNO-Model.",
         default=None,
         # default="/mnt/qb/work2/goswami0/gkd965/Assets/gcn/weights.tar"
     )
@@ -279,6 +286,13 @@ def _main():
         type=int
     )
     training.add_argument(
+        "--save-checkpoint-interval",
+        help="saving every x validation. E.g. if validation-intervall is 100 and save-checkpoint-interval is 10, the model is saved every 1000 epochs",
+        action="store",
+        default=10,
+        type=int
+    )
+    training.add_argument(
         "--validation-epochs",
         help="over how many epochs should be validated",
         action="store",
@@ -322,7 +336,7 @@ def _main():
         "--scheduler-horizon",
         action="store",
         default=2000,
-        help="defines the horizon on which the scheduler should reset the learning rate. In case of CosineAnnealingWarmRestarts this modifies the parameter T_0"
+        help="defines the horizon on which the scheduler should reset the learning rate. In case of CosineAnnealingWarmRestarts this modifies the parameter T_0",
         type=int
     )
     kwargs[""]

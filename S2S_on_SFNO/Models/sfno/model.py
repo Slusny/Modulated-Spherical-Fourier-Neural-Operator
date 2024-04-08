@@ -164,10 +164,13 @@ class FourCastNetv2(Model):
 
         self.backbone_channels = len(self.ordering)
 
-        self.checkpoint_path = os.path.join(self.assets, "weights.tar")
+        if self.sfno_weights:
+            self.checkpoint_path = self.sfno_weights
+        else:
+            self.checkpoint_path = os.path.join(self.assets, "weights.tar")
 
-        if kwargs["assets_film"]:
-            self.checkpoint_path_film = os.path.join(self.assets_film)
+        if kwargs["film_weights"]:
+            self.checkpoint_path_film =self.film_weights
         else:
             self.checkpoint_path_film = None
 
@@ -417,12 +420,9 @@ class FourCastNetv2(Model):
                                  + " +/- " + str(val_log[val_log_keys[log_idx+1]]))
                     if wandb_run :
                         wandb.log(val_log)
-                save_file ="checkpoint_"+kwargs["model"]+"_"+kwargs["model_version"]+"_epoch={}.pkl".format(i)
-                # if wandb_run:
-                #     save_file =  save_file + ".pkl"
-                # else:
-                #      save_file = save_file + kwargs["timestr"] + ".pkl"
-                torch.save(model.state_dict(), os.path.join( kwargs["save_path"],save_file))
+                if i % (kwargs["validation_interval"]*kwargs["save_checkpoint_interval"]) == 0:
+                    save_file ="checkpoint_"+kwargs["model"]+"_"+kwargs["model_version"]+"_epoch={}.pkl".format(i)
+                    torch.save(model.state_dict(), os.path.join( kwargs["save_path"],save_file))
                 model.train()
             
             # Training  
