@@ -479,7 +479,6 @@ class FourCastNetv2(Model):
             start_year=self.validationset_start_year,
             end_year=self.validationset_end_year,
             auto_regressive_steps=auto_regressive_steps,
-            shuffel=False,
             sst=False)
         
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=self.training_workers, batch_size=self.batch_size)
@@ -756,8 +755,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
             path=self.trainingdata_path, 
             start_year=self.validationset_start_year,
             end_year=self.validationset_end_year,
-            auto_regressive_steps=auto_regressive_steps,
-            shuffel=False)
+            auto_regressive_steps=auto_regressive_steps)
         
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=self.training_workers, batch_size=self.batch_size)
         loss_fn = torch.nn.MSELoss()
