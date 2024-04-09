@@ -100,11 +100,11 @@ class ERA5_galvani(Dataset):
             print("For ERA5, 100v, 100u the end dates are",enddate)
             end_year = int(np.datetime_as_string(possible_enddate,"Y"))
 
-        print("Using years: ",start_year," - ", end_year,"  (availabe date range: ",np.datetime_as_string(possible_startdate,"Y"),"-",np.datetime_as_string(possible_enddate,"Y"),")")
-        print("")
-
         self.start_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(dataset_start, start_year))])
         self.end_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(dataset_start, end_year))]) -1
+
+        print("Using years: ",start_year," - ", end_year," (total length: ",self.end_idx - self.start_idx,") (availabe date range: ",np.datetime_as_string(possible_startdate,"Y"),"-",np.datetime_as_string(possible_enddate,"Y"),")")
+        print("")
 
     def __len__(self):
         return self.end_idx - self.start_idx

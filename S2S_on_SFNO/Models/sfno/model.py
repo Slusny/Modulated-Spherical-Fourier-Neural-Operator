@@ -574,6 +574,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
         self.val_means = [[]] * (kwargs["autoregressive_steps"]+1)
         self.val_stds  = [[]] * (kwargs["autoregressive_steps"]+1)
         self.losses    = []
+        self.epoch = 0
+        self.iter = 0
 
         for i, (input, g_truth) in enumerate(training_loader):
 
@@ -655,6 +657,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
             scheduler.step(i)
 
             # logging
+            self.iter += 1
             loss_value = round(loss.item(),5)
             if local_logging : self.losses.append(loss_value)
             if wandb_run is not None:
