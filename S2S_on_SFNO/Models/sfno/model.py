@@ -468,7 +468,7 @@ class FourCastNetv2(Model):
                 print("Epoch: ", i, " Loss: ", loss_value)
         
         self.save_checkpoint()
-    
+
     # needed only for offline logging, commented out atm
     def save_checkpoint(self,save_file=None):
         if local_logging : 
@@ -634,7 +634,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         scheduler.step(i)
                     # change scale value based on validation loss
                     if list(val_log.values())[0] < kwargs["val_loss_threshold"] and scale < 1.0:
-                        val_log["scale"] = lr
+                        val_log["scale"] = scale
                         scale = scale + 0.05
 
                     # little complicated console logging - looks nicer than LOG.info(str(val_log))
@@ -681,6 +681,70 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 print("Epoch: ", i, " Loss: ", loss_value," - scale: ",scale)
 
         self.save_checkpoint()
+
+    def auto_regressive_skillscore(self,checkpoint_list,auto_regressive_steps,save_path):
+        """
+        Method to calculate the skill score of the model for different auto-regressive steps.
+        """
+        dataset_validation = ERA5_galvani(
+            self,
+            path=self.trainingdata_path, 
+            start_year=self.validationset_start_year,
+            end_year=self.validationset_end_year,
+            auto_regressive_steps=auto_regressive_steps,
+            shuffel=False)
+        
+        validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=self.training_workers, batch_size=self.batch_size)
+        loss_fn = torch.nn.MSELoss()
+
+        validation_loss_curve = {}
+        for cp_idx, checkpoint in enumerate(checkpoint_list):
+            model = self.load_model(checkpoint)
+            model.eval()
+            with torch.no_grad():
+                val_log = {}
+                val_loss = {}
+                # For loop over validation dataset, calculates the validation loss mean for number of kwargs["validation_epochs"]
+                for val_epoch, val_data in enumerate(validation_loader):
+                    # Calculates the validation loss for autoregressive model evaluation
+                    # if self.auto_regressive_steps = 0 the dataloader only outputs 2 datapoint 
+                    # and the for loop only runs once (calculating the ordinary validation loss with no auto regressive evaluation
+                    val_input_era5 = None
+                    for val_idx in range(len(val_data)-1):
+                        if val_input_era5 is None: val_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
+                        else: val_input_era5 = outputs
+                        val_input_sst  = self.normalise_film(val_data[val_idx][1]).to(self.device)
+                        val_g_truth_era5 = self.normalise(val_data[val_idx+1][0]).to(self.device)
+                        outputs = self.model(val_input_era5,val_input_sst,1)
+                        val_loss_value = loss_fn(outputs, val_g_truth_era5) / self.batch_size
+                        if val_epoch == 0: 
+                            val_loss["validation loss (n={}, autoregress={})".format(
+                                self.validation_epochs,val_idx)] = [val_loss_value.cpu()]
+                        else:
+                            val_loss["validation loss (n={}, autoregress={})".format(
+                                self.validation_epochs,val_idx)].append(val_loss_value.cpu())
+
+                    # end of validation 
+                    if val_epoch > self.validation_epochs:
+                        for k in val_loss.keys():
+                            val_loss_array      = np.array(val_loss[k])
+                            val_log[k]          = round(val_loss_array.mean(),5)
+                            val_log["std " + k] = round(val_loss_array.std(),5)
+                        break
+
+                # little complicated console logging - looks nicer than LOG.info(str(val_log))
+                val_log_keys = list(val_log.keys())
+                for log_idx in range(0,auto_regressive_steps*2+1,2): 
+                    LOG.info(val_log_keys[log_idx] + " : " + str(val_log[val_log_keys[log_idx]]) 
+                                + " +/- " + str(val_log[val_log_keys[log_idx+1]]))
+            if cp_idx == 0:
+                for k,v in val_log.items():
+                    validation_loss_curve[k] = [v]
+            else:
+                for k,v in val_log.items():
+                    validation_loss_curve[k].append(v)
+            
+            torch.save(validation_loss_curve,os.path.join(save_path,"validation_loss_curve_autoregressivesteps_{}.pkl".format(auto_regressive_steps)))
         
     def test_training(self,**kwargs):
         dataset = ERA5_galvani(

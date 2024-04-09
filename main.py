@@ -148,6 +148,11 @@ def _main():
         help="Show the fields needed as input for the model",
         action="store_true",
     )
+    parser.add_argument(
+        "--eval-models-autoregressive",
+        help="",
+        action="store_true",
+    )
 
     # Data
     data = parser.add_argument_group('Data and Data Sources')
@@ -520,6 +525,11 @@ def _main():
             print("shutting down training")
             model.save_checkpoint()
             sys.exit(0)
+    elif args.eval_models_autoregressive:
+        save_path = "/mnt/qb/work2/goswami0/gkd965/checkpoints/generous-tree-12/"
+        checkpoint_list = [save_path+'checkpoint_sfno_latest_epoch={}.pkl'.format(i) for i in range(0,110,20)]#12930
+        kwargs = vars(args)
+        model.auto_regressive_skillscore(checkpoint_list,args.autoregressive_steps,save_path)
     else:
 
         try:

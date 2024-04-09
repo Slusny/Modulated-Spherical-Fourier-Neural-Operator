@@ -22,6 +22,7 @@ from .checkpoint import peek
 from ..inputs import get_input
 from ..outputs import get_output
 from .stepper import Stepper
+from .train import ERA5_galvani
 
 
 LOG = logging.getLogger(__name__)
@@ -393,6 +394,8 @@ class Model:
         print("Training method not implemented for this model.")
         print("Make sure you specified also the --verison of the model you want to train.")
         sys.exit(1)
+
+    
 
 def available_models():
     # result = 
