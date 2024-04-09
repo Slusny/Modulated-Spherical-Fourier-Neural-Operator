@@ -428,7 +428,7 @@ class FourCastNetv2(Model):
                         wandb.log(val_log)
                 if i % (kwargs["validation_interval"]*kwargs["save_checkpoint_interval"]) == 0:
                     self.save_and_exit()
-                    save_file ="checkpoint_"+kwargs["model"]+"_"+kwargs["model_version"]+"_epoch={}.pkl".format(i)
+                    save_file ="checkpoint_"+kwargs["model_type"]+"_"+kwargs["model_version"]+"_epoch={}.pkl".format(i)
                     torch.save(model.state_dict(), os.path.join( kwargs["save_path"],save_file))
                 model.train()
             
@@ -621,7 +621,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         wandb.log(val_log)
                 # save model and training statistics for checkpointing
                 if i % (kwargs["validation_interval"]*kwargs["save_checkpoint_interval"]) == 0:
-                    save_file ="checkpoint_"+kwargs["model"]+"_"+kwargs["model_version"]+"_"+kwargs["film_gen_type"]+"_epoch={}.pkl".format(i)
+                    save_file ="checkpoint_"+kwargs["model_type"]+"_"+kwargs["model_version"]+"_"+kwargs["film_gen_type"]+"_epoch={}.pkl".format(i)
                     torch.save(model.state_dict(), os.path.join( kwargs["save_path"],save_file))
                 model.train()
             
@@ -692,7 +692,7 @@ def get_model(**kwargs):
     models = {
         "0": FourCastNetv2,
         "small": FourCastNetv2,
-        "release": FourCastNetv2,
+        "sfno": FourCastNetv2,
         "latest": FourCastNetv2,
         "film": FourCastNetv2_filmed,
     }

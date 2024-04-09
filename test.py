@@ -104,9 +104,9 @@
 # t = test()
 # t.print()
 
-import torch
+# import torch
 
-d = (torch.tensor([2,2]),torch.tensor([2,2]))
+# d = (torch.tensor([2,2]),torch.tensor([2,2]))
 # for i in [d[0],d[1]]:
 #     i.to("cuda:0")
 # d[0].to("cuda:0")
@@ -133,10 +133,16 @@ d = (torch.tensor([2,2]),torch.tensor([2,2]))
 
 class test():
     def __init__(self,a=1,b=2,**kwargs):
-        self.a = a
+        self.a = {"a":a}
         self.b = b
     def p(self):
         print(self.a,self.b)
+    def mod(self):
+        c = self.a
+        c["a"] = 100
+        return c
 
-t = test(a=3,b=4,c=5)
+t = test(a=3,b=4)
+t.p()
+t.mod()
 t.p()

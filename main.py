@@ -49,6 +49,7 @@ def _main():
         action="store",
         required=True,
         choices=available_models(),
+        dest="model_type"
         help="Specify the model to run",
     )
     parser.add_argument(
@@ -57,9 +58,10 @@ def _main():
         help="Model versions: \n    SFNO: [0, film]\n    Fourcastnet: [0, 1]",
     )
     parser.add_argument(
-        "--film-gen-type",
+        "--film-gen",
         default=None,
         type=str,
+        dest="film_gen_type",
         help="Which type of film generator to use in the filmed model.",
         choices=["none","gcn","gcn_custom","transformer"]
     )
@@ -387,18 +389,18 @@ def _main():
 
     # Format Assets path
     if args.assets:
-        args.assets = os.path.join(os.path.abspath(args.assets),args.model)
+        args.assets = os.path.join(os.path.abspath(args.assets),args.model_type)
     elif args.assets_sub_directory:
-        args.assets = os.path.join(Path(".").absolute(),args.assets_sub_directory,args.model)
+        args.assets = os.path.join(Path(".").absolute(),args.assets_sub_directory,args.model_type)
 
     # Format Output path
     timestr = time.strftime("%Y%m%dT%H%M")
     # save_string to save output data if model.run is called (only for runs not for training)
     save_string = "leadtime_"+str(args.lead_time)+"_startDate_"+str(args.date)+str(args.time) +"_createdOn_"+timestr
     if args.path is None:
-        outputDirPath = os.path.join(Path(".").absolute(),"S2S_on_SFNO/outputs",args.model)
+        outputDirPath = os.path.join(Path(".").absolute(),"S2S_on_SFNO/outputs",args.model_type)
     else:
-        outputDirPath = os.path.join(args.path,args.model)
+        outputDirPath = os.path.join(args.path,args.model_type)
     
     args.path  = os.path.join(outputDirPath,save_string+".grib")
     # timestring for logging and saveing purposes
@@ -445,14 +447,14 @@ def _main():
         # for key in ['notes','tags','wandb']:del config_wandb[key]
         # del config_wandb
         if args.wandb_resume is not None :
-            wandb_run = wandb.init(project=args.model + " - " +args.model_version, 
+            wandb_run = wandb.init(project=args.model_type + " - " +args.model_version, 
                 config=args,
                 notes=args.notes,
                 tags=args.tags,
                 resume="must",
                 id=args.wandb_resume)
         else:
-            wandb_run = wandb.init(project=args.model + " - " +args.model_version, 
+            wandb_run = wandb.init(project=args.model_type + " - " +args.model_version, 
                 config=args,
                 notes=args.notes,
                 tags=args.tags)
@@ -464,13 +466,13 @@ def _main():
         wandb_run = None
         if args.film_gen_type: film_gen_str = "_"+args.film_gen_type
         else:                  film_gen_str = ""
-        new_save_path = os.path.join(args.save_path,args.model+"_"+args.model_version+film_gen_str+"_"+timestr)
+        new_save_path = os.path.join(args.save_path,args.model_type+"_"+args.model_version+film_gen_str+"_"+timestr)
         os.mkdir(new_save_path)
         args.save_path = new_save_path
 
 
     
-    model = load_model(args.model, vars(args))
+    model = load_model(args.model_type, vars(args))
 
     if args.fields:
         model.print_fields()
@@ -522,7 +524,7 @@ def _main():
             LOG.error(
                 "It is possible that some files requited by %s are missing.\
                 \n    Or that the assets path is not set correctly.",
-                args.model,
+                args.model_type,
             )
             LOG.error("Rerun the command as:")
             LOG.error(
