@@ -8,6 +8,7 @@
 
 import logging
 import os
+import sys
 from time import time
 
 import numpy as np
@@ -217,18 +218,21 @@ class FourCastNetv2(Model):
         # RuntimeError: Error(s) in loading state_dict for Wrapper:
         # Missing key(s) in state_dict: "module.trans_down.weights",
         # "module.itrans_up.pct",
-        try:
-            # Try adding model weights as dictionary
-            new_state_dict = dict()
-            # for k, v in checkpoint["model_state"].items():
-            for k, v in weights.items():
-                name = k[7:]
-                if name != "ged":
-                    new_state_dict[name] = v
-            model.load_state_dict(new_state_dict)
-        except Exception:
-            # model.load_state_dict(checkpoint["model_state"])
-             model.load_state_dict(weights)
+        if list(weights.keys())[0][0:7] == 'module.':
+            try:
+                # Try adding model weights as dictionary
+                new_state_dict = dict()
+                # for k, v in checkpoint["model_state"].items():
+                for k, v in weights.items():
+                    name = k[7:]
+                    if name != "ged":
+                        new_state_dict[name] = v
+                model.load_state_dict(new_state_dict)
+            except Exception:
+                # model.load_state_dict(checkpoint["model_state"])
+                model.load_state_dict(weights)
+        else:
+            model.load_state_dict(weights)
 
         # Set model to eval mode and return
         model.eval()
@@ -496,14 +500,6 @@ class FourCastNetv2_filmed(FourCastNetv2):
         model = self.model
         model.zero_grad()
 
-        #  Load Filmed weights
-        if self.checkpoint_path_film:
-            checkpoint_film = torch.load(self.checkpoint_file_film, map_location=self.device)
-            # model.film_gen.load_state_dict(checkpoint_film["model_state"])
-            model.film_gen.load_state_dict(checkpoint_film)
-        else:
-            pass
-        
         # Load SFNO weights
         checkpoint_sfno = torch.load(checkpoint_file, map_location=self.device)
         if "model_state" in checkpoint_sfno.keys(): weights = checkpoint_sfno["model_state"]
@@ -519,18 +515,32 @@ class FourCastNetv2_filmed(FourCastNetv2):
         # "module.itrans_up.pct",
 
         # Load SFNO weights
-        try:
-            # Try adding model weights as dictionary
-            new_state_dict = dict()
-            # for k, v in checkpoint_sfno["model_state"].items():
-            for k, v in weights.items():
-                name = k[7:]
-                if name != "ged":
-                    new_state_dict[name] = v
-            model.load_state_dict(new_state_dict,strict=False)
-        except Exception:
-            # model.load_state_dict(checkpoint_sfno["model_state"])
+        if list(weights.keys())[0][0:7] == 'module.':
+            try:
+                # Try adding model weights as dictionary
+                new_state_dict = dict()
+                # for k, v in checkpoint_sfno["model_state"].items():
+                for k, v in weights.items():
+                    name = k[7:]
+                    if name != "ged":
+                        new_state_dict[name] = v
+                model.load_state_dict(new_state_dict,strict=False)
+            except Exception:
+                # model.load_state_dict(checkpoint_sfno["model_state"])
+                model.load_state_dict(weights)
+        else:
             model.load_state_dict(weights)
+
+        #  Load Filmed weights
+        if self.checkpoint_path_film:
+            checkpoint_film = torch.load(self.checkpoint_file_film, map_location=self.device)
+            print("not yet implemented")
+            sys.exit()
+            # needs to extract only film_gen weights if the whole model was saved
+            # model.film_gen.load_state_dict(checkpoint_film["model_state"])
+            model.film_gen.load_state_dict(checkpoint_film)
+        else:
+            pass
 
         # Set model to eval mode and return
         model.eval()
