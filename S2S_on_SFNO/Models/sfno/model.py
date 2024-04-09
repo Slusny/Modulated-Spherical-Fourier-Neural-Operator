@@ -199,7 +199,7 @@ class FourCastNetv2(Model):
     def load_model(self, checkpoint_file):
         # model = nvs.FourierNeuralOperatorNet()
         # model = FourierNeuralOperatorNet()
-        model = self.model
+        model = self.model # since self.model is a class this is passed by reference and modified in place
 
         model.zero_grad()
         # Load weights
@@ -365,7 +365,7 @@ class FourCastNetv2(Model):
         # store the optimizer and scheduler in the model class
         self.optimizer = optimizer
         self.scheduler = scheduler
-        
+
         loss_fn = torch.nn.MSELoss()
 
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
@@ -431,9 +431,8 @@ class FourCastNetv2(Model):
                     if wandb_run :
                         wandb.log(val_log)
                 if i % (kwargs["validation_interval"]*kwargs["save_checkpoint_interval"]) == 0:
-                    self.save_and_exit()
                     save_file ="checkpoint_"+kwargs["model_type"]+"_"+kwargs["model_version"]+"_epoch={}.pkl".format(i)
-                    torch.save(model.state_dict(), os.path.join( kwargs["save_path"],save_file))
+                    self.save_checkpoint(save_file)
                 model.train()
             
             # Training  
@@ -460,17 +459,17 @@ class FourCastNetv2(Model):
             if kwargs["debug"]:
                 print("Epoch: ", i, " Loss: ", loss_value)
         
-        self.save_and_exit()
+        self.save_checkpoint()
     
     # needed only for offline logging, commented out atm
-    def save_and_exit(self):
+    def save_checkpoint(self,save_file=None):
         if local_logging : 
             print(" -> saving to : ",self.save_path)
             np.save(os.path.join( self.save_path,"val_means.npy"),self.val_means)
             np.save(os.path.join( self.save_path,"val_stds.npy"),self.val_stds)
             np.save(os.path.join( self.save_path,"losses.npy"),self.losses)
-        # self.model is the trained model?? or self.state_dict()??
-        save_file ="checkpoint_"+self.timestr+"_final.pkl"
+
+        if save_file is None: save_file ="checkpoint_"+self.timestr+"_final.pkl"
         torch.save({
             "model_state":self.model.state_dict(), 
             "epoch":self.epoch,
@@ -663,7 +662,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
             if kwargs["debug"]:
                 print("Epoch: ", i, " Loss: ", loss_value," - scale: ",scale)
 
-        self.save_and_exit()
+        self.save_checkpoint()
         
     def test_training(self,**kwargs):
         dataset = ERA5_galvani(

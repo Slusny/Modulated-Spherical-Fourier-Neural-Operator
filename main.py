@@ -513,7 +513,7 @@ def _main():
             LOG.error(traceback.format_exc())
             print(e)
             print("shutting down training")
-            model.save_and_exit()
+            model.save_checkpoint()
             sys.exit(0)
     else:
 
