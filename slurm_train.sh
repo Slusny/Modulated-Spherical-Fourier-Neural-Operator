@@ -3,7 +3,7 @@
 #a) Define slurm job parameters
 ####
 
-#SBATCH --job-name=sfno
+#SBATCH --job-name=fptr
 
 #resources:
 
@@ -27,10 +27,10 @@
 # the maximum time the scripts needs to run
 # "minutes:seconds", "hours:minutes:seconds", "days-hours","days-hours:minutes" and "days-hours:minutes:seconds"
 
-#SBATCH --error=/home/goswami/gkd965/jobs/job.sfno.%J.err
+#SBATCH --error=/home/goswami/gkd965/jobs/job.filmpretrained.%J.err
 # write the error output to job.*jobID*.err
 
-#SBATCH --output=/home/goswami/gkd965/jobs/job.sfno.%J.out
+#SBATCH --output=/home/goswami/gkd965/jobs/job.filmpretrained.%J.out
 # write the standard output to job.*jobID*.out
 
 #SBATCH --mail-type=ALL
