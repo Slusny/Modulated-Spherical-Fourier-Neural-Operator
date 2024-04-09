@@ -527,9 +527,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 model.load_state_dict(new_state_dict,strict=False)
             except Exception:
                 # model.load_state_dict(checkpoint_sfno["model_state"])
-                model.load_state_dict(weights)
+                model.load_state_dict(weights,strict=False)
         else:
-            model.load_state_dict(weights)
+            model.load_state_dict(weights,strict=False)
 
         #  Load Filmed weights
         if self.checkpoint_path_film:
@@ -651,7 +651,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 # save model and training statistics for checkpointing
                 if i % (kwargs["validation_interval"]*kwargs["save_checkpoint_interval"]) == 0:
                     save_file ="checkpoint_"+kwargs["model_type"]+"_"+kwargs["model_version"]+"_"+kwargs["film_gen_type"]+"_epoch={}.pkl".format(i)
-                    torch.save(model.state_dict(), os.path.join( kwargs["save_path"],save_file))
+                    self.save_checkpoint(save_file)
                 model.train()
             
             # Training  
