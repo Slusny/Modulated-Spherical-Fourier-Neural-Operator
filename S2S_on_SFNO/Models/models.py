@@ -149,22 +149,25 @@ class Model:
         import torch
 
         device = "cpu"
-
+        
         if torch.backends.mps.is_available() and torch.backends.mps.is_built():
             device = "mps"
 
         if torch.cuda.is_available() and torch.backends.cuda.is_built():
             device = "cuda"
 
-        LOG.info(
-            "Using device '%s'. The speed of inference depends greatly on the device.",
-            device.upper(),
-        )
-
         if self.only_gpu:
             if device == "cpu":
                 raise RuntimeError("GPU is not available")
 
+        if self.cpu:
+            device = "cpu"
+
+        LOG.info(
+            "Using device '%s'. The speed of inference depends greatly on the device.",
+            device.upper(),
+        )
+            
         return device
 
     @cached_property

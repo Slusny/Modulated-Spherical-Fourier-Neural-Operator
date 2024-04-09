@@ -508,7 +508,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         checkpoint_sfno = torch.load(checkpoint_file, map_location=self.device)
         if "model_state" in checkpoint_sfno.keys(): weights = checkpoint_sfno["model_state"]
         else: weights = checkpoint_sfno
-        drop_vars = ["module.norm.weight", "module.norm.bias"]
+        drop_vars = ["module.norm.weight", "module.norm.bias"] # no checkpoint has that layer, probably lecacy from ai-model dev
         weights = {k: v for k, v in weights.items() if k not in drop_vars}
 
         # Make sure the parameter names are the same as the checkpoint

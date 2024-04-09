@@ -40,9 +40,9 @@ def _main():
     os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
     
     parser.add_argument(
-            "--test",
-            action="store_true",
-            help="execute test code",
+        "--test",
+        action="store_true",
+        help="execute test code",
         )
     parser.add_argument(
         "--model",
@@ -107,6 +107,11 @@ def _main():
     parser.add_argument(
         "--only-gpu",
         help="Fail if GPU is not available",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--cpu",
+        help="Use CPU",
         action="store_true",
     )
         # Metadata
