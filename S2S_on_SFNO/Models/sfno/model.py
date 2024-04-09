@@ -480,6 +480,7 @@ class FourCastNetv2(Model):
             "iter":self.iter,
             "optimizer_state_dict":self.optimizer.state_dict(),
             "scheduler_state_dict":self.scheduler.state_dict(),
+            "hyperparameters": self.hyperparameters
             },os.path.join( self.save_path,save_file))
 
 
@@ -711,7 +712,7 @@ def get_model(**kwargs):
     models = {
         "0": FourCastNetv2,
         "small": FourCastNetv2,
-        "sfno": FourCastNetv2,
+        "release": FourCastNetv2,
         "latest": FourCastNetv2,
         "film": FourCastNetv2_filmed,
     }

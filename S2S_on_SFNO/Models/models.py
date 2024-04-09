@@ -62,9 +62,10 @@ class Model:
         if not kwargs['train']: self.output = get_output(output, self, **kwargs)                        
         # self.output2 = get_output("grib", self, **kwargs) #! redundant, test
 
-        # here the kwargs of the parser become model properties
+        # here the kwargs of the parser become model properties (legacy from ai-models)
         for k, v in kwargs.items():
             setattr(self, k, v)
+        self.hyperparameters = kwargs # like this more to save hyperparameters
 
         # We need to call it to initialise the default args
         args = self.parse_model_args(self.model_args)
