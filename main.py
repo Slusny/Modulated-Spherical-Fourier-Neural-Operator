@@ -49,7 +49,7 @@ def _main():
         action="store",
         required=True,
         choices=available_models(),
-        dest="model_type"
+        dest="model_type",
         help="Specify the model to run",
     )
     parser.add_argument(

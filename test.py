@@ -138,8 +138,9 @@ class test():
     def p(self):
         print(self.a,self.b)
     def mod(self):
-        c = self.a
-        c["a"] = 100
+        c = {"a": 100}
+        self.a = c
+        c["a"] = 200
         return c
 
 t = test(a=3,b=4)

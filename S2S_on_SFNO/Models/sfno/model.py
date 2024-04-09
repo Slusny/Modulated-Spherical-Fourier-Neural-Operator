@@ -362,6 +362,10 @@ class FourCastNetv2(Model):
         # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
         optimizer = torch.optim.Adam(model.parameters(), lr=2*0.001)
         scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,T_0=kwargs["scheduler_horizon"])
+        # store the optimizer and scheduler in the model class
+        self.optimizer = optimizer
+        self.scheduler = scheduler
+        
         loss_fn = torch.nn.MSELoss()
 
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
@@ -466,8 +470,14 @@ class FourCastNetv2(Model):
             np.save(os.path.join( self.save_path,"val_stds.npy"),self.val_stds)
             np.save(os.path.join( self.save_path,"losses.npy"),self.losses)
         # self.model is the trained model?? or self.state_dict()??
-        # save_file ="checkpoint_"+self.timestr+"_final.pkl"
-        # torch.save(self.model.state_dict(), os.path.join( self.save_path,save_file))
+        save_file ="checkpoint_"+self.timestr+"_final.pkl"
+        torch.save({
+            "model_state":self.model.state_dict(), 
+            "epoch":self.epoch,
+            "iter":self.iter,
+            "optimizer_state_dict":self.optimizer.state_dict(),
+            "scheduler_state_dict":self.scheduler.state_dict(),
+            },os.path.join( self.save_path,save_file))
 
 
 class FourCastNetv2_filmed(FourCastNetv2):
@@ -551,6 +561,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
         # optimizer = torch.optim.SGD(model.get_film_params(), lr=0.001, momentum=0.9)
         optimizer = torch.optim.Adam(model.get_film_params(), lr=2*0.001)
         scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,T_0=kwargs["scheduler_horizon"])
+        # store the optimizer and scheduler in the model class
+        self.optimizer = optimizer
+        self.scheduler = scheduler
         
         loss_fn = torch.nn.MSELoss()
 
