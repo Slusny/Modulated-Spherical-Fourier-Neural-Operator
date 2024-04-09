@@ -25,7 +25,7 @@ from .sfnonet import FourierNeuralOperatorNet_Filmed
 from ..train import ERA5_galvani
 
 LOG = logging.getLogger(__name__)
-local_logging = False
+local_logging = True
 
 class FourCastNetv2(Model):
     # Download
@@ -367,9 +367,9 @@ class FourCastNetv2(Model):
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
         
-        ## for logging offline (no wandb)
-        # self.val_means = []
-        # self.val_stds  = []
+        ## for logging offline to local file (no wandb)
+        self.val_means = [[]] * (kwargs["autoregressive_steps"]+1)
+        self.val_stds  = [[]] * (kwargs["autoregressive_steps"]+1)
         self.losses    = []
 
         for i, (input, g_truth) in enumerate(training_loader):
@@ -411,20 +411,23 @@ class FourCastNetv2(Model):
                         lr = scheduler.get_last_lr()[0]
                         val_log["learning rate"] = lr
                         scheduler.step(i)
-                    # logging offline
-                    # self.val_means.append(mean_val_loss)
-                    # self.val_stds.append(std_val_loss)
+                   
                     # LOG.info("Validation loss: "+str(mean_val_loss)+" +/- "+str(std_val_loss)+" (n={})".format(kwargs["validation_epochs"]))
 
                     # little complicated console logging - looks nicer
                     print("-- validation after ",i*kwargs["batch_size"], "training examples")
                     val_log_keys = list(val_log.keys())
                     for log_idx in range(0,kwargs["autoregressive_steps"]*2+1,2):
+                        # log to console
                         LOG.info(val_log_keys[log_idx] + " : " + str(val_log[val_log_keys[log_idx]]) 
                                  + " +/- " + str(val_log[val_log_keys[log_idx+1]]))
+                        # log to local file
+                        self.val_means[log_idx].append(val_log[val_log_keys[log_idx]])
+                        self.val_stds[log_idx].append(val_log[val_log_keys[log_idx+1]])
                     if wandb_run :
                         wandb.log(val_log)
                 if i % (kwargs["validation_interval"]*kwargs["save_checkpoint_interval"]) == 0:
+                    self.save_and_exit()
                     save_file ="checkpoint_"+kwargs["model"]+"_"+kwargs["model_version"]+"_epoch={}.pkl".format(i)
                     torch.save(model.state_dict(), os.path.join( kwargs["save_path"],save_file))
                 model.train()
@@ -459,8 +462,8 @@ class FourCastNetv2(Model):
     def save_and_exit(self):
         if local_logging : 
             print(" -> saving to : ",self.save_path)
-            # np.save(os.path.join( self.save_path,"val_means.npy"),self.val_means)
-            # np.save(os.path.join( self.save_path,"val_stds.npy"),self.val_stds)
+            np.save(os.path.join( self.save_path,"val_means.npy"),self.val_means)
+            np.save(os.path.join( self.save_path,"val_stds.npy"),self.val_stds)
             np.save(os.path.join( self.save_path,"losses.npy"),self.losses)
         # self.model is the trained model?? or self.state_dict()??
         # save_file ="checkpoint_"+self.timestr+"_final.pkl"
@@ -555,9 +558,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
 
         scale = 0.0
-        ## for logging offline (no wandb)
-        # self.val_means = []
-        # self.val_stds  = []
+        # for logging to local file (no wandb)
+        self.val_means = [[]] * (kwargs["autoregressive_steps"]+1)
+        self.val_stds  = [[]] * (kwargs["autoregressive_steps"]+1)
         self.losses    = []
 
         for i, (input, g_truth) in enumerate(training_loader):
@@ -604,26 +607,22 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     if list(val_log.values())[0] < kwargs["val_loss_threshold"] and scale < 1.0:
                         val_log["scale"] = lr
                         scale = scale + 0.05
-                    # logging offline
-                    # self.val_means.append(mean_val_loss)
-                    # self.val_stds.append(std_val_loss)
-                    # LOG.info("Validation loss: "+str(mean_val_loss)+" +/- "+str(std_val_loss)+" (n={})".format(kwargs["validation_epochs"]))
-                    
-                    
+
                     # little complicated console logging - looks nicer than LOG.info(str(val_log))
                     print("-- validation after ",i*kwargs["batch_size"], "training examples")
                     val_log_keys = list(val_log.keys())
                     for log_idx in range(0,kwargs["autoregressive_steps"]*2+1,2): 
                         LOG.info(val_log_keys[log_idx] + " : " + str(val_log[val_log_keys[log_idx]]) 
                                  + " +/- " + str(val_log[val_log_keys[log_idx+1]]))
+                        # log to local file
+                        self.val_means[log_idx].append(val_log[val_log_keys[log_idx]])
+                        self.val_stds[log_idx].append(val_log[val_log_keys[log_idx+1]])
                     if wandb_run :
                         wandb.log(val_log)
-                save_file ="checkpoint_"+kwargs["model"]+"_"+kwargs["model_version"]+"_"+kwargs["film_gen_type"]+"_epoch={}.pkl".format(i)
-                # if wandb_run:
-                #     save_file =  save_file + ".pkl"
-                # else:
-                #      save_file = save_file + kwargs["timestr"] + ".pkl"
-                torch.save(model.state_dict(), os.path.join( kwargs["save_path"],save_file))
+                # save model and training statistics for checkpointing
+                if i % (kwargs["validation_interval"]*kwargs["save_checkpoint_interval"]) == 0:
+                    save_file ="checkpoint_"+kwargs["model"]+"_"+kwargs["model_version"]+"_"+kwargs["film_gen_type"]+"_epoch={}.pkl".format(i)
+                    torch.save(model.state_dict(), os.path.join( kwargs["save_path"],save_file))
                 model.train()
             
             # Training  

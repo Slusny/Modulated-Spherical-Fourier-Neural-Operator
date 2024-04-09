@@ -558,4 +558,5 @@ if __name__ == "__main__":
 are all kwargs added to model: e.g. film_gen_type is part of model.film_gen_type
 - add "iter" 'epoch' "optimizer_state_dict" "scheduler_state_dict" and "model_state" to checkpoint file\
 - print total dataset length
+- LOG only mean loss value to weight and biases ? To better performance
 '''
