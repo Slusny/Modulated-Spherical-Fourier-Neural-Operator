@@ -10,7 +10,11 @@ print(uv)
 
 base_path = "/mnt/qb/goswami/data/era5/u100m_v100m_721x1440"
 save_path = "/mnt/qb/goswami/data/era5/weatherbench2/"
-uv100=uv+"100m_1959-2022_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr"
+if uv == "u":
+    uv100="u100m_1959-2022_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr"
+else:
+    uv100="v100m_1959-2023-10_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr"
+
 
 uv100_new=uv+"100m_chunked_1959-2022_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr"
 uv100_temp = uv+"100m_chunked_temp.zarr"
