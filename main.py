@@ -150,7 +150,7 @@ def _main():
     )
     parser.add_argument(
         "--eval-models-autoregressive",
-        help="",
+        help="evaluate model list of checkpoints for autoregressive forecast",
         action="store_true",
     )
 
@@ -319,6 +319,20 @@ def _main():
         type=int
     )
     training.add_argument(
+        "--multi-step-training",
+        help="calculate loss over multiple autoregressive prediction steps",
+        default=0,
+        type=int,
+        action="store",
+    )
+    training.add_argument(
+        "--multi-step-skip",
+        help="skip the x amount of autoregressive steps in the multi-step training to calculate the loss",
+        default=0,
+        type=int,
+        action="store",
+    )
+    training.add_argument(
         "--val-loss-threshold",
         help="increasing the scaleing of the film layer based on the validation loss. If the validation loss is lower than this threshold, the scaleing is increased by 0.05",
         action="store",
@@ -343,6 +357,19 @@ def _main():
         action="store",
         default=5,
         type=int
+    )
+    training.add_argument(
+        "--learning-rate",
+        action="store",
+        default=2*0.001,
+        type=float
+    )
+    training.add_argument(
+        "--scheduler",
+        action="store",
+        default="CosineAnnealingWarmRestarts",
+        help="which pytorch scheduler to use",
+        type=str
     )
     training.add_argument(
         "--scheduler-horizon",

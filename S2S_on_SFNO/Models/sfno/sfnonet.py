@@ -743,7 +743,7 @@ class GCN_custom(nn.Module):
         self.num_layers = num_layers
         self.hidden_size = out_features*2
         self.conv1 = GraphConvolution(1, self.hidden_size)
-        self.perceptive_field = 3
+        self.perceptive_field = 6 # 3
         self.conv_layers = nn.ModuleList([GraphConvolution(self.hidden_size, self.hidden_size) for _ in range(self.perceptive_field)])
         self.activation = nn.LeakyReLU() # change parameter for leaky relu also in initalization of GraphConvolution layer
         self.heads_gamma = nn.ModuleList([])
@@ -866,6 +866,10 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
 
         # calculate gammas and betas for film layers
         gamma,beta = self.film_gen(sst)
+        # save gamma and beta in model for validation
+        self.gamma = gamma
+        self.beta = beta
+        
         if gamma.shape[0] != self.num_layers:
             gamma = gamma.repeat(self.num_layers,1)
             beta = beta.repeat(self.num_layers,1)

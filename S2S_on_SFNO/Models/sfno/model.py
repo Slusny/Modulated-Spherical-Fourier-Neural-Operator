@@ -364,8 +364,8 @@ class FourCastNetv2(Model):
         model = self.load_model(self.checkpoint_path)
         model.train()
 
-        # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-        optimizer = torch.optim.Adam(model.parameters(), lr=2*0.001)
+        # optimizer = torch.optim.SGD(model.parameters(), lr=kwargs["learning_rate"]), momentum=0.9)
+        optimizer = torch.optim.Adam(model.parameters(), lr=kwargs["learning_rate"])
         scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,T_0=kwargs["scheduler_horizon"])
         # store the optimizer and scheduler in the model class
         self.optimizer = optimizer
@@ -549,7 +549,7 @@ class FourCastNetv2(Model):
             "iter":self.iter,
             "optimizer_state_dict":self.optimizer.state_dict(),
             "scheduler_state_dict":self.scheduler.state_dict(),
-            "hyperparameters": self.hyperparameters
+            "hyperparameters": self.params
             },os.path.join( self.save_path,save_file))
 
 
@@ -624,7 +624,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
             self,
             path=kwargs["trainingdata_path"], 
             start_year=kwargs["trainingset_start_year"],
-            end_year=kwargs["trainingset_end_year"]
+            end_year=kwargs["trainingset_end_year"],
+            auto_regressive_steps=kwargs["multi_step_training"]
         )
         print("Validation Data:")
         dataset_validation = ERA5_galvani(
@@ -637,12 +638,22 @@ class FourCastNetv2_filmed(FourCastNetv2):
         model = self.load_model(self.checkpoint_path)
         model.train()
 
-        # optimizer = torch.optim.SGD(model.get_film_params(), lr=0.001, momentum=0.9)
-        optimizer = torch.optim.Adam(model.get_film_params(), lr=2*0.001)
-        scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,T_0=kwargs["scheduler_horizon"])
+        # optimizer = torch.optim.SGD(model.get_film_params(), lr=kwargs["learning_rate"], momentum=0.9)
+        self.optimizer = torch.optim.Adam(model.get_film_params(), lr=kwargs["learning_rate"])
+
+        # Scheduler
+        if kwargs["scheduler"] == 'ReduceLROnPlateau':
+            self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, factor=0.2, patience=5, mode='min')
+        elif kwargs["scheduler"] == 'CosineAnnealingLR':
+            self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=kwargs["scheduler_horizon"])
+        elif kwargs["scheduler"] == 'CosineAnnealingWarmRestarts':
+            self.scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,T_0=kwargs["scheduler_horizon"])
+        else:
+            self.scheduler = None
+        
         # store the optimizer and scheduler in the model class
-        self.optimizer = optimizer
-        self.scheduler = scheduler
+        optimizer = self.optimizer 
+        scheduler = self.scheduler 
         
         loss_fn = torch.nn.MSELoss()
 
@@ -657,7 +668,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         self.epoch = 0
         self.iter = 0
 
-        for i, (input, g_truth) in enumerate(training_loader):
+        for i, data in enumerate(training_loader):
 
             # Validation
             if i % kwargs["validation_interval"] == 0:
@@ -693,12 +704,22 @@ class FourCastNetv2_filmed(FourCastNetv2):
                                 val_log["std " + k] = round(val_loss_array.std(),5)
                             break
                     
-                    if scheduler: 
+                    #scheduler
+                    valid_mean = list(val_log.values())[0]
+                    if self.params.scheduler == 'ReduceLROnPlateau':
+                        self.scheduler.step(valid_mean)
+                    elif self.params.scheduler == 'CosineAnnealingLR':
+                        self.scheduler.step()
+                        if self.epoch >= self.params.max_epochs:
+                            LOG.info("Terminating training after reaching params.max_epochs while LR scheduler is set to CosineAnnealingLR") 
+                    elif self.params.scheduler == 'CosineAnnealingWarmRestarts':
+                        self.scheduler.step(i)
+                    if scheduler is not None and scheduler != "None": 
                         lr = scheduler.get_last_lr()[0]
                         val_log["learning rate"] = lr
-                        scheduler.step(i)
+
                     # change scale value based on validation loss
-                    if list(val_log.values())[0] < kwargs["val_loss_threshold"] and scale < 1.0:
+                    if valid_mean < kwargs["val_loss_threshold"] and scale < 1.0:
                         val_log["scale"] = scale
                         scale = scale + 0.05
 
@@ -717,24 +738,29 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 if i % (kwargs["validation_interval"]*kwargs["save_checkpoint_interval"]) == 0:
                     save_file ="checkpoint_"+kwargs["model_type"]+"_"+kwargs["model_version"]+"_"+kwargs["film_gen_type"]+"_epoch={}.pkl".format(i)
                     self.save_checkpoint(save_file)
+                    np.save(os.path.join( self.save_path,"gamma.npy"),self.gamma.cpu().numpy())
+                    np.save(os.path.join( self.save_path,"gamma.npy"),self.beta.cpu().numpy())
                 model.train()
             
             # Training  
-            input_era5, input_sst = self.normalise(input[0]).to(self.device), self.normalise_film(input[1]).to(self.device)
-            g_truth_era5, g_truth_sst = self.normalise(g_truth[0]).to(self.device), self.normalise_film(g_truth[1]).to(self.device)
-            
             optimizer.zero_grad()
 
-            # Make predictions for this batch
-            outputs = model(input_era5,input_sst,scale)
-
-            # Compute the loss and its gradients
-            loss = loss_fn(outputs, g_truth_era5)
-            loss.backward()
+            loss = []
+            discount_factor = 1
+            for step in range(kwargs["multi_step_training"]+1):
+                
+                if step == 0 : input_era5 = self.normalise(data[val_idx][0]).to(self.device)
+                else: input_era5 = outputs
+                input_sst  = self.normalise_film(data[val_idx][1]).to(self.device)
+                g_truth_era5 = self.normalise(data[val_idx+1][0]).to(self.device)
+                
+                outputs = model(input_era5,input_sst,scale)
+                loss.append(loss_fn(outputs, g_truth_era5))#*discount_factor**step
+            
+            torch.tensor(loss).sum().backward()
 
             # Adjust learning weights
             optimizer.step()
-            scheduler.step(i)
 
             # logging
             self.iter += 1

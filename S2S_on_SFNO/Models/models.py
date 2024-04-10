@@ -66,7 +66,7 @@ class Model:
         # here the kwargs of the parser become model properties (legacy from ai-models)
         for k, v in kwargs.items():
             setattr(self, k, v)
-        self.hyperparameters = kwargs # like this more to save hyperparameters
+        self.params = kwargs # like this more to save hyperparameters
 
         # We need to call it to initialise the default args
         args = self.parse_model_args(self.model_args)
