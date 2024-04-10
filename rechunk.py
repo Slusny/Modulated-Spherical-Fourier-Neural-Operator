@@ -29,6 +29,7 @@ target_chunks = {
 }
 max_mem = "390GB"
 
+print("started rechunking")
 target_store = os.path.join(save_path,uv100_new)
 temp_store = os.path.join(save_path,uv100_temp)
 source_array = ds
@@ -37,7 +38,7 @@ array_plan = rechunk(
 )
 
 print(array_plan)
-result = array_plan.execute()
+# result = array_plan.execute()
 
 
 with ProgressBar():
