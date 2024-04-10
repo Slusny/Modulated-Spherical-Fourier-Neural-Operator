@@ -5,8 +5,8 @@ from rechunker import rechunk
 from dask.diagnostics import ProgressBar
 import os
 
-uv = "v"
-print(uv)
+uv = "u"
+print(uv,flush=True)
 
 base_path = "/mnt/qb/goswami/data/era5/u100m_v100m_721x1440"
 save_path = "/mnt/qb/goswami/data/era5/weatherbench2/"
@@ -29,7 +29,7 @@ target_chunks = {
 }
 max_mem = "390GB"
 
-print("started rechunking")
+print("started rechunking",flush=True)
 target_store = os.path.join(save_path,uv100_new)
 temp_store = os.path.join(save_path,uv100_temp)
 source_array = ds
