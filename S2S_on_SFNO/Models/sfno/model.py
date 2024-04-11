@@ -11,6 +11,7 @@ import os
 import sys
 from time import time
 from tqdm import tqdm
+import xarray as xr
 
 import numpy as np
 import torch
@@ -786,11 +787,11 @@ class FourCastNetv2_filmed(FourCastNetv2):
             auto_regressive_steps=auto_regressive_steps)
         
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=self.training_workers, batch_size=self.batch_size)
-        loss_fn = torch.nn.MSELoss()
+        loss_fn = torch.nn.MSELoss(reduction='none')
 
         # load climatology reference
         basePath = "/mnt/qb/work2/goswami0/gkd965/"
-        variable = 10m_u_component_of_wind
+        variable = "10m_u_component_of_wind"
         mean_files = {
             '10m_u_component_of_wind':'hourofyear_mean_for_10m_u_component_of_wind_from_1979_to_2017created_20240123-0404.nc',
             '10m_v_component_of_wind':'hourofyear_mean_for_10m_v_component_of_wind_from_1979_to_2019created_20231211-1339.nc',
@@ -799,7 +800,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         
         }
         mean_file = os.path.join(basePath,"climate",mean_files[variable])
-        ds_ref  = xr.open_dataset(mean_file,chunks={'time':1}).to_array().squeeze()[:min_step*6:6]
+        ds_ref  = xr.open_dataset(mean_file).to_array().squeeze()[:min_step*6:6]
 
         validation_loss_curve = {}
         for cp_idx, checkpoint in enumerate(checkpoint_list):

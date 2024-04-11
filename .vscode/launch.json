@@ -34,4 +34,4 @@
 //python main.py --model sfno --model-version film --train --validation-interval 50 --validation-epochs 5 --training-workers 6 --batch-size 1 --wandb --scheduler None --notes "6 graph layers"
 
 // get validation in 100 steps
-// python main.py --model sfno --model-version latest --validation-epochs 10 --training-workers 3 --batch-size 1 --autoregressive-steps 150 --eval-models-autoregressive
+// python main.py --model sfno --model-version film --validation-epochs 10 --training-workers 6 --batch-size 1 --autoregressive-steps 5 --eval-models-autoregressive
