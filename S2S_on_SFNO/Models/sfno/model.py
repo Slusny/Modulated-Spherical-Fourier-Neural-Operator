@@ -17,6 +17,7 @@ import torch
 from torch.utils.data import DataLoader
 from ..models import Model
 import datetime
+# import xskillscore as xs
 
 import climetlab as cml
 import wandb
@@ -787,6 +788,19 @@ class FourCastNetv2_filmed(FourCastNetv2):
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=self.training_workers, batch_size=self.batch_size)
         loss_fn = torch.nn.MSELoss()
 
+        # load climatology reference
+        basePath = "/mnt/qb/work2/goswami0/gkd965/"
+        variable = 10m_u_component_of_wind
+        mean_files = {
+            '10m_u_component_of_wind':'hourofyear_mean_for_10m_u_component_of_wind_from_1979_to_2017created_20240123-0404.nc',
+            '10m_v_component_of_wind':'hourofyear_mean_for_10m_v_component_of_wind_from_1979_to_2019created_20231211-1339.nc',
+            '2m_temperature':'hourofyear_mean_for_2m_temperature_from_1979_to_2017created_20240123-0343.nc',
+            'total_column_water_vapour':'hourofyear_mean_for_total_column_water_vapour_from_1979_to_2017created_20240123-0415.nc'
+        
+        }
+        mean_file = os.path.join(basePath,"climate",mean_files[variable])
+        ds_ref  = xr.open_dataset(mean_file,chunks={'time':1}).to_array().squeeze()[:min_step*6:6]
+
         validation_loss_curve = {}
         for cp_idx, checkpoint in enumerate(checkpoint_list):
             print(" --- checkpoint : ",checkpoint," --- ")
@@ -807,8 +821,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         val_input_sst  = self.normalise_film(val_data[val_idx][1]).to(self.device)
                         val_g_truth_era5 = self.normalise(val_data[val_idx+1][0]).to(self.device)
                         outputs = self.model(val_input_era5,val_input_sst,1)
-                        outputs = self.normalise(outputs, reverse=True)
                         val_loss_value = loss_fn(outputs, val_g_truth_era5) / self.batch_size
+                        skill_score  = 1 - val_loss_value/rmse_ref
                         if val_epoch == 0: 
                             val_loss["validation loss (n={}, autoregress={})".format(
                                 self.validation_epochs,val_idx)] = [val_loss_value.cpu()]

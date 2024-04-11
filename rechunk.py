@@ -16,8 +16,8 @@ else:
     uv100="v100m_1959-2023-10_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr"
 
 
-uv100_new=uv+"100m_chunked_1959-2022_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr"
-uv100_temp = uv+"100m_chunked_temp.zarr"
+uv100_new=uv+"100m_2_chunked_1959-2022_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr"
+uv100_temp = uv+"100m_2_chunked_temp.zarr"
 
 ds =  xr.open_zarr(os.path.join(base_path, uv100))
 

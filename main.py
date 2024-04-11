@@ -153,6 +153,19 @@ def _main():
         help="evaluate model list of checkpoints for autoregressive forecast",
         action="store_true",
     )
+    parser.add_argument(
+        "--eval-checkpoint-path",
+        help="evaluate model list of checkpoints for autoregressive forecast",
+        action="store",
+        type=str
+    )
+    parser.add_argument(
+        "--eval-skip-checkpoints",
+        help="evaluate model list of checkpoints for autoregressive forecast",
+        action="store",
+        type=int
+        default=0
+    )
 
     # Data
     data = parser.add_argument_group('Data and Data Sources')
@@ -553,10 +566,11 @@ def _main():
             model.save_checkpoint()
             sys.exit(0)
     elif args.eval_models_autoregressive:
-        save_path = "/mnt/qb/work2/goswami0/gkd965/checkpoints/generous-tree-12/"
-        checkpoint_list = [save_path+'checkpoint_sfno_latest_epoch={}.pkl'.format(i) for i in range(0,110,20)]#12930
-        kwargs = vars(args)
-        model.auto_regressive_skillscore(checkpoint_list,args.autoregressive_steps,save_path)
+        checkpoint_list = np.array(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*"))) 
+        #[save_path+'checkpoint_sfno_latest_epoch={}.pkl'.format(i) for i in range(0,110,20)]#12930
+        checkpoint_list = checkpoint_list[::,args.eval_skip_checkpoints]
+        print("loading ",len(checkpoint_list), " checkpoints from ", args.eval_checkpoint_path)
+        model.auto_regressive_skillscore(checkpoint_list,args.autoregressive_steps,args.save_path)
     else:
 
         try:
