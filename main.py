@@ -163,8 +163,8 @@ def _main():
         "--eval-skip-checkpoints",
         help="evaluate model list of checkpoints for autoregressive forecast",
         action="store",
-        type=int
-        default=0
+        type=int,
+        default=0,
     )
 
     # Data
