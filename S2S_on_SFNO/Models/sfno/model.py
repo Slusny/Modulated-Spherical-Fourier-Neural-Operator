@@ -401,9 +401,9 @@ class FourCastNetv2(Model):
                         # and the for loop only runs once (calculating the ordinary validation loss with no auto regressive evaluation
                         val_input_era5 = None
                         for val_idx in range(len(val_data)-1):
-                            if val_input_era5 is None: val_input_era5 = self.normalise(val_data[val_idx]).to(self.device)
+                            if val_input_era5 is None: val_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
                             else: val_input_era5 = outputs
-                            val_g_truth_era5 = self.normalise(val_data[val_idx+1]).to(self.device)
+                            val_g_truth_era5 = self.normalise(val_data[val_idx+1][0]).to(self.device)
                             outputs = model(val_input_era5)
                             val_loss_value = loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"]
                             if val_epoch == 0: 
@@ -502,9 +502,9 @@ class FourCastNetv2(Model):
                     # and the for loop only runs once (calculating the ordinary validation loss with no auto regressive evaluation
                     val_input_era5 = None
                     for val_idx in range(len(val_data)-1):
-                        if val_input_era5 is None: val_input_era5 = self.normalise(val_data[val_idx]).to(self.device)
+                        if val_input_era5 is None: val_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
                         else: val_input_era5 = outputs
-                        val_g_truth_era5 = self.normalise(val_data[val_idx+1]).to(self.device)
+                        val_g_truth_era5 = self.normalise(val_data[val_idx+1][0]).to(self.device)
                         outputs = self.model(val_input_era5)
                         val_loss_value = loss_fn(outputs, val_g_truth_era5) / self.batch_size
                         if val_epoch == 0: 
@@ -688,6 +688,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                             if val_input_era5 is None: val_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
                             else: val_input_era5 = outputs
                             val_input_sst  = self.normalise_film(val_data[val_idx][1]).to(self.device)
+                            
                             val_g_truth_era5 = self.normalise(val_data[val_idx+1][0]).to(self.device)
                             outputs = model(val_input_era5,val_input_sst,scale)
                             val_loss_value = loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"]
@@ -755,6 +756,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 else: input_era5 = outputs
                 input_sst  = self.normalise_film(data[val_idx][1]).to(self.device)
                 g_truth_era5 = self.normalise(data[val_idx+1][0]).to(self.device)
+                # time = val_data[val_idx][2]
                 
                 outputs = model(input_era5,input_sst,scale)
                 loss.append(loss_fn(outputs, g_truth_era5))#*discount_factor**step
@@ -800,7 +802,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         
         }
         mean_file = os.path.join(basePath,"climate",mean_files[variable])
-        ds_ref  = xr.open_dataset(mean_file).to_array().squeeze()[:min_step*6:6]
+        ds_ref  = xr.open_dataset(mean_file)#.to_array().squeeze()[:min_step*6:6]
 
         validation_loss_curve = {}
         for cp_idx, checkpoint in enumerate(checkpoint_list):
@@ -820,6 +822,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         if val_input_era5 is None: val_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
                         else: val_input_era5 = outputs
                         val_input_sst  = self.normalise_film(val_data[val_idx][1]).to(self.device)
+                        time = val_data[val_idx][2]
                         val_g_truth_era5 = self.normalise(val_data[val_idx+1][0]).to(self.device)
                         outputs = self.model(val_input_era5,val_input_sst,1)
                         val_loss_value = loss_fn(outputs, val_g_truth_era5) / self.batch_size

@@ -16,6 +16,8 @@ import time
 import wandb
 import traceback
 import torch
+import numpy as np
+import glob
 
 # to get eccodes working on Ubuntu 20.04
 # os.environ["LD_PRELOAD"] = '/usr/lib/x86_64-linux-gnu/libffi.so.7'
@@ -568,7 +570,7 @@ def _main():
     elif args.eval_models_autoregressive:
         checkpoint_list = np.array(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*"))) 
         #[save_path+'checkpoint_sfno_latest_epoch={}.pkl'.format(i) for i in range(0,110,20)]#12930
-        checkpoint_list = checkpoint_list[::,args.eval_skip_checkpoints]
+        checkpoint_list = checkpoint_list[::(args.eval_skip_checkpoints+1)]
         print("loading ",len(checkpoint_list), " checkpoints from ", args.eval_checkpoint_path)
         model.auto_regressive_skillscore(checkpoint_list,args.autoregressive_steps,args.save_path)
     else:
