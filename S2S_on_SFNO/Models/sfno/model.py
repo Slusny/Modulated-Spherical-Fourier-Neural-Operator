@@ -556,14 +556,15 @@ class FourCastNetv2(Model):
             np.save(os.path.join( self.save_path,"losses.npy"),self.losses)
 
         if save_file is None: save_file ="checkpoint_"+self.timestr+"_final.pkl"
-        torch.save({
-            "model_state":self.model.state_dict(), 
+        save_dict = {
+            "model_state":self.model.state_dict(),
             "epoch":self.epoch,
             "iter":self.iter,
             "optimizer_state_dict":self.optimizer.state_dict(),
-            "scheduler_state_dict":self.scheduler.state_dict(),
             "hyperparameters": self.params
-            },os.path.join( self.save_path,save_file))
+            }
+        if self.scheduler: save_dict["scheduler_state_dict"]: self.scheduler.state_dict()
+        torch.save(save_dict,os.path.join( self.save_path,save_file))
 
 
 class FourCastNetv2_filmed(FourCastNetv2):
@@ -655,11 +656,11 @@ class FourCastNetv2_filmed(FourCastNetv2):
         self.optimizer = torch.optim.Adam(model.get_film_params(), lr=kwargs["learning_rate"])
 
         # Scheduler
-        if kwargs["scheduler"] == 'ReduceLROnPlateau':
+        if kwargs["scheduler_type"] == 'ReduceLROnPlateau':
             self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, factor=0.2, patience=5, mode='min')
-        elif kwargs["scheduler"] == 'CosineAnnealingLR':
+        elif kwargs["scheduler_type"] == 'CosineAnnealingLR':
             self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=kwargs["scheduler_horizon"])
-        elif kwargs["scheduler"] == 'CosineAnnealingWarmRestarts':
+        elif kwargs["scheduler_type"] == 'CosineAnnealingWarmRestarts':
             self.scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer,T_0=kwargs["scheduler_horizon"])
         else:
             self.scheduler = None
@@ -720,13 +721,13 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     
                     #scheduler
                     valid_mean = list(val_log.values())[0]
-                    if kwargs["scheduler"] == 'ReduceLROnPlateau':
+                    if kwargs["scheduler_type"] == 'ReduceLROnPlateau':
                         self.scheduler.step(valid_mean)
-                    elif kwargs["scheduler"] == 'CosineAnnealingLR':
+                    elif kwargs["scheduler_type"] == 'CosineAnnealingLR':
                         self.scheduler.step()
                         if self.epoch >= kwargs["scheduler_horizon"]:
                             LOG.info("Terminating training after reaching params.max_epochs while LR scheduler is set to CosineAnnealingLR") 
-                    elif kwargs["scheduler"] == 'CosineAnnealingWarmRestarts':
+                    elif kwargs["scheduler_type"] == 'CosineAnnealingWarmRestarts':
                         self.scheduler.step(i)
                     if scheduler is not None and scheduler != "None": 
                         lr = scheduler.get_last_lr()[0]

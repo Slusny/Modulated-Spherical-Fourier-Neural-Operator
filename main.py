@@ -384,6 +384,7 @@ def _main():
         action="store",
         default="CosineAnnealingWarmRestarts",
         help="which pytorch scheduler to use",
+        dest="scheduler_type",
         type=str
     )
     training.add_argument(

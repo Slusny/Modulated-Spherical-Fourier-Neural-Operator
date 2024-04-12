@@ -27,7 +27,7 @@
 
 // SFNO trained
 // python main.py --model sfno --model-version film --train --validation-interval 30 --validation-epochs 5 --training-workers 6 --batch-size 1 --autoregressive-steps 2 --sfno-weights /mnt/qb/work2/goswami0/gkd965/checkpoints/generous-tree-12/checkpoint_sfno_latest_epoch=9860.pkl --wandb
-// python main.py --model sfno --model-version film --train --validation-interval 3 --validation-epochs 3 --training-workers 6 --batch-size 1 --sfno-weights /mnt/qb/work2/goswami0/gkd965/checkpoints/generous-tree-12/checkpoint_sfno_latest_epoch=9860.pkl --debug --cpu
+// python main.py --model sfno --model-version film --train --validation-interval 10 --validation-epochs 3 --training-workers 6 --batch-size 1 --sfno-weights /mnt/qb/work2/goswami0/gkd965/checkpoints/generous-tree-12/checkpoint_sfno_latest_epoch=9860.pkl --debug --cpu
 
 // with trained sfno
 //python main.py --model sfno --model-version film --train --validation-interval 100 --validation-epochs 5 --training-workers 6 --batch-size 1 --sfno-weights /mnt/qb/work2/goswami0/gkd965/checkpoints/generous-tree-12/checkpoint_sfno_latest_epoch=10000.pkl --wandb --notes "sfno trained 10000 generous-tree-12"
