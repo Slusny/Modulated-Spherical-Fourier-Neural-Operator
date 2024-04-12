@@ -12,12 +12,13 @@ import sys
 from time import time
 from tqdm import tqdm
 import xarray as xr
+from calendar import isleap
 
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from ..models import Model
-import datetime
+from datetime import datetime
 # import xskillscore as xs
 
 import climetlab as cml
@@ -132,6 +133,16 @@ class FourCastNetv2(Model):
         "r925",
         "r1000",
     ]
+    ordering_reverse = {
+        "10m_u_component_of_wind":0,
+        "10m_v_component_of_wind":1,
+        "100u":2,
+        "100v":3,
+        "2m_temperature":4,
+        "sp":5,
+        "msl":6,
+        "total_column_water_vapour":7,
+    }
 
     levels_per_pl = {"u_component_of_wind":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
                      "v_component_of_wind":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
@@ -164,7 +175,7 @@ class FourCastNetv2(Model):
         self.n_lat = 721
         self.n_lon = 1440
         self.hour_steps = 6
-        self.input_type = kwargs["input"]
+        if "input" in kwargs.keys(): self.input_type = kwargs["input"]
 
         self.backbone_channels = len(self.ordering)
 
@@ -173,7 +184,7 @@ class FourCastNetv2(Model):
         else:
             self.checkpoint_path = os.path.join(self.assets, "weights.tar")
 
-        if kwargs["film_weights"]:
+        if "film_weights" in kwargs.keys() and kwargs["film_weights"]:
             self.checkpoint_path_film =self.film_weights
         else:
             self.checkpoint_path_film = None
@@ -401,9 +412,9 @@ class FourCastNetv2(Model):
                         # and the for loop only runs once (calculating the ordinary validation loss with no auto regressive evaluation
                         val_input_era5 = None
                         for val_idx in range(len(val_data)-1):
-                            if val_input_era5 is None: val_input_era5 = self.normalise(val_data[val_idx]).to(self.device)
+                            if val_input_era5 is None: val_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
                             else: val_input_era5 = outputs
-                            val_g_truth_era5 = self.normalise(val_data[val_idx+1]).to(self.device)
+                            val_g_truth_era5 = self.normalise(val_data[val_idx+1][0]).to(self.device)
                             outputs = model(val_input_era5)
                             val_loss_value = loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"]
                             if val_epoch == 0: 
@@ -502,9 +513,9 @@ class FourCastNetv2(Model):
                     # and the for loop only runs once (calculating the ordinary validation loss with no auto regressive evaluation
                     val_input_era5 = None
                     for val_idx in range(len(val_data)-1):
-                        if val_input_era5 is None: val_input_era5 = self.normalise(val_data[val_idx]).to(self.device)
+                        if val_input_era5 is None: val_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
                         else: val_input_era5 = outputs
-                        val_g_truth_era5 = self.normalise(val_data[val_idx+1]).to(self.device)
+                        val_g_truth_era5 = self.normalise(val_data[val_idx+1][0]).to(self.device)
                         outputs = self.model(val_input_era5)
                         val_loss_value = loss_fn(outputs, val_g_truth_era5) / self.batch_size
                         if val_epoch == 0: 
@@ -649,7 +660,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         elif kwargs["scheduler"] == 'CosineAnnealingLR':
             self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=kwargs["scheduler_horizon"])
         elif kwargs["scheduler"] == 'CosineAnnealingWarmRestarts':
-            self.scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,T_0=kwargs["scheduler_horizon"])
+            self.scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer,T_0=kwargs["scheduler_horizon"])
         else:
             self.scheduler = None
         
@@ -688,6 +699,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                             if val_input_era5 is None: val_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
                             else: val_input_era5 = outputs
                             val_input_sst  = self.normalise_film(val_data[val_idx][1]).to(self.device)
+                            
                             val_g_truth_era5 = self.normalise(val_data[val_idx+1][0]).to(self.device)
                             outputs = model(val_input_era5,val_input_sst,scale)
                             val_loss_value = loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"]
@@ -708,13 +720,13 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     
                     #scheduler
                     valid_mean = list(val_log.values())[0]
-                    if self.params.scheduler == 'ReduceLROnPlateau':
+                    if kwargs["scheduler"] == 'ReduceLROnPlateau':
                         self.scheduler.step(valid_mean)
-                    elif self.params.scheduler == 'CosineAnnealingLR':
+                    elif kwargs["scheduler"] == 'CosineAnnealingLR':
                         self.scheduler.step()
-                        if self.epoch >= self.params.max_epochs:
+                        if self.epoch >= kwargs["scheduler_horizon"]:
                             LOG.info("Terminating training after reaching params.max_epochs while LR scheduler is set to CosineAnnealingLR") 
-                    elif self.params.scheduler == 'CosineAnnealingWarmRestarts':
+                    elif kwargs["scheduler"] == 'CosineAnnealingWarmRestarts':
                         self.scheduler.step(i)
                     if scheduler is not None and scheduler != "None": 
                         lr = scheduler.get_last_lr()[0]
@@ -740,14 +752,15 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 if i % (kwargs["validation_interval"]*kwargs["save_checkpoint_interval"]) == 0:
                     save_file ="checkpoint_"+kwargs["model_type"]+"_"+kwargs["model_version"]+"_"+kwargs["film_gen_type"]+"_epoch={}.pkl".format(i)
                     self.save_checkpoint(save_file)
-                    np.save(os.path.join( self.save_path,"gamma.npy"),self.gamma.cpu().numpy())
-                    np.save(os.path.join( self.save_path,"gamma.npy"),self.beta.cpu().numpy())
+                    np.save(os.path.join( self.save_path,"gamma.npy"),model.gamma.cpu().numpy())
+                    np.save(os.path.join( self.save_path,"gamma.npy"),model.beta.cpu().numpy())
                 model.train()
             
             # Training  
             optimizer.zero_grad()
 
-            loss = []
+            # loss = []
+            loss = 0
             discount_factor = 1
             for step in range(kwargs["multi_step_training"]+1):
                 
@@ -755,11 +768,18 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 else: input_era5 = outputs
                 input_sst  = self.normalise_film(data[val_idx][1]).to(self.device)
                 g_truth_era5 = self.normalise(data[val_idx+1][0]).to(self.device)
+                # time = val_data[val_idx][2]
                 
                 outputs = model(input_era5,input_sst,scale)
-                loss.append(loss_fn(outputs, g_truth_era5))#*discount_factor**step
+                # loss.append(loss_fn(outputs, g_truth_era5))#*discount_factor**step
+                loss = loss + loss_fn(outputs, g_truth_era5)#*discount_factor**step
             
-            torch.tensor(loss).sum().backward()
+            # torch.tensor(loss).sum().backward()
+            # a = loss[0] + loss[1] 
+            # l = torch.tensor(loss).sum()
+            # l.backward()
+            # a.backward()
+            loss.backward()
 
             # Adjust learning weights
             optimizer.step()
@@ -770,15 +790,19 @@ class FourCastNetv2_filmed(FourCastNetv2):
             if local_logging : self.losses.append(loss_value)
             if wandb_run is not None:
                 wandb.log({"loss": loss_value })
-            if kwargs["debug"]:
-                print("Epoch: ", i, " Loss: ", loss_value," - scale: ",scale)
+            # if kwargs["debug"]:
+            print("Epoch: ", i, " Loss: ", loss_value," - scale: ",scale)
 
         self.save_checkpoint()
 
-    def auto_regressive_skillscore(self,checkpoint_list,auto_regressive_steps,save_path):
+    def auto_regressive_skillscore(self,checkpoint_list,auto_regressive_steps,save_path,sfno=None):
         """
         Method to calculate the skill score of the model for different auto-regressive steps.
+        Needs batch size 1
         """
+        
+        self.load_statistics(self.film_gen_type)
+        
         dataset_validation = ERA5_galvani(
             self,
             path=self.trainingdata_path, 
@@ -787,7 +811,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
             auto_regressive_steps=auto_regressive_steps)
         
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=self.training_workers, batch_size=self.batch_size)
-        loss_fn = torch.nn.MSELoss(reduction='none')
+        loss_fn = torch.nn.MSELoss()#reduction='none'
 
         # load climatology reference
         basePath = "/mnt/qb/work2/goswami0/gkd965/"
@@ -800,36 +824,66 @@ class FourCastNetv2_filmed(FourCastNetv2):
         
         }
         mean_file = os.path.join(basePath,"climate",mean_files[variable])
-        ds_ref  = xr.open_dataset(mean_file).to_array().squeeze()[:min_step*6:6]
+        ds_ref  = xr.open_dataset(mean_file)#.to_array().squeeze()[:min_step*6:6]
 
         validation_loss_curve = {}
         for cp_idx, checkpoint in enumerate(checkpoint_list):
+            if cp_idx < 2: continue
             print(" --- checkpoint : ",checkpoint," --- ")
             model = self.load_model(checkpoint)
             model.eval()
             with torch.no_grad():
                 val_log = {}
                 val_loss = {}
+                
                 # For loop over validation dataset, calculates the validation loss mean for number of kwargs["validation_epochs"]
+                skill_score_model_list = []
+                skill_score_sfno_list = []
                 for val_epoch, val_data in enumerate(validation_loader):
                     # Calculates the validation loss for autoregressive model evaluation
                     # if self.auto_regressive_steps = 0 the dataloader only outputs 2 datapoint 
                     # and the for loop only runs once (calculating the ordinary validation loss with no auto regressive evaluation
-                    val_input_era5 = None
+                    skill_score_model = []
+                    skill_score_sfno  = []
                     for val_idx in range(len(val_data)-1):
-                        if val_input_era5 is None: val_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
+                        # skip leap year feb 29 and subtract leap day from index
+                        time = val_data[val_idx][2].item()
+                        if isleap(int(str(time)[:4])) and str(time)[4:8] == "02029" : break
+                        # calculates the days since the 1.1. of the same year
+                        yday = datetime.strptime(str(time), '%Y%m%d%H').timetuple().tm_yday
+                        ref_idx = (yday*24 + int(str(time)[-2:]))#//6
+                        # if we are in a leap year we subtract the leap day 29.2. from reference index to get the correct idx for clim ref
+                        if isleap(int(str(time)[:4])) and int(str(time)[4:6]) > 2 : ref_idx - 24
+                            
+                        if val_idx == 0: val_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
                         else: val_input_era5 = outputs
                         val_input_sst  = self.normalise_film(val_data[val_idx][1]).to(self.device)
-                        val_g_truth_era5 = self.normalise(val_data[val_idx+1][0]).to(self.device)
+                        
+                        val_g_truth_era5 = val_data[val_idx+1][0].squeeze()[self.ordering_reverse[variable]]
                         outputs = self.model(val_input_era5,val_input_sst,1)
-                        val_loss_value = loss_fn(outputs, val_g_truth_era5) / self.batch_size
-                        skill_score  = 1 - val_loss_value/rmse_ref
-                        if val_epoch == 0: 
-                            val_loss["validation loss (n={}, autoregress={})".format(
-                                self.validation_epochs,val_idx)] = [val_loss_value.cpu()]
-                        else:
-                            val_loss["validation loss (n={}, autoregress={})".format(
-                                self.validation_epochs,val_idx)].append(val_loss_value.cpu())
+                        output_var = self.normalise(outputs.to("cpu"),reverse=True).squeeze()[self.ordering_reverse[variable]]
+                        val_loss_value = loss_fn(output_var, val_g_truth_era5)
+                        ref_img = torch.tensor(ds_ref.isel(time=ref_idx).to_array().squeeze().to_numpy())
+                        ref_loss_value = loss_fn(ref_img,val_g_truth_era5)
+                        skill_score  = 1 - val_loss_value/ref_loss_value
+                        skill_score_model.append(skill_score)
+                        if sfno:
+                            sfno.load_statistics()
+                            sfno_model = sfno.load_model(sfno.checkpoint_path)
+                            sfno_model.eval()
+                            sfno_output = sfno_model(val_input_era5)
+                            sfno_output_var = self.normalise(sfno_output.to("cpu"),reverse=True).squeeze()[self.ordering_reverse[variable]]
+                            sfno_val_loss_value = loss_fn(sfno_output_var, val_g_truth_era5)
+                            skill_score  = 1 - val_loss_value/ref_loss_value
+                            skill_score_model.append(skill_score)
+                        # if val_epoch == 0: 
+                        #     val_loss["validation loss (n={}, autoregress={})".format(
+                        #         self.validation_epochs,val_idx)] = [val_loss_value.cpu()]
+                        # else:
+                        #     val_loss["validation loss (n={}, autoregress={})".format(
+                        #         self.validation_epochs,val_idx)].append(val_loss_value.cpu())
+                    
+                    skill_score_model_list.append(skill_score_model)
 
                     # end of validation 
                     if val_epoch > self.validation_epochs:

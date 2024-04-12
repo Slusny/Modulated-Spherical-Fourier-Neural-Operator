@@ -58,7 +58,7 @@ class Model:
     retrieve = {}  # Extra parameters for retrieve
     version = 1  # To be overriden in subclasses
 
-    def __init__(self, input, output, download_assets, **kwargs):
+    def __init__(self, input="cds", output="grib", download_assets=False, **kwargs):
         self.input = get_input(input, self, **kwargs)
         if not kwargs['train']: self.output = get_output(output, self, **kwargs)                        
         # self.output2 = get_output("grib", self, **kwargs) #! redundant, test

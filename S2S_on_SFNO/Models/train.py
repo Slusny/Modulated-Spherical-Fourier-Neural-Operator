@@ -117,7 +117,8 @@ class ERA5_galvani(Dataset):
             scf = sample[self.model.param_sfc_ERA5].to_array().to_numpy()
             pl = sample[list(self.model.levels_per_pl.keys())].sel(level=level_list).to_array().to_numpy()
             pl = pl.reshape((pl.shape[0]*pl.shape[1], pl.shape[2], pl.shape[3]))
-            
+            time = str(sample.time.to_numpy())
+            time = torch.tensor(int(time[0:4]+time[5:7]+time[8:10]+time[11:13])) # time in format YYYYMMDDHH
             if self.uv100:
                 # ERA5 data on QB
                 u100_t = self.dataset_u100.isel(time=self.start_idx + idx)
@@ -140,9 +141,9 @@ class ERA5_galvani(Dataset):
                     sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean().to_numpy()
                 # if self.coarse_level > 1:
                 #     sst = sst.to_numpy()[:-1:self.coarse_level,::self.coarse_level] # or numpy at the end
-                return (data,torch.from_numpy(sst))
+                return (data,torch.from_numpy(sst),time)
             else:
-                return data
+                return (data,time)
         if self.auto_regressive_steps > 0:
             data = []
             for i in range(self.auto_regressive_steps+2):
