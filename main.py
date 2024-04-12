@@ -376,7 +376,7 @@ def _main():
     training.add_argument(
         "--learning-rate",
         action="store",
-        default=2*0.001,
+        default=0.001,#2
         type=float
     )
     training.add_argument(
