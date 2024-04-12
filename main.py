@@ -626,4 +626,5 @@ are all kwargs added to model: e.g. film_gen_type is part of model.film_gen_type
 - LOG only mean loss value to weight and biases ? To better performance
 - possible issues for model load: dataset doesn't output real data, model isn't saved correctly
 - parallel training
+- do we need grad for all layers?
 '''
