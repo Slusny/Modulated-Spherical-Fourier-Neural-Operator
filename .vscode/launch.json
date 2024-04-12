@@ -35,3 +35,6 @@
 
 // get validation in 100 steps
 // python main.py --model sfno --model-version film --validation-epochs 10 --training-workers 6 --batch-size 1 --autoregressive-steps 5 --eval-models-autoregressive --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/generous-bee-19/
+
+//
+// python main.py --model sfno --model-version film --train --validation-interval 50 --validation-epochs 10 --training-workers 6 --batch-size 1 --scheduler None --multi-step-training 1 --advanced-logging --learning-rate 0.0001 --wandb
