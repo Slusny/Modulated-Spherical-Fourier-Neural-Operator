@@ -252,6 +252,13 @@ class FourCastNetv2(Model):
         model.eval()
         model.to(self.device)
 
+        # free VRAM
+        del checkpoint
+
+        # don't need to update sfno
+        model.parameters().require_grad = False
+        model.film_gen.parameters().require_grad = True
+
         return model
 
     def normalise(self, data, reverse=False):
@@ -618,12 +625,21 @@ class FourCastNetv2_filmed(FourCastNetv2):
             # needs to extract only film_gen weights if the whole model was saved
             # model.film_gen.load_state_dict(checkpoint_film["model_state"])
             model.film_gen.load_state_dict(checkpoint_film)
+            del checkpoint_film
         else:
             pass
 
         # Set model to eval mode and return
         model.eval()
         model.to(self.device)
+
+        # free VRAM
+        del checkpoint_sfno
+
+        # disable grad for sfno
+        for name, param in model.named_parameters():
+            if not "film_gen" in name:
+                param.requires_grad = False 
 
         return model
 
@@ -648,7 +664,11 @@ class FourCastNetv2_filmed(FourCastNetv2):
             start_year=kwargs["validationset_start_year"],
             end_year=kwargs["validationset_end_year"],
             auto_regressive_steps=kwargs["autoregressive_steps"])
-        
+
+        if kwargs["advanced_logging"] : 
+            mem_log_not_done = True
+            print(" ~~~ The GPU Memory will be logged for the first optimization run ~~~")
+            print("mem before loading model : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
         model = self.load_model(self.checkpoint_path)
         model.train()
 
@@ -671,6 +691,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
         
         loss_fn = torch.nn.MSELoss()
 
+        if kwargs["advanced_logging"] and mem_log_not_done : 
+            print("mem after init optimizer and scheduler : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
 
@@ -686,6 +709,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
             # Validation
             if i % kwargs["validation_interval"] == 0:
+                if kwargs["advanced_logging"] and mem_log_not_done : 
+                    print("mem before validation : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
                 val_loss = {}
                 val_log  = {}
                 model.eval()
@@ -753,26 +778,39 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 if i % (kwargs["validation_interval"]*kwargs["save_checkpoint_interval"]) == 0:
                     save_file ="checkpoint_"+kwargs["model_type"]+"_"+kwargs["model_version"]+"_"+kwargs["film_gen_type"]+"_epoch={}.pkl".format(i)
                     self.save_checkpoint(save_file)
-                    np.save(os.path.join( self.save_path,"gamma.npy"),model.gamma.cpu().numpy())
-                    np.save(os.path.join( self.save_path,"gamma.npy"),model.beta.cpu().numpy())
+                    if self.params["advanced_logging"]:
+                        gamma_np = model.gamma.cpu().numpy()
+                        beta_np  = model.beta.cpu().numpy()
+                        np.save(os.path.join( self.save_path,"gamma.npy"),gamma_np)
+                        np.save(os.path.join( self.save_path,"gamma.npy"),beta_np)
+                        print("gamma values mean : ",round(gamma_np.mean(),3),"+/-",round(gamma_np.std(),3))
+                        print("beta values mean  : ",round(beta_np.mean(),3),"+/-",round(beta_np.std(),3))
                 model.train()
+                if kwargs["advanced_logging"] and mem_log_not_done : 
+                    print("mem after validation : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
             
             # Training  
-            optimizer.zero_grad()
+            model.zero_grad()
 
             # loss = []
             loss = 0
             discount_factor = 1
             for step in range(kwargs["multi_step_training"]+1):
-                
+                #print(" - step : ", step) ## Log multistep loss better
+                if kwargs["advanced_logging"] and mem_log_not_done : 
+                    print("mem before loading data : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
                 if step == 0 : input_era5 = self.normalise(data[val_idx][0]).to(self.device)
                 else: input_era5 = outputs
                 input_sst  = self.normalise_film(data[val_idx][1]).to(self.device)
                 g_truth_era5 = self.normalise(data[val_idx+1][0]).to(self.device)
-                # time = val_data[val_idx][2]
                 
+                if kwargs["advanced_logging"] and mem_log_not_done : 
+                    print("mem before exec model : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
                 outputs = model(input_era5,input_sst,scale)
                 # loss.append(loss_fn(outputs, g_truth_era5))#*discount_factor**step
+            
+                if kwargs["advanced_logging"] and mem_log_not_done : 
+                    print("mem before loss : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
                 loss = loss + loss_fn(outputs, g_truth_era5)#*discount_factor**step
             
             # torch.tensor(loss).sum().backward()
@@ -780,10 +818,17 @@ class FourCastNetv2_filmed(FourCastNetv2):
             # l = torch.tensor(loss).sum()
             # l.backward()
             # a.backward()
+            if kwargs["advanced_logging"] and mem_log_not_done : 
+                print("mem before backward : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
             loss.backward()
 
             # Adjust learning weights
+            if kwargs["advanced_logging"] and mem_log_not_done : 
+                print("mem before optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
             optimizer.step()
+            if kwargs["advanced_logging"] and mem_log_not_done : 
+                print("mem after optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                mem_log_not_done = False
 
             # logging
             self.iter += 1
@@ -791,8 +836,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
             if local_logging : self.losses.append(loss_value)
             if wandb_run is not None:
                 wandb.log({"loss": loss_value })
-            # if kwargs["debug"]:
-            print("Epoch: ", i, " Loss: ", loss_value," - scale: ",scale)
+            if kwargs["advanced_logging"]:
+                print("Iteration: ", i, " Loss: ", loss_value," - scale: ",round(scale,2))
 
         self.save_checkpoint()
 
@@ -924,7 +969,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         mean_model_time = 0
         for i, data in enumerate(training_loader):
             input, g_truth = data
-            optimizer.zero_grad()
+            model.zero_grad()
             outputs = model(input[0],input[1])
             loss = loss_fn(outputs, g_truth[0])
             loss.backward()

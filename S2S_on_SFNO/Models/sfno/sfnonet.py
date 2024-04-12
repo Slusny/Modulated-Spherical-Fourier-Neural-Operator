@@ -337,7 +337,7 @@ class FourierNeuralOperatorBlock_Filmed(nn.Module):
 
     def forward(self, x, gamma, beta, scale=1):
         residual = x
-
+        
         x = self.norm0(x)
         x = self.filter_layer(x).contiguous()
 
@@ -810,6 +810,9 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         ):
         super().__init__(**kwargs)
 
+        # save gamma and beta in model if advanced logging is required
+        self.advanced_logging = kwargs["advanced_logging"]
+        
         # new SFNO-Block with Film Layer
         self.blocks = nn.ModuleList([])
         for i in range(self.num_layers):
@@ -867,8 +870,9 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         # calculate gammas and betas for film layers
         gamma,beta = self.film_gen(sst)
         # save gamma and beta in model for validation
-        self.gamma = gamma
-        self.beta = beta
+        if self.advanced_logging:
+            self.gamma = gamma
+            self.beta = beta
         
         if gamma.shape[0] != self.num_layers:
             gamma = gamma.repeat(self.num_layers,1)
