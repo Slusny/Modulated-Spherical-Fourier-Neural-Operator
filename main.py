@@ -434,6 +434,11 @@ def _main():
         default=None,             
         type=str, 
         help='tags for wandb')
+    logging_parser.add_argument(
+        '--advanced-logging', 
+        action='store_true',
+        help='Log more values like the gamma, beta activations. Consumes more GPU memory.'
+    )
     
 
     # !! args from parser become model properties (whatch that no conflicting model properties/methods exist)
