@@ -256,8 +256,8 @@ class FourCastNetv2(Model):
         del checkpoint
 
         # don't need to update sfno
-        model.parameters().require_grad = False
-        model.film_gen.parameters().require_grad = True
+        for name, param in model.named_parameters():
+                param.requires_grad = False 
 
         return model
 
