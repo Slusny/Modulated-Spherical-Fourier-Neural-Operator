@@ -658,7 +658,7 @@ class GCN(torch.nn.Module):
         self.activation = nn.LeakyReLU()
         self.conv1 = GCNConv(1, self.hidden_size,cached=True)
         self.perceptive_field = 3
-        self.conv_layers = [GCNConv(self.hidden_size, self.hidden_size,cached=True) for _ in range(self.perceptive_field)]
+        self.conv_layers = nn.ModuleList([GCNConv(self.hidden_size, self.hidden_size,cached=True) for _ in range(self.perceptive_field)])
         self.heads_gamma = nn.ModuleList([])
         self.heads_beta = nn.ModuleList([])
         for i in range(self.num_layers):
