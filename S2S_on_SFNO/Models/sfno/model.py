@@ -812,10 +812,6 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 if kwargs["advanced_logging"] and mem_log_not_done : 
                     print("mem before loss : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
                 loss = loss + loss_fn(outputs, g_truth_era5)#*discount_factor**step
-
-                # temp
-                print("truth mean",g_truth_era5.mean())
-                print("output mean",outputs.mean())
             
             # torch.tensor(loss).sum().backward()
             # a = loss[0] + loss[1] 
