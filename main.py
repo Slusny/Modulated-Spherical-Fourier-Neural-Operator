@@ -575,9 +575,9 @@ def _main():
             sys.exit(0)
     elif args.eval_models_autoregressive:
         
-        checkpoint_list = np.array(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*"))) 
+        checkpoint_list = np.array(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len)) 
         #[save_path+'checkpoint_sfno_latest_epoch={}.pkl'.format(i) for i in range(0,110,20)]#12930
-        checkpoint_list = checkpoint_list[::(args.eval_skip_checkpoints+1)]
+        checkpoint_list = checkpoint_list[:5:(args.eval_skip_checkpoints+1)]
         print("loading ",len(checkpoint_list), " checkpoints from ", args.eval_checkpoint_path)
         #sfno
         sfno_kwargs = vars(args)

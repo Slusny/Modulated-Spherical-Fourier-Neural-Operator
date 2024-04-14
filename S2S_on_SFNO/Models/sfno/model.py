@@ -721,7 +721,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         # if self.auto_regressive_steps = 0 the dataloader only outputs 2 datapoint 
                         # and the for loop only runs once (calculating the ordinary validation loss with no auto regressive evaluation
                         val_input_era5 = None
-                        for val_idx in range(len(val_data)-1):
+                        for val_idx in range(kwargs["autoregressive_steps"]+1):
                             if val_input_era5 is None: val_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
                             else: val_input_era5 = outputs
                             val_input_sst  = self.normalise_film(val_data[val_idx][1]).to(self.device)
@@ -781,8 +781,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     if self.params["advanced_logging"]:
                         gamma_np = model.gamma.cpu().numpy()
                         beta_np  = model.beta.cpu().numpy()
-                        np.save(os.path.join( self.save_path,"gamma.npy"),gamma_np)
-                        np.save(os.path.join( self.save_path,"gamma.npy"),beta_np)
+                        np.save(os.path.join( self.save_path,"gamma_{}.npy".format(i)),gamma_np)
+                        np.save(os.path.join( self.save_path,"beta_{}.npy".format(i)),beta_np)
                         print("gamma values mean : ",round(gamma_np.mean(),3),"+/-",round(gamma_np.std(),3))
                         print("beta values mean  : ",round(beta_np.mean(),3),"+/-",round(beta_np.std(),3))
                 model.train()
@@ -799,10 +799,10 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 #print(" - step : ", step) ## Log multistep loss better
                 if kwargs["advanced_logging"] and mem_log_not_done : 
                     print("mem before loading data : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-                if step == 0 : input_era5 = self.normalise(data[val_idx][0]).to(self.device)
+                if step == 0 : input_era5 = self.normalise(data[step][0]).to(self.device)
                 else: input_era5 = outputs
-                input_sst  = self.normalise_film(data[val_idx][1]).to(self.device)
-                g_truth_era5 = self.normalise(data[val_idx+1][0]).to(self.device)
+                input_sst  = self.normalise_film(data[step][1]).to(self.device)
+                g_truth_era5 = self.normalise(data[step+1][0]).to(self.device)
                 
                 if kwargs["advanced_logging"] and mem_log_not_done : 
                     print("mem before exec model : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
@@ -812,6 +812,10 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 if kwargs["advanced_logging"] and mem_log_not_done : 
                     print("mem before loss : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
                 loss = loss + loss_fn(outputs, g_truth_era5)#*discount_factor**step
+
+                # temp
+                print("truth mean",g_truth_era5.mean())
+                print("output mean",outputs.mean())
             
             # torch.tensor(loss).sum().backward()
             # a = loss[0] + loss[1] 
@@ -872,9 +876,14 @@ class FourCastNetv2_filmed(FourCastNetv2):
         mean_file = os.path.join(basePath,"climate",mean_files[variable])
         ds_ref  = xr.open_dataset(mean_file)#.to_array().squeeze()[:min_step*6:6]
 
+        if sfno:
+            sfno.load_statistics()
+            sfno_model = sfno.load_model(sfno.checkpoint_path)
+            sfno_model.eval()
+
         validation_loss_curve = {}
         for cp_idx, checkpoint in enumerate(checkpoint_list):
-            if cp_idx < 2: continue
+            # if cp_idx < 2: continue
             print(" --- checkpoint : ",checkpoint," --- ")
             model = self.load_model(checkpoint)
             model.eval()
@@ -885,6 +894,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 # For loop over validation dataset, calculates the validation loss mean for number of kwargs["validation_epochs"]
                 skill_score_model_list = []
                 skill_score_sfno_list = []
+                # set seed to keep shuffled batches for all models the same
+                torch.manual_seed(1)
                 for val_epoch, val_data in enumerate(validation_loader):
                     # Calculates the validation loss for autoregressive model evaluation
                     # if self.auto_regressive_steps = 0 the dataloader only outputs 2 datapoint 
@@ -897,9 +908,10 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         if isleap(int(str(time)[:4])) and str(time)[4:8] == "02029" : break
                         # calculates the days since the 1.1. of the same year
                         yday = datetime.strptime(str(time), '%Y%m%d%H').timetuple().tm_yday
-                        ref_idx = (yday*24 + int(str(time)[-2:]))#//6
+                        ref_idx = ((yday-1)*24 + int(str(time)[-2:]))#//6
+                        # print(time, " - ",ref_idx)
                         # if we are in a leap year we subtract the leap day 29.2. from reference index to get the correct idx for clim ref
-                        if isleap(int(str(time)[:4])) and int(str(time)[4:6]) > 2 : ref_idx - 24
+                        if isleap(int(str(time)[:4])) and int(str(time)[4:6]) > 2 : ref_idx = ref_idx - 24
                             
                         if val_idx == 0: val_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
                         else: val_input_era5 = outputs
@@ -912,46 +924,47 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         ref_img = torch.tensor(ds_ref.isel(time=ref_idx).to_array().squeeze().to_numpy())
                         ref_loss_value = loss_fn(ref_img,val_g_truth_era5)
                         skill_score  = 1 - val_loss_value/ref_loss_value
-                        skill_score_model.append(skill_score)
+                        skill_score_model.append(skill_score.item())
+                        # calculate sfno skill score once
                         if sfno:
-                            sfno.load_statistics()
-                            sfno_model = sfno.load_model(sfno.checkpoint_path)
-                            sfno_model.eval()
-                            sfno_output = sfno_model(val_input_era5)
+                            if val_idx == 0: sfno_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
+                            else: sfno_input_era5 = sfno_output
+                            sfno_output = sfno_model(sfno_input_era5)
                             sfno_output_var = self.normalise(sfno_output.to("cpu"),reverse=True).squeeze()[self.ordering_reverse[variable]]
                             sfno_val_loss_value = loss_fn(sfno_output_var, val_g_truth_era5)
-                            skill_score  = 1 - val_loss_value/ref_loss_value
-                            skill_score_model.append(skill_score)
-                        # if val_epoch == 0: 
-                        #     val_loss["validation loss (n={}, autoregress={})".format(
-                        #         self.validation_epochs,val_idx)] = [val_loss_value.cpu()]
-                        # else:
-                        #     val_loss["validation loss (n={}, autoregress={})".format(
-                        #         self.validation_epochs,val_idx)].append(val_loss_value.cpu())
+                            sfno_skill_score  = 1 - sfno_val_loss_value/ref_loss_value
+                            skill_score_sfno.append(sfno_skill_score.item())
                     
                     skill_score_model_list.append(skill_score_model)
+                    if sfno: skill_score_sfno_list .append(skill_score_sfno)
+                    for i in range(len(skill_score_model)):
+                        print("auto regress ",i,":")
+                        print(" -  model ",round(skill_score_model[i],4))
+                        if sfno: print(" -  sfno ",round(skill_score_sfno[i],4))
+
+                    # Do we need Checkpoints?
 
                     # end of validation 
                     if val_epoch > self.validation_epochs:
-                        for k in val_loss.keys():
-                            val_loss_array      = np.array(val_loss[k])
-                            val_log[k]          = round(val_loss_array.mean(),5)
-                            val_log["std " + k] = round(val_loss_array.std(),5)
+                        cp_name = checkpoint.split("/")[-1].split(".")[0]
+                        savefile=os.path.join(save_path,"{}_skill_score_{}.pkl")
+                        np.save(savefile.format("model",cp_name),skill_score_model_list)
+                        if sfno: np.save(savefile.format("","sfno"),skill_score_sfno_list)
+                        print("done:")
+                        scml = np.array(skill_score_model_list)
+                        scsl = np.array(skill_score_sfno_list)
+                        mean_scml = scml.mean(axis=0)
+                        std_scml  = scml.std(axis=0)
+                        mean_scsl = scsl.mean(axis=0)
+                        std_scsl  = scsl.std(axis=0)
+                        for i in range(len(skill_score_model_list[0])):
+                            print("auto regress ",i,":")
+                            print(" -  mean model skill ",round(mean_scml[i],4),"+/-",round(std_scml[i],4) )
+                            if sfno: print(" -  mean sfno skill  ",round(mean_scsl[i],4),"+/-",round(std_scsl[i],4) )
+                        
+                        # do not to need to recalculate sfno skill score
+                        sfno = False
                         break
-
-                # little complicated console logging - looks nicer than LOG.info(str(val_log))
-                val_log_keys = list(val_log.keys())
-                for log_idx in range(0,auto_regressive_steps*2+1,2): 
-                    LOG.info(val_log_keys[log_idx] + " : " + str(val_log[val_log_keys[log_idx]]) 
-                                + " +/- " + str(val_log[val_log_keys[log_idx+1]]))
-            if cp_idx == 0:
-                for k,v in val_log.items():
-                    validation_loss_curve[k] = [v]
-            else:
-                for k,v in val_log.items():
-                    validation_loss_curve[k].append(v)
-            
-            torch.save(validation_loss_curve,os.path.join(save_path,"validation_loss_curve_autoregressivesteps_{}.pkl".format(auto_regressive_steps)))
         
     def test_training(self,**kwargs):
         dataset = ERA5_galvani(
