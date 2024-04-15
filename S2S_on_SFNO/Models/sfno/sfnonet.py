@@ -10,9 +10,15 @@ from torch.utils.checkpoint import checkpoint
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn.pool import global_mean_pool
 
+import torch
+from torch import nn
+
+from einops import rearrange, repeat
+from einops.layers.torch import Rearrange
+
+
 import numpy as np
 import os
-import einops
 
 # from apex.normalization import FusedLayerNorm
 
@@ -716,7 +722,7 @@ class GCN(torch.nn.Module):
 
         # # Skip
         # x1 = self.conv1(x, self.edge_index_batch)
-        # # x = einops.repeat(x,'i j -> i (repeat j)',repeat=self.hidden_size) + F.leaky_relu(x1)
+        # # x = repeat(x,'i j -> i (repeat j)',repeat=self.hidden_size) + F.leaky_relu(x1)
         # x = x + F.leaky_relu(x1)
         # # x = F.dropout(x, training=self.training)
         # x2 = self.conv2(x, self.edge_index_batch)
@@ -734,7 +740,7 @@ class GCN(torch.nn.Module):
         return torch.stack([torch.stack(heads_gamma),torch.stack(heads_beta)]).squeeze() # shape: (2,num_layers,batch_size,embed_dim)
 
 
-
+# Blowes up STD (7 layers -> std=8.3)
 class GCN_custom(nn.Module):
     def __init__(self,batch_size,device,out_features=256,num_layers=12,coarse_level=4,graph_asset_path="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
         super().__init__()
@@ -755,7 +761,7 @@ class GCN_custom(nn.Module):
         ## Prepare Graph
         # load sparse adjacentcy matrix from file ( shape: num_node x num_nodes )
         # self.adj = torch.load(os.path.join(graph_asset_path,"adj_coarsen_"+str(coarse_level)+"_sparse.pt")).to(device)
-        # dense 
+        # dense 7
         self.adj = torch.load(os.path.join(graph_asset_path,"adj_coarsen_"+str(coarse_level)+"_fully.pt")).to(device)
         
         # nan mask masks out every nan value on land ( shape: 180x360 for 1° data )
@@ -788,14 +794,134 @@ class GCN_custom(nn.Module):
         return torch.stack([torch.stack(heads_gamma),torch.stack(heads_beta)]).squeeze() # shape: (2,num_layers,batch_size,embed_dim)
 
 
+def pair(t):
+    return t if isinstance(t, tuple) else (t, t)
+
+# classes
+
+class FeedForward(nn.Module):
+    def __init__(self, dim, hidden_dim, dropout = 0.):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.LayerNorm(dim),
+            nn.Linear(dim, hidden_dim),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, dim),
+            nn.Dropout(dropout)
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+class Attention(nn.Module):
+    def __init__(self, dim, heads = 8, dim_head = 64, dropout = 0.):
+        super().__init__()
+        inner_dim = dim_head *  heads
+        project_out = not (heads == 1 and dim_head == dim)
+
+        self.heads = heads
+        self.scale = dim_head ** -0.5
+
+        self.norm = nn.LayerNorm(dim)
+
+        self.attend = nn.Softmax(dim = -1)
+        self.dropout = nn.Dropout(dropout)
+
+        self.to_qkv = nn.Linear(dim, inner_dim * 3, bias = False)
+
+        self.to_out = nn.Sequential(
+            nn.Linear(inner_dim, dim),
+            nn.Dropout(dropout)
+        ) if project_out else nn.Identity()
+
+    def forward(self, x):
+        x = self.norm(x)
+
+        qkv = self.to_qkv(x).chunk(3, dim = -1)
+        q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = self.heads), qkv)
+
+        dots = torch.matmul(q, k.transpose(-1, -2)) * self.scale
+
+        attn = self.attend(dots)
+        attn = self.dropout(attn)
+
+        out = torch.matmul(attn, v)
+        out = rearrange(out, 'b h n d -> b n (h d)')
+        return self.to_out(out)
+
+class Transformer(nn.Module):
+    def __init__(self, dim, depth, heads, dim_head, mlp_dim, dropout = 0.):
+        super().__init__()
+        self.norm = nn.LayerNorm(dim)
+        self.layers = nn.ModuleList([])
+        for _ in range(depth):
+            self.layers.append(nn.ModuleList([
+                Attention(dim, heads = heads, dim_head = dim_head, dropout = dropout),
+                FeedForward(dim, mlp_dim, dropout = dropout)
+            ]))
+
+    def forward(self, x):
+        for attn, ff in self.layers:
+            x = attn(x) + x
+            x = ff(x) + x
+
+        return self.norm(x)
+
+class ViT(nn.Module):
+    def __init__(self, *, image_size, patch_size, num_classes, dim, depth, heads, mlp_dim, pool = 'cls', channels = 3, dim_head = 64, dropout = 0., emb_dropout = 0.):
+        super().__init__()
+        image_height, image_width = pair(image_size)
+        patch_height, patch_width = pair(patch_size)
+
+        assert image_height % patch_height == 0 and image_width % patch_width == 0, 'Image dimensions must be divisible by the patch size.'
+
+        num_patches = (image_height // patch_height) * (image_width // patch_width)
+        patch_dim = channels * patch_height * patch_width
+        assert pool in {'cls', 'mean'}, 'pool type must be either cls (cls token) or mean (mean pooling)'
+
+        self.to_patch_embedding = nn.Sequential(
+            Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1 = patch_height, p2 = patch_width),
+            nn.LayerNorm(patch_dim),
+            nn.Linear(patch_dim, dim),
+            nn.LayerNorm(dim),
+        )
+
+        self.pos_embedding = nn.Parameter(torch.randn(1, num_patches + 1, dim))
+        self.cls_token = nn.Parameter(torch.randn(1, 1, dim))
+        self.dropout = nn.Dropout(emb_dropout)
+
+        self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim, dropout)
+
+        self.pool = pool
+        self.to_latent = nn.Identity()
+
+        self.mlp_head = nn.Linear(dim, num_classes)
+
+    def forward(self, img):
+        x = self.to_patch_embedding(img)
+        b, n, _ = x.shape
+
+        cls_tokens = repeat(self.cls_token, '1 1 d -> b 1 d', b = b)
+        x = torch.cat((cls_tokens, x), dim=1)
+        x += self.pos_embedding[:, :(n + 1)]
+        x = self.dropout(x)
+
+        x = self.transformer(x)
+
+        x = x.mean(dim = 1) if self.pool == 'mean' else x[:, 0]
+
+        x = self.to_latent(x)
+        return self.mlp_head(x)
+    
 class FiLM(nn.Module):
     """
     A Feature-wise Linear Modulation Layer from
     'FiLM: Visual Reasoning with a General Conditioning Layer'
     """
     def forward(self, x, gammas, betas,scale=1):
-        _gammas = einops.repeat(gammas, 'j -> i j k l',i=x.shape[0],k=x.shape[2],l=x.shape[3])
-        _betas  = einops.repeat(betas, 'j -> i j k l',i=x.shape[0],k=x.shape[2],l=x.shape[3])
+        _gammas = repeat(gammas, 'j -> i j k l',i=x.shape[0],k=x.shape[2],l=x.shape[3])
+        _betas  = repeat(betas, 'j -> i j k l',i=x.shape[0],k=x.shape[2],l=x.shape[3])
         return ((1+_gammas*scale) * x) + _betas*scale
 
 class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
@@ -861,7 +987,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         if kwargs["film_gen_type"] == "gcn":
             self.film_gen = GCN(self.batch_size,device,out_features=self.embed_dim,num_layers=1)# num layers is 1 for now
         elif kwargs["film_gen_type"] == "transformer":
-            pass
+            self.film_gen = ViT(image_size=360, patch_size=4, num_classes=256, dim=1024, depth=6, heads=16, mlp_dim = 2048, dropout = 0.1, channels =1)
         else:
             self.film_gen = GCN_custom(self.batch_size,device,out_features=self.embed_dim,num_layers=1)# num layers is 1 for now
     
