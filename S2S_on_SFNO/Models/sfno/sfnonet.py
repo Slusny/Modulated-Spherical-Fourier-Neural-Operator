@@ -994,7 +994,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
     def forward(self, x,sst,scale=1):
 
         # calculate gammas and betas for film layers
-        gamma,beta = self.film_gen(sst)
+        gamma,beta = self.film_gen(sst[None])# None for transformer
         # save gamma and beta in model for validation
         if self.advanced_logging:
             self.gamma = gamma
