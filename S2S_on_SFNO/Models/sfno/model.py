@@ -891,6 +891,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         
         self.load_statistics(self.film_gen_type)
         self.set_seed()
+        plot = True
         
         dataset_validation = ERA5_galvani(
             self,
@@ -920,10 +921,12 @@ class FourCastNetv2_filmed(FourCastNetv2):
         #     sfno_model = sfno.load_model(sfno.checkpoint_path)
         #     sfno_model.eval()
 
-        validation_loss_curve = {}
+        print(variable," skillscores:")
         for cp_idx, checkpoint in enumerate(checkpoint_list):
             # the first checkpoint is always pure sfno with film scale = 0
-            if cp_idx == 0: scale = 0.
+            if cp_idx == 0: 
+                scale = 0.
+                print(" --- sfno --- ")
             else: 
                 scale = 1.
                 print(" --- checkpoint : ",checkpoint," --- ")
@@ -935,14 +938,11 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 
                 # For loop over validation dataset, calculates the validation loss mean for number of kwargs["validation_epochs"]
                 skill_score_model_list = []
-                # skill_score_sfno_list = []
-                # set seed to keep shuffled batches for all models the same
                 for val_epoch, val_data in enumerate(validation_loader):
                     # Calculates the validation loss for autoregressive model evaluation
                     # if self.auto_regressive_steps = 0 the dataloader only outputs 2 datapoint 
                     # and the for loop only runs once (calculating the ordinary validation loss with no auto regressive evaluation
                     skill_score_model = []
-                    # skill_score_sfno  = []
                     for val_idx in range(len(val_data)-1):
                         # skip leap year feb 29 and subtract leap day from index
                         time = val_data[val_idx][2].item()
@@ -950,7 +950,6 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         # calculates the days since the 1.1. of the same year
                         yday = datetime.strptime(str(time), '%Y%m%d%H').timetuple().tm_yday
                         ref_idx = ((yday-1)*24 + int(str(time)[-2:]))#//6
-                        # print(time, " - ",ref_idx)
                         # if we are in a leap year we subtract the leap day 29.2. from reference index to get the correct idx for clim ref
                         if isleap(int(str(time)[:4])) and int(str(time)[4:6]) > 2 : ref_idx = ref_idx - 24
                             
@@ -960,9 +959,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         #
                         # loss sfno 
                         #    all (normalised) 0.3
-                        #    all              6811386
+                        #    all              6811386 ??
                         #    u10 (normalised) 0.8
-                        #    u10              4460
+                        #    u10              4460.  ??
                         outputs = self.model(val_input_era5,val_input_sst,scale)
                         # MSE real space
                         val_g_truth_era5 = val_data[val_idx+1][0].squeeze()[self.ordering_reverse[variable]]
@@ -977,21 +976,13 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         ref_loss_value = loss_fn(ref_img,val_g_truth_era5)
                         skill_score  = 1 - val_loss_value/ref_loss_value
                         skill_score_model.append(skill_score.item())
-                        # calculate sfno skill score once
-                        # if sfno:
-                        #     if val_idx == 0: sfno_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
-                        #     else: sfno_input_era5 = sfno_output
-                        #     sfno_output = sfno_model(sfno_input_era5)
-                        #     sfno_output_var = self.normalise(sfno_output.to("cpu"),reverse=True).squeeze()[self.ordering_reverse[variable]]
-                        #     sfno_val_loss_value = loss_fn(sfno_output_var, val_g_truth_era5)
-                        #     sfno_skill_score  = 1 - sfno_val_loss_value/ref_loss_value
-                        #     skill_score_sfno.append(sfno_skill_score.item())
-                    
+
+                        if plot and val_epoch==0: 
+                            self.plot_variable(output_var,val_g_truth_era5,save_path,variable + " step=" +str(val_idx+1))
+                        
                     skill_score_model_list.append(skill_score_model)
-                    # if sfno: skill_score_sfno_list .append(skill_score_sfno)
                     for i in range(len(skill_score_model)):
-                        print("auto regress ",i,":",round(skill_score_model[i],4))
-                        # if sfno: print(" -  sfno ",round(skill_score_sfno[i],4))
+                        print("step ",i,":",round(skill_score_model[i],4))
 
                     # Do we need Checkpoints?
 
@@ -1000,23 +991,27 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         cp_name = checkpoint.split("/")[-1].split(".")[0]
                         savefile=os.path.join(save_path,"{}_skill_score_{}.pkl")
                         if cp_idx == 0: np.save(savefile.format("","sfno"),skill_score_model_list)
-                        else: np.save(savefile.format(cp_name,"film"),skill_score_model_list)
-                        # if sfno: np.save(savefile.format("","sfno"),skill_score_sfno_list)
+                        else:           np.save(savefile.format(cp_name,"film"),skill_score_model_list)
                         print("done:")
                         scml = np.array(skill_score_model_list)
-                        # scsl = np.array(skill_score_sfno_list)
                         mean_scml = scml.mean(axis=0)
                         std_scml  = scml.std(axis=0)
-                        # mean_scsl = scsl.mean(axis=0)
-                        # std_scsl  = scsl.std(axis=0)
                         for i in range(len(skill_score_model_list[0])):
-                            print("auto regress ",i,":",round(mean_scml[i],4),"+/-",round(std_scml[i],4))
-                            # print(" -  mean model skill ",round(mean_scml[i],4),"+/-",round(std_scml[i],4) )
-                            # if sfno: print(" -  mean sfno skill  ",round(mean_scsl[i],4),"+/-",round(std_scsl[i],4) )
-                        
-                        # do not to need to recalculate sfno skill score
-                        # sfno = False
+                            print("step ",i,":",round(mean_scml[i],4),"+/-",round(std_scml[i],4))
                         break
+    def plot_variable(self,output,groud_truth,save_path,title):
+        fig,ax = plt.subplots(1,2,figsize=(16,4))
+        
+        ax[0].set_title("FiLM")
+        im0 = ax[0].imshow(output)
+        fig.colorbar(im0, ax=ax[0],shrink=0.7)
+    
+        ax[1].set_title("Ground Truth")
+        im1 = ax[1].imshow(groud_truth)
+        fig.colorbar(im1, ax=ax[1],shrink=0.7)
+
+        fig.suptitle(title)
+        plt.savefig(os.path.join(save_path,title+".pdf")
         
     def test_training(self,**kwargs):
         dataset = ERA5_galvani(
