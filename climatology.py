@@ -39,7 +39,7 @@ from time import time
 
 years = list(range(1979,2019)) # 
 variable_index = 4
-multi_pressure_level = 1000 # the pressure level in hPa (e.g. 850)
+multi_pressure_level = None#1000 # the pressure level in hPa (e.g. 850)
 variables = [
     # single_pressure_level
     'total_column_water_vapour',
