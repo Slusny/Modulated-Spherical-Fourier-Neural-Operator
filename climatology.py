@@ -37,9 +37,15 @@ from time import time
 # The combined year data set (e.g. 2m_temperature_sfc_1959_2021.nc) are daily means)
 # The yearly data is hourly data (e.g. 2m_temperature_2021.nc)
 
+# Edit this
 years = list(range(1979,2019)) # 
-variable_index = 4
-multi_pressure_level = None#1000 # the pressure level in hPa (e.g. 850)
+variable_index = 5
+multi_pressure_level = None #1000 # the pressure level in hPa (e.g. 850)
+
+
+
+
+
 variables = [
     # single_pressure_level
     'total_column_water_vapour',
