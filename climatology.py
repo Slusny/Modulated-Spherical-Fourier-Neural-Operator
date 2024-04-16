@@ -39,8 +39,8 @@ from time import time
 
 # Edit this
 years = list(range(1979,2019)) # 
-variable_index = 5
-multi_pressure_level = None #1000 # the pressure level in hPa (e.g. 850)
+variable_index = 8
+multi_pressure_level = 1000 #1000 # the pressure level in hPa (e.g. 850)
 
 
 
@@ -48,16 +48,16 @@ multi_pressure_level = None #1000 # the pressure level in hPa (e.g. 850)
 
 variables = [
     # single_pressure_level
-    'total_column_water_vapour',
-    'u_component_of_wind',
-    'v_component_of_wind',
-    '2m_temperature',
-    'mean_sea_level_pressure',
-    "surface_pressure",
+    'total_column_water_vapour',    #0
+    'u_component_of_wind',          #1
+    'v_component_of_wind',          #2
+    '2m_temperature',               #3 
+    'mean_sea_level_pressure',      #4
+    "surface_pressure",             #5
     # multi_pressure_level
-    'relative_humidity',
-    'geopotential',
-    'temperature',
+    'relative_humidity',            #6
+    'geopotential',                 #7
+    'temperature',                  #8
 
 ]
 variable = variables[variable_index]

@@ -903,6 +903,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=self.training_workers, batch_size=self.batch_size)
         loss_fn = torch.nn.MSELoss()#reduction='none'
+        loss_fn_pervar = torch.nn.MSELoss(reduction='none')
 
         # load climatology reference
         basePath = "/mnt/qb/work2/goswami0/gkd965/"
@@ -939,6 +940,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 
                 # For loop over validation dataset, calculates the validation loss mean for number of kwargs["validation_epochs"]
                 skill_score_model_list = []
+                loss_variable_list = []
+                loss_variable_list_normalised = []
                 for val_epoch, val_data in enumerate(validation_loader):
                     # Calculates the validation loss for autoregressive model evaluation
                     # if self.auto_regressive_steps = 0 the dataloader only outputs 2 datapoint 
@@ -965,18 +968,28 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         #    u10              4460.  ??
                         outputs = self.model(val_input_era5,val_input_sst,scale)
                         # MSE real space
-                        val_g_truth_era5 = val_data[val_idx+1][0].squeeze()[self.ordering_reverse[variable]]
-                        output_var = self.normalise(outputs.to("cpu"),reverse=True).squeeze()[self.ordering_reverse[variable]]
-                        val_loss_value = loss_fn(output_var, val_g_truth_era5)
+                        val_g_truth_era5 = val_data[val_idx+1][0]#.squeeze()[self.ordering_reverse[variable]]
+                        output_var = self.normalise(outputs.to("cpu"),reverse=True)#.squeeze()[self.ordering_reverse[variable]]
+                        # val_loss_value = loss_fn(output_var, val_g_truth_era5)
+                        val_loss_value_pervar = loss_fn_pervar(output_var, val_g_truth_era5).mean(dim=(0,2,3)) /self.batch_size
                         # MSE normalised space
                         # val_g_truth_era5 = self.normalise(val_data[val_idx+1][0]).to(self.device).squeeze()[self.ordering_reverse[variable]]
-                        # output_var = outputs.squeeze()[self.ordering_reverse[variable]]
-                        # val_loss_value = loss_fn(output_var, val_g_truth_era5)
+                        val_g_truth_era5_normalised = self.normalise(val_g_truth_era5)
+                        output_var = outputs.squeeze()[self.ordering_reverse[variable]]
+                        val_loss_value_pervar_norm = loss_fn_pervar(outputs, val_g_truth_era5_normalised).mean(dim=(0,2,3)) /self.batch_size
                         
+
+                        # Doo we neeed to squeeze, what if batches
+
+
                         ref_img = torch.tensor(ds_ref.isel(time=ref_idx).to_array().squeeze().to_numpy())
                         ref_loss_value = loss_fn(ref_img,val_g_truth_era5)
-                        skill_score  = 1 - val_loss_value/ref_loss_value
+                        val_loss_value_variable = val_loss_value_pervar.squeeze()[self.ordering_reverse[variable]]
+                        skill_score  = 1 - val_loss_value_variable/ref_loss_value
                         skill_score_model.append(skill_score.item())
+
+                        loss_variable_list.append(val_loss_value_pervar.squeeze())
+                        loss_variable_list_normalised.append(val_loss_value_pervar_norm.squeeze())
 
                         if plot and val_epoch==0: 
                             self.plot_variable(output_var,val_g_truth_era5,save_path,variable + " step=" +str(val_idx+1))
@@ -999,6 +1012,14 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         std_scml  = scml.std(axis=0)
                         for i in range(len(skill_score_model_list[0])):
                             print("step ",i,":",round(mean_scml[i],4),"+/-",round(std_scml[i],4))
+                        
+                        # loss for each variable
+                        if plot: #self.advanced_logging:
+                            self.plot_loss_allvariables(loss_variable_list,save_path,str(val_idx+1))
+                            self.plot_loss_allvariables(loss_variable_list_normalised,save_path,str(val_idx+1))
+
+                        
+                        
                         break
     def plot_variable(self,output,groud_truth,save_path,title):
         fig,ax = plt.subplots(1,2,figsize=(16,4))
@@ -1013,6 +1034,15 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
         fig.suptitle(title)
         plt.savefig(os.path.join(save_path,title+".pdf"))
+    
+    def plot_loss_allvariables(self,loss_list,save_path,step):
+        mean = torch.tensor(loss_list).mean(dim=0)
+        std  = torch.tensor(loss_list).std(dim=0)
+        fig, ax = plt.subplots(figsize=(16,9))
+        plt.title("FiLM normalised")
+        ax.plot(loss,".")
+        plt.xticks(np.arange(len(film_model.ordering)), film_model.ordering, rotation='vertical')
+        plt.grid()
         
     def test_training(self,**kwargs):
         dataset = ERA5_galvani(
