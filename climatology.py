@@ -45,6 +45,9 @@ variables = [
     'total_column_water_vapour',
     'u_component_of_wind',
     'v_component_of_wind',
+    '2m_temperature',
+    'mean_sea_level_pressure',
+    "surface_pressure",
     # multi_pressure_level
     'relative_humidity',
     'geopotential',

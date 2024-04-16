@@ -23,6 +23,7 @@ from datetime import datetime
 
 import climetlab as cml
 import wandb
+import matplotlib.pyplot as plt
 
 # import ai_models_fourcastnetv2.fourcastnetv2 as nvs
 from .sfnonet import FourierNeuralOperatorNet
@@ -1011,7 +1012,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         fig.colorbar(im1, ax=ax[1],shrink=0.7)
 
         fig.suptitle(title)
-        plt.savefig(os.path.join(save_path,title+".pdf")
+        plt.savefig(os.path.join(save_path,title+".pdf"))
         
     def test_training(self,**kwargs):
         dataset = ERA5_galvani(
