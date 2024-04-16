@@ -219,12 +219,17 @@ class FourCastNetv2(Model):
         model.zero_grad()
         # Load weights
 
-        checkpoint = torch.load(checkpoint_file, map_location=self.device)
+        checkpoint = torch.load(checkpoint_file)
 
         if "model_state" in checkpoint.keys(): weights = checkpoint["model_state"]
         else: weights = checkpoint
         drop_vars = ["module.norm.weight", "module.norm.bias"]
         weights = {k: v for k, v in weights.items() if k not in drop_vars}
+
+        # print state of loaded model:
+        if self.advanced_logging and 'hyperparameters' in checkpoint_sfno.items():
+            print("loaded model with following hyperparameters:")
+            for k,v in pp['hyperparameters'].items():print("    ",k,":",v)
 
         # Make sure the parameter names are the same as the checkpoint
         # need to use strict = False to avoid this error message when
@@ -233,27 +238,38 @@ class FourCastNetv2(Model):
         # Missing key(s) in state_dict: "module.trans_down.weights",
         # "module.itrans_up.pct",
         if list(weights.keys())[0][0:7] == 'module.':
+            # Try adding model weights as dictionary
+            new_state_dict = dict()
+            # for k, v in checkpoint["model_state"].items():
+            for k, v in weights.items():
+                name = k[7:]
+                if name != "ged":
+                    new_state_dict[name] = v
             try:
-                # Try adding model weights as dictionary
-                new_state_dict = dict()
-                # for k, v in checkpoint["model_state"].items():
-                for k, v in weights.items():
-                    name = k[7:]
-                    if name != "ged":
-                        new_state_dict[name] = v
                 model.load_state_dict(new_state_dict)
-            except Exception:
-                # model.load_state_dict(checkpoint["model_state"])
-                model.load_state_dict(weights)
+            except RuntimeError as e:
+                LOG.error(e)
+                print("--- !! ---")
+                print("loading state dict with strict=False, please verify if the right model is loaded and strict=False is desired")
+                print("--- !! ---")
+                model.load_state_dict(new_state_dict,strict=False)
         else:
-            model.load_state_dict(weights)
+            try:
+                model.load_state_dict(weights)
+            except RuntimeError as e:
+                LOG.error(e)
+                print("--- !! ---")
+                print("loading state dict with strict=False, please verify if the right model is loaded and strict=False is desired")
+                print("--- !! ---")
+                model.load_state_dict(weights,strict=False)
+
 
         # Set model to eval mode and return
         model.eval()
         model.to(self.device)
 
         # free VRAM
-        del checkpoint
+        # del checkpoint ?? still needed if weights are send to device in same line as load_state_dict?
 
         # don't need to update sfno
         for name, param in model.named_parameters():
@@ -587,11 +603,16 @@ class FourCastNetv2_filmed(FourCastNetv2):
         model.zero_grad()
 
         # Load SFNO weights
-        checkpoint_sfno = torch.load(checkpoint_file, map_location=self.device)
+        checkpoint_sfno = torch.load(checkpoint_file)
         if "model_state" in checkpoint_sfno.keys(): weights = checkpoint_sfno["model_state"]
         else: weights = checkpoint_sfno
         drop_vars = ["module.norm.weight", "module.norm.bias"] # no checkpoint has that layer, probably lecacy from ai-model dev
         weights = {k: v for k, v in weights.items() if k not in drop_vars}
+
+        # print state of loaded model:
+        if self.advanced_logging and 'hyperparameters' in checkpoint_sfno.items():
+            print("loaded model with following hyperparameters:")
+            for k,v in pp['hyperparameters'].items():print("    ",k,":",v)
 
         # Make sure the parameter names are the same as the checkpoint
         # need to use strict = False to avoid this error message when
@@ -602,24 +623,35 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
         # Load SFNO weights
         if list(weights.keys())[0][0:7] == 'module.':
+            # Try adding model weights as dictionary
+            new_state_dict = dict()
+            # for k, v in checkpoint_sfno["model_state"].items():
+            for k, v in weights.items():
+                name = k[7:]
+                if name != "ged":
+                    new_state_dict[name] = v
             try:
-                # Try adding model weights as dictionary
-                new_state_dict = dict()
-                # for k, v in checkpoint_sfno["model_state"].items():
-                for k, v in weights.items():
-                    name = k[7:]
-                    if name != "ged":
-                        new_state_dict[name] = v
+                model.load_state_dict(new_state_dict)
+            except RuntimeError as e:
+                LOG.error(e)
+                print("--- !! ---")
+                print("loading state dict with strict=False, please verify if the right model is loaded and strict=False is desired")
+                print("--- !! ---")
                 model.load_state_dict(new_state_dict,strict=False)
-            except Exception:
-                # model.load_state_dict(checkpoint_sfno["model_state"])
-                model.load_state_dict(weights,strict=False)
+
         else:
-            model.load_state_dict(weights,strict=False)
+            try:
+                model.load_state_dict(weights)
+            except RuntimeError as e:
+                LOG.error(e)
+                print("--- !! ---")
+                print("loading state dict with strict=False, please verify if the right model is loaded and strict=False is desired")
+                print("--- !! ---")
+                model.load_state_dict(weights,strict=False)
 
         #  Load Filmed weights
         if self.checkpoint_path_film:
-            checkpoint_film = torch.load(self.checkpoint_file_film, map_location=self.device)
+            checkpoint_film = torch.load(self.checkpoint_file_film)
             print("not yet implemented")
             sys.exit()
             # needs to extract only film_gen weights if the whole model was saved
@@ -634,7 +666,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         model.to(self.device)
 
         # free VRAM
-        del checkpoint_sfno
+        # del checkpoint_sfno
 
         # disable grad for sfno
         for name, param in model.named_parameters():
@@ -648,6 +680,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
     def training(self,wandb_run=None,**kwargs):
         self.load_statistics(kwargs["film_gen_type"])
+        self.set_seed(42) #torch.seed()
         
         print("Trainig Data:")
         dataset = ERA5_galvani(
@@ -690,6 +723,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         scheduler = self.scheduler 
         
         loss_fn = torch.nn.MSELoss()
+        if kwargs["advanced_logging"]: loss_fn_pervar = torch.nn.MSELoss(reduction='none')
 
         if kwargs["advanced_logging"] and mem_log_not_done : 
             print("mem after init optimizer and scheduler : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
@@ -729,6 +763,14 @@ class FourCastNetv2_filmed(FourCastNetv2):
                             val_g_truth_era5 = self.normalise(val_data[val_idx+1][0]).to(self.device)
                             outputs = model(val_input_era5,val_input_sst,scale)
                             val_loss_value = loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"]
+
+                            # loss for each variable
+                            if kwargs["advanced_logging"]:
+                                val_loss_value_pervar = loss_fn_pervar(outputs, val_g_truth_era5).mean(dim=(0,2,3)) / kwargs["batch_size"]
+                                print("MSE for each variable:")
+                                for idx_var,var_name in enumerate(self.ordering):
+                                    print("    ",var_name," = ",round(val_loss_value_pervar[idx_var].item(),5))
+                            
                             if val_epoch == 0: 
                                 val_loss["validation loss (n={}, autoregress={})".format(
                                     kwargs["validation_epochs"],val_idx)] = [val_loss_value.cpu()]
@@ -841,13 +883,14 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
         self.save_checkpoint()
 
-    def auto_regressive_skillscore(self,checkpoint_list,auto_regressive_steps,save_path,sfno=None):
+    def auto_regressive_skillscore(self,checkpoint_list,auto_regressive_steps,save_path):
         """
         Method to calculate the skill score of the model for different auto-regressive steps.
         Needs batch size 1
         """
         
         self.load_statistics(self.film_gen_type)
+        self.set_seed()
         
         dataset_validation = ERA5_galvani(
             self,
@@ -872,15 +915,18 @@ class FourCastNetv2_filmed(FourCastNetv2):
         mean_file = os.path.join(basePath,"climate",mean_files[variable])
         ds_ref  = xr.open_dataset(mean_file)#.to_array().squeeze()[:min_step*6:6]
 
-        if sfno:
-            sfno.load_statistics()
-            sfno_model = sfno.load_model(sfno.checkpoint_path)
-            sfno_model.eval()
+        # if sfno:
+        #     sfno.load_statistics()
+        #     sfno_model = sfno.load_model(sfno.checkpoint_path)
+        #     sfno_model.eval()
 
         validation_loss_curve = {}
         for cp_idx, checkpoint in enumerate(checkpoint_list):
-            # if cp_idx < 2: continue
-            print(" --- checkpoint : ",checkpoint," --- ")
+            # the first checkpoint is always pure sfno with film scale = 0
+            if cp_idx == 0: scale = 0.
+            else: 
+                scale = 1.
+                print(" --- checkpoint : ",checkpoint," --- ")
             model = self.load_model(checkpoint)
             model.eval()
             with torch.no_grad():
@@ -889,15 +935,14 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 
                 # For loop over validation dataset, calculates the validation loss mean for number of kwargs["validation_epochs"]
                 skill_score_model_list = []
-                skill_score_sfno_list = []
+                # skill_score_sfno_list = []
                 # set seed to keep shuffled batches for all models the same
-                torch.manual_seed(1)
                 for val_epoch, val_data in enumerate(validation_loader):
                     # Calculates the validation loss for autoregressive model evaluation
                     # if self.auto_regressive_steps = 0 the dataloader only outputs 2 datapoint 
                     # and the for loop only runs once (calculating the ordinary validation loss with no auto regressive evaluation
                     skill_score_model = []
-                    skill_score_sfno  = []
+                    # skill_score_sfno  = []
                     for val_idx in range(len(val_data)-1):
                         # skip leap year feb 29 and subtract leap day from index
                         time = val_data[val_idx][2].item()
@@ -912,31 +957,41 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         if val_idx == 0: val_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
                         else: val_input_era5 = outputs
                         val_input_sst  = self.normalise_film(val_data[val_idx][1]).to(self.device)
-                        
+                        #
+                        # loss sfno 
+                        #    all (normalised) 0.3
+                        #    all              6811386
+                        #    u10 (normalised) 0.8
+                        #    u10              4460
+                        outputs = self.model(val_input_era5,val_input_sst,scale)
+                        # MSE real space
                         val_g_truth_era5 = val_data[val_idx+1][0].squeeze()[self.ordering_reverse[variable]]
-                        outputs = self.model(val_input_era5,val_input_sst,1)
                         output_var = self.normalise(outputs.to("cpu"),reverse=True).squeeze()[self.ordering_reverse[variable]]
                         val_loss_value = loss_fn(output_var, val_g_truth_era5)
+                        # MSE normalised space
+                        # val_g_truth_era5 = self.normalise(val_data[val_idx+1][0]).to(self.device).squeeze()[self.ordering_reverse[variable]]
+                        # output_var = outputs.squeeze()[self.ordering_reverse[variable]]
+                        # val_loss_value = loss_fn(output_var, val_g_truth_era5)
+                        
                         ref_img = torch.tensor(ds_ref.isel(time=ref_idx).to_array().squeeze().to_numpy())
                         ref_loss_value = loss_fn(ref_img,val_g_truth_era5)
                         skill_score  = 1 - val_loss_value/ref_loss_value
                         skill_score_model.append(skill_score.item())
                         # calculate sfno skill score once
-                        if sfno:
-                            if val_idx == 0: sfno_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
-                            else: sfno_input_era5 = sfno_output
-                            sfno_output = sfno_model(sfno_input_era5)
-                            sfno_output_var = self.normalise(sfno_output.to("cpu"),reverse=True).squeeze()[self.ordering_reverse[variable]]
-                            sfno_val_loss_value = loss_fn(sfno_output_var, val_g_truth_era5)
-                            sfno_skill_score  = 1 - sfno_val_loss_value/ref_loss_value
-                            skill_score_sfno.append(sfno_skill_score.item())
+                        # if sfno:
+                        #     if val_idx == 0: sfno_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
+                        #     else: sfno_input_era5 = sfno_output
+                        #     sfno_output = sfno_model(sfno_input_era5)
+                        #     sfno_output_var = self.normalise(sfno_output.to("cpu"),reverse=True).squeeze()[self.ordering_reverse[variable]]
+                        #     sfno_val_loss_value = loss_fn(sfno_output_var, val_g_truth_era5)
+                        #     sfno_skill_score  = 1 - sfno_val_loss_value/ref_loss_value
+                        #     skill_score_sfno.append(sfno_skill_score.item())
                     
                     skill_score_model_list.append(skill_score_model)
-                    if sfno: skill_score_sfno_list .append(skill_score_sfno)
+                    # if sfno: skill_score_sfno_list .append(skill_score_sfno)
                     for i in range(len(skill_score_model)):
-                        print("auto regress ",i,":")
-                        print(" -  model ",round(skill_score_model[i],4))
-                        if sfno: print(" -  sfno ",round(skill_score_sfno[i],4))
+                        print("auto regress ",i,":",round(skill_score_model[i],4))
+                        # if sfno: print(" -  sfno ",round(skill_score_sfno[i],4))
 
                     # Do we need Checkpoints?
 
@@ -944,22 +999,23 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     if val_epoch > self.validation_epochs:
                         cp_name = checkpoint.split("/")[-1].split(".")[0]
                         savefile=os.path.join(save_path,"{}_skill_score_{}.pkl")
-                        np.save(savefile.format("model",cp_name),skill_score_model_list)
-                        if sfno: np.save(savefile.format("","sfno"),skill_score_sfno_list)
+                        if cp_idx == 0: np.save(savefile.format("","sfno"),skill_score_model_list)
+                        else: np.save(savefile.format(cp_name,"film"),skill_score_model_list)
+                        # if sfno: np.save(savefile.format("","sfno"),skill_score_sfno_list)
                         print("done:")
                         scml = np.array(skill_score_model_list)
-                        scsl = np.array(skill_score_sfno_list)
+                        # scsl = np.array(skill_score_sfno_list)
                         mean_scml = scml.mean(axis=0)
                         std_scml  = scml.std(axis=0)
-                        mean_scsl = scsl.mean(axis=0)
-                        std_scsl  = scsl.std(axis=0)
+                        # mean_scsl = scsl.mean(axis=0)
+                        # std_scsl  = scsl.std(axis=0)
                         for i in range(len(skill_score_model_list[0])):
-                            print("auto regress ",i,":")
-                            print(" -  mean model skill ",round(mean_scml[i],4),"+/-",round(std_scml[i],4) )
-                            if sfno: print(" -  mean sfno skill  ",round(mean_scsl[i],4),"+/-",round(std_scsl[i],4) )
+                            print("auto regress ",i,":",round(mean_scml[i],4),"+/-",round(std_scml[i],4))
+                            # print(" -  mean model skill ",round(mean_scml[i],4),"+/-",round(std_scml[i],4) )
+                            # if sfno: print(" -  mean sfno skill  ",round(mean_scsl[i],4),"+/-",round(std_scsl[i],4) )
                         
                         # do not to need to recalculate sfno skill score
-                        sfno = False
+                        # sfno = False
                         break
         
     def test_training(self,**kwargs):

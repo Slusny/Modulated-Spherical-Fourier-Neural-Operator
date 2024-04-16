@@ -24,6 +24,10 @@ from ..outputs import get_output
 from .stepper import Stepper
 from .train import ERA5_galvani
 
+import torch
+import numpy as np
+import random
+
 
 LOG = logging.getLogger(__name__)
 
@@ -394,6 +398,18 @@ class Model:
         print("Training method not implemented for this model.")
         print("Make sure you specified also the --verison of the model you want to train.")
         sys.exit(1)
+    def set_seed(self,seed: int = 42) -> None:
+        np.random.seed(seed)
+        random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        self.params["seed"] = seed
+        print(f"Random seed set as {seed}")
+
+
+
+
+
 
     
 

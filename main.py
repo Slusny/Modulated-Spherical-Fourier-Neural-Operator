@@ -577,13 +577,13 @@ def _main():
         
         checkpoint_list = np.array(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len)) 
         #[save_path+'checkpoint_sfno_latest_epoch={}.pkl'.format(i) for i in range(0,110,20)]#12930
-        checkpoint_list = checkpoint_list[:5:(args.eval_skip_checkpoints+1)]
+        checkpoint_list = checkpoint_list[3:5:(args.eval_skip_checkpoints+1)]
         print("loading ",len(checkpoint_list), " checkpoints from ", args.eval_checkpoint_path)
-        #sfno
-        sfno_kwargs = vars(args)
-        sfno_kwargs["model_version"] = "release"
-        sfno = load_model('sfno', sfno_kwargs)
-        model.auto_regressive_skillscore(checkpoint_list,args.autoregressive_steps,args.save_path,sfno=sfno)
+        # #sfno
+        # sfno_kwargs = vars(args)
+        # sfno_kwargs["model_version"] = "release"
+        # sfno = load_model('sfno', sfno_kwargs)
+        model.auto_regressive_skillscore(checkpoint_list,args.autoregressive_steps,args.save_path)
     else:
 
         try:

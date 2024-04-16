@@ -899,6 +899,7 @@ class ViT(nn.Module):
         self.mlp_head = nn.Linear(dim, num_classes)
 
     def forward(self, img):
+        img = img[None]
         x = self.to_patch_embedding(img)
         b, n, _ = x.shape
 
@@ -994,7 +995,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
     def forward(self, x,sst,scale=1):
 
         # calculate gammas and betas for film layers
-        gamma,beta = self.film_gen(sst[None])# None for transformer
+        gamma,beta = self.film_gen(sst)# None for transformer
         # save gamma and beta in model for validation
         if self.advanced_logging:
             self.gamma = gamma
