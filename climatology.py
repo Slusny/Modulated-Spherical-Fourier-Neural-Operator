@@ -126,6 +126,7 @@ def calc_mean(variable_path,years,savepath):
     mean.save(savepath)
 
 print("using xarray")
+print("variable: ",variable)
 start_time = time()
 calc_mean(file_paths, years, savepath)
 end_time = time()

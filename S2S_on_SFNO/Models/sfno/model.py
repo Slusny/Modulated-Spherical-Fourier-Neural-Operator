@@ -1036,12 +1036,18 @@ class FourCastNetv2_filmed(FourCastNetv2):
         plt.savefig(os.path.join(save_path,title+".pdf"))
     
     def plot_loss_allvariables(self,loss_list,save_path,step):
-        mean = torch.tensor(loss_list).mean(dim=0)
-        std  = torch.tensor(loss_list).std(dim=0)
+        mean = torch.tensor(loss_list).mean(dim=0).numpy()
+        std  = torch.tensor(loss_list).std(dim=0).numpy()
+        yerr_bottom = std.copy()
+        yerr_bottom_div = mean - yerr_bottom
+        yerr_bottom_div[yerr_bottom_div>0]=0
+        yerr_bottom = yerr_bottom + yerr_bottom_div
+        yerr = [yerr_bottom,std]
         fig, ax = plt.subplots(figsize=(16,9))
         plt.title("FiLM normalised")
-        ax.plot(loss,".")
-        plt.xticks(np.arange(len(film_model.ordering)), film_model.ordering, rotation='vertical')
+        ax.plot(mean,".")
+        ax.errorbar(range(len(mean)),mean,yerr=yerr,fmt='o')
+        plt.xticks(np.arange(len(self.ordering)), self.ordering, rotation='vertical')
         plt.grid()
         
     def test_training(self,**kwargs):
