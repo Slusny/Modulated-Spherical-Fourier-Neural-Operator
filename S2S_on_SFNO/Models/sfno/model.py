@@ -30,7 +30,8 @@ from .sfnonet import FourierNeuralOperatorNet
 from .sfnonet import FourierNeuralOperatorNet_Filmed
 from ..train import ERA5_galvani
 
-LOG = logging.getLogger(__name__)
+# LOG = logging.getLogger(__name__)
+LOG = logging.getLogger('S2S_on_SFNO')
 local_logging = True
 
 class FourCastNetv2(Model):
@@ -924,7 +925,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         #     sfno_model = sfno.load_model(sfno.checkpoint_path)
         #     sfno_model.eval()
 
-        print(variable," skillscores:")
+        print("skillscores for ",variables,":")
         for cp_idx, checkpoint in enumerate(checkpoint_list):
             # the first checkpoint is always pure sfno with film scale = 0
             if cp_idx == 0: 
@@ -980,12 +981,12 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         # MSE normalised space - used for MSE plot
                         # val_g_truth_era5 = self.normalise(val_data[val_idx+1][0]).to(self.device).squeeze()[self.ordering_reverse[variable]]
                         val_g_truth_era5_normalised = self.normalise(val_g_truth_era5)
-                        val_loss_value_pervar_norm = loss_fn_pervar(outputs, val_g_truth_era5_normalised).mean(dim=(0,2,3)) /self.batch_size
+                        val_loss_value_pervar_norm = loss_fn_pervar(outputs.to("cpu"), val_g_truth_era5_normalised).mean(dim=(0,2,3)) /self.batch_size
                         
 
                         # Doo we neeed to squeeze, what if batches
                         skill_scores = []
-                        for variable in variable:
+                        for variable in variables:
                             ref_img = torch.tensor(ds_ref[variable].isel(time=ref_idx).to_array().squeeze().to_numpy())
                             ref_loss_value = loss_fn(ref_img,val_g_truth_era5.squeeze()[self.ordering_reverse[variable]])
                             val_loss_value_variable = val_loss_value_pervar.squeeze()[self.ordering_reverse[variable]]
@@ -994,8 +995,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
                         # accumulate loss vor each autoreressive step in a list
                         skill_score_steps.append(skill_scores)
-                        loss_per_steps.append(val_loss_value_pervar.squeeze())
-                        loss_per_steps_normalised.append(val_loss_value_pervar_norm.squeeze())
+                        loss_per_steps.append(val_loss_value_pervar.squeeze().numpy())
+                        loss_per_steps_normalised.append(val_loss_value_pervar_norm.squeeze().numpy())
                         
                         # plot image of variables for each autoregressive step for first validation point
                         if plot and val_epoch==0: 
@@ -1010,8 +1011,10 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     loss_validation_list_normalised.append(loss_per_steps_normalised)
                     
                     # print skill scores for the validation point
-                    for i in range(len(skill_score_steps)):
-                        print("step ",i,":",round(skill_score_steps[i],4))
+                    for var_idx, variable in enumerate(variables):
+                        print("skillscore ",variable," :")
+                        for i in range(len(skill_score_steps)):
+                            print("step ",i,":",round(skill_score_steps[i][var_idx],4))
 
                     # Do we need Checkpoints?
 
@@ -1028,15 +1031,17 @@ class FourCastNetv2_filmed(FourCastNetv2):
                             np.save(savefile.format(cp_name,"MSE","sfno"),loss_validation_list)
                             np.save(savefile.format(cp_name,"MSE_normalised","sfno"),loss_validation_list_normalised)
                         print("done:")
-                        scml = np.array(skill_score_validation_list) ###
+                        scml = np.array(skill_score_validation_list) #shape (validation iters, steps, variables)
                         mean_scml = scml.mean(axis=0)
                         std_scml  = scml.std(axis=0)
-                        for i in range(len(skill_score_model_list[0])):
-                            print("step ",i,":",round(mean_scml[i],4),"+/-",round(std_scml[i],4))
+                        for var_idx, variable in enumerate(variables): 
+                            print("mean skillscore ",variable," :")
+                            for i in range(len(skill_score_model_list[0])):
+                                print("step ",i,":",round(mean_scml[i][var_idx],4),"+/-",round(std_scml[i][var_idx],4))
                         
                         # loss for each variable
                         if plot: #self.advanced_logging:
-                            self.plot_loss_allvariables(loss_variable_list,save_path,str(val_idx+1))
+                            self.plot_loss_allvariables(mean_scml,std_scml,save_path,str(val_idx+1))
                             self.plot_loss_allvariables(loss_variable_list_normalised,save_path,str(val_idx+1))
 
                         
@@ -1056,9 +1061,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         fig.suptitle(title)
         plt.savefig(os.path.join(save_path,title+".pdf"))
     
-    def plot_loss_allvariables(self,loss_list,save_path,step):
-        mean = torch.tensor(loss_list).mean(dim=0).numpy()
-        std  = torch.tensor(loss_list).std(dim=0).numpy()
+    def plot_loss_allvariables(self,mean,std,save_path,step):
         yerr_bottom = std.copy()
         yerr_bottom_div = mean - yerr_bottom
         yerr_bottom_div[yerr_bottom_div>0]=0

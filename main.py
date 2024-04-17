@@ -31,7 +31,8 @@ from S2S_on_SFNO.inputs import available_inputs
 from S2S_on_SFNO.Models.models import Timer, available_models, load_model #########
 from S2S_on_SFNO.outputs import available_outputs
 
-LOG = logging.getLogger(__name__)
+# LOG = logging.getLogger(__name__)
+LOG = logging.getLogger('S2S_on_SFNO')
 
 print("cuda available? : ",torch.cuda.is_available(),flush=True)
 
