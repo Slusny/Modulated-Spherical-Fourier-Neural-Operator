@@ -930,9 +930,11 @@ class FourCastNetv2_filmed(FourCastNetv2):
             # the first checkpoint is always pure sfno with film scale = 0
             if cp_idx == 0: 
                 scale = 0.
+                cp_name = "sfno"
                 print(" --- sfno --- ")
             else: 
                 scale = 1.
+                cp_name = checkpoint.split("/")[-1].split(".")[0]
                 print(" --- checkpoint : ",checkpoint," --- ")
             model = self.load_model(checkpoint)
             model.eval()
@@ -1020,7 +1022,6 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
                     # end of validation 
                     if val_epoch > self.validation_epochs:
-                        cp_name = checkpoint.split("/")[-1].split(".")[0]
                         savefile=os.path.join(save_path,"{}_{}_{}.pkl")
                         if cp_idx == 0: 
                             np.save(savefile.format("","skill_score","sfno"),skill_score_validation_list)
@@ -1041,14 +1042,14 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         
                         for var_idx, variable in enumerate(variables): 
                             print("mean skillscore ",variable," :")
-                            for i in range(len(skill_score_model_list[0])):
+                            for i in range(mean_scml.shape[0]):
                                 print("step ",i,":",round(mean_scml[i][var_idx],4),"+/-",round(std_scml[i][var_idx],4))
                         
                         # loss for each variable
                         if plot: #self.advanced_logging:
-                            self.plot_skillscores(mean_scml,std_scml,save_path,variables,checkpoint,str(val_idx+1))
-                            self.plot_loss_allvariables(mean_lvl,std_lvl,save_path,checkpoint,"MSE",str(val_idx+1))
-                            self.plot_loss_allvariables(mean_lvln,std_lvln,save_path,checkpoint,"MSE Normalised",str(val_idx+1))
+                            self.plot_skillscores(mean_scml,std_scml,save_path,variables,cp_name,"Skillscore",str(val_idx+1))
+                            self.plot_loss_allvariables(mean_lvl,std_lvl,save_path,cp_name,"MSE",str(val_idx+1))
+                            self.plot_loss_allvariables(mean_lvln,std_lvln,save_path,cp_name,"MSE Normalised",str(val_idx+1))
 
                         
                         
@@ -1072,27 +1073,27 @@ class FourCastNetv2_filmed(FourCastNetv2):
         yerr_bottom_div = mean - yerr_bottom
         yerr_bottom_div[yerr_bottom_div>0]=0
         yerr_bottom = yerr_bottom + yerr_bottom_div
-        yerr = [yerr_bottom,std]
+        yerr = np.array([yerr_bottom,std])
         cmap=plt.get_cmap('hot')
         fig, ax = plt.subplots(figsize=(16,9))
         plt.title(title)
         ax.plot(mean,".")
-        ax.errorbar(range(mean.shape[1]),mean[0,:],yerr=yerr,fmt='o',c='black',ecolor='midnightblue')
+        ax.errorbar(range(mean.shape[1]),mean[0,:],yerr=yerr[:,0,:],fmt='o',c='black',ecolor='midnightblue')
         for i in range(1,mean.shape[0]):
             ax.scatter(range(mean.shape[1]),mean[i,:],marker='o',alpha=0.6,color=cmap(i/mean.shape[0]))
         plt.xticks(np.arange(len(self.ordering)), self.ordering, rotation='vertical')
         plt.grid()
-        plt.savefig(os.path.join(save_path,checkpoint+"_"+title+"_valid_steps"+str(val_epochs)+".pdf"))
+        plt.savefig(os.path.join(save_path,checkpoint+"_"+title+"_validation_steps"+str(val_epochs)+".pdf"))
 
     def plot_skillscores(self,mean,std,save_path,step,variables,checkpoint,val_epochs):
         fig, ax = plt.subplots(figsize=(16,9))
-        for v in mean.shape[1]:
+        for v in range(mean.shape[1]):
             ax.errorbar(range(len(mean[:,v])),mean[:,v],yerr=std[:,v],fmt='o',label=variables[v])
         plt.title("Skillscores")
         ax.set_xlabel("steps")
         ax.set_ylabel("skillscore")
         plt.grid()
-        plt.savefig(os.path.join(save_path,checkpoint+"_"+"Skillscores"+"_valid_steps"+str(val_epochs)+".pdf"))
+        plt.savefig(os.path.join(save_path,checkpoint+"_"+"Skillscores"+"_validation_steps"+str(val_epochs)+".pdf"))
         
     def test_training(self,**kwargs):
         dataset = ERA5_galvani(

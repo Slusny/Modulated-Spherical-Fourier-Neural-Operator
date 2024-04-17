@@ -589,7 +589,11 @@ def _main():
         # sfno_kwargs = vars(args)
         # sfno_kwargs["model_version"] = "release"
         # sfno = load_model('sfno', sfno_kwargs)
-        model.auto_regressive_skillscore(checkpoint_list,args.autoregressive_steps,args.save_path)
+
+        #save folder
+        save_path = os.path.join(args.eval_checkpoint_path,"figures")
+        os.makedirs(save_path, exist_ok=True)
+        model.auto_regressive_skillscore(checkpoint_list,args.autoregressive_steps,save_path)
     elif args.run:
 
         try:
