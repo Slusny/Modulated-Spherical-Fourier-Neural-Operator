@@ -34,7 +34,7 @@
 //python main.py --model sfno --model-version film --train --validation-interval 1 --validation-epochs 2 --training-workers 6 --batch-size 1 --scheduler None --sfno-weights /mnt/qb/work2/goswami0/gkd965/checkpoints/generous-bee-19/checkpoint_sfno_film_gcn_custom_epoch=2000.pkl
 
 // get validation in 100 steps
-// python main.py --model sfno --model-version film --validation-epochs 3 --training-workers 6 --batch-size 1 --autoregressive-steps 10 --eval-models-autoregressive --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/lemon-breeze-29 --film-gen gcn
+// python main.py --model sfno --model-version film --validation-epochs 3 --training-workers 6 --batch-size 1 --autoregressive-steps 4 --eval-models-autoregressive --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/lemon-breeze-29 --film-gen gcn
 
 
 //

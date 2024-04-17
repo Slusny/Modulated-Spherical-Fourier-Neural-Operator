@@ -229,6 +229,11 @@ def _main():
     # Running
     running = parser.add_argument_group('Inference Parameters')
     running.add_argument(
+        "--run",
+        help="run model",
+        action="store_true",
+    )
+    running.add_argument(
         "--lead-time",
         type=int,
         default=240,
@@ -584,7 +589,7 @@ def _main():
         # sfno_kwargs["model_version"] = "release"
         # sfno = load_model('sfno', sfno_kwargs)
         model.auto_regressive_skillscore(checkpoint_list,args.autoregressive_steps,args.save_path)
-    else:
+    elif args.run:
 
         try:
             model.run()
@@ -601,7 +606,8 @@ def _main():
                 shlex.join([sys.argv[0], "--download-assets"] + sys.argv[1:]), ## download assets call not nessessary
             )
             sys.exit(1)
-
+    else:
+        print("No action specified (--train or --run). Exiting.")
     model.finalise()
 
     if args.dump_provenance:
