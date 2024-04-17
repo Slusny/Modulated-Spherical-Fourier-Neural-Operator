@@ -1034,6 +1034,11 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         scml = np.array(skill_score_validation_list) #shape (validation iters, steps, variables)
                         mean_scml = scml.mean(axis=0)
                         std_scml  = scml.std(axis=0)
+                        mean_lvln = np.array(loss_validation_list_normalised).mean(axis=0)
+                        mean_lvl  = np.array(loss_validation_list).mean(axis=0)
+                        std_lvln  = np.array(loss_validation_list_normalised).std(axis=0)
+                        std_lvl   = np.array(loss_validation_list).std(axis=0)
+                        
                         for var_idx, variable in enumerate(variables): 
                             print("mean skillscore ",variable," :")
                             for i in range(len(skill_score_model_list[0])):
@@ -1041,8 +1046,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         
                         # loss for each variable
                         if plot: #self.advanced_logging:
-                            self.plot_loss_allvariables(mean_scml,std_scml,save_path,str(val_idx+1))
-                            self.plot_loss_allvariables(loss_variable_list_normalised,save_path,str(val_idx+1))
+                            self.plot_skillscores(mean_scml,std_scml,save_path,variables,checkpoint,str(val_idx+1))
+                            self.plot_loss_allvariables(mean_lvl,std_lvl,save_path,checkpoint,"MSE",str(val_idx+1))
+                            self.plot_loss_allvariables(mean_lvln,std_lvln,save_path,checkpoint,"MSE Normalised",str(val_idx+1))
 
                         
                         
@@ -1061,18 +1067,32 @@ class FourCastNetv2_filmed(FourCastNetv2):
         fig.suptitle(title)
         plt.savefig(os.path.join(save_path,title+".pdf"))
     
-    def plot_loss_allvariables(self,mean,std,save_path,step):
+    def plot_loss_allvariables(self,mean,std,save_path,checkpoint,title,val_epochs):
         yerr_bottom = std.copy()
         yerr_bottom_div = mean - yerr_bottom
         yerr_bottom_div[yerr_bottom_div>0]=0
         yerr_bottom = yerr_bottom + yerr_bottom_div
         yerr = [yerr_bottom,std]
+        cmap=plt.get_cmap('hot')
         fig, ax = plt.subplots(figsize=(16,9))
-        plt.title("FiLM normalised")
+        plt.title(title)
         ax.plot(mean,".")
-        ax.errorbar(range(len(mean)),mean,yerr=yerr,fmt='o')
+        ax.errorbar(range(mean.shape[1]),mean[0,:],yerr=yerr,fmt='o',c='black',ecolor='midnightblue')
+        for i in range(1,mean.shape[0]):
+            ax.scatter(range(mean.shape[1]),mean[i,:],marker='o',alpha=0.6,color=cmap(i/mean.shape[0]))
         plt.xticks(np.arange(len(self.ordering)), self.ordering, rotation='vertical')
         plt.grid()
+        plt.savefig(os.path.join(save_path,checkpoint+"_"+title+"_valid_steps"+str(val_epochs)+".pdf"))
+
+    def plot_skillscores(self,mean,std,save_path,step,variables,checkpoint,val_epochs):
+        fig, ax = plt.subplots(figsize=(16,9))
+        for v in mean.shape[1]:
+            ax.errorbar(range(len(mean[:,v])),mean[:,v],yerr=std[:,v],fmt='o',label=variables[v])
+        plt.title("Skillscores")
+        ax.set_xlabel("steps")
+        ax.set_ylabel("skillscore")
+        plt.grid()
+        plt.savefig(os.path.join(save_path,checkpoint+"_"+"Skillscores"+"_valid_steps"+str(val_epochs)+".pdf"))
         
     def test_training(self,**kwargs):
         dataset = ERA5_galvani(
