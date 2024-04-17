@@ -907,7 +907,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
         # load climatology reference
         basePath = "/mnt/qb/work2/goswami0/gkd965/"
-        variable = "10m_u_component_of_wind"
+        variables = ["10m_u_component_of_wind"]
         mean_files = {
             '10m_u_component_of_wind':'hourofyear_mean_for_10m_u_component_of_wind_from_1979_to_2017created_20240123-0404.nc',
             '10m_v_component_of_wind':'hourofyear_mean_for_10m_v_component_of_wind_from_1979_to_2019created_20231211-1339.nc',
@@ -915,9 +915,10 @@ class FourCastNetv2_filmed(FourCastNetv2):
             'total_column_water_vapour':'hourofyear_mean_for_total_column_water_vapour_from_1979_to_2017created_20240123-0415.nc'
         
         }
-        mean_file = os.path.join(basePath,"climate",mean_files[variable])
-        ds_ref  = xr.open_dataset(mean_file)#.to_array().squeeze()[:min_step*6:6]
-
+        # mean_file = os.path.join(basePath,"climate",mean_files[variable])
+        ds_ref  = {}
+        for var in variables:
+            ds_ref[var] = xr.open_dataset(os.path.join(basePath,"climate",mean_files[var])) 
         # if sfno:
         #     sfno.load_statistics()
         #     sfno_model = sfno.load_model(sfno.checkpoint_path)
@@ -939,14 +940,16 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 val_loss = {}
                 
                 # For loop over validation dataset, calculates the validation loss mean for number of kwargs["validation_epochs"]
-                skill_score_model_list = []
-                loss_variable_list = []
-                loss_variable_list_normalised = []
+                skill_score_validation_list = []
+                loss_validation_list = []
+                loss_validation_list_normalised = []
                 for val_epoch, val_data in enumerate(validation_loader):
                     # Calculates the validation loss for autoregressive model evaluation
                     # if self.auto_regressive_steps = 0 the dataloader only outputs 2 datapoint 
                     # and the for loop only runs once (calculating the ordinary validation loss with no auto regressive evaluation
-                    skill_score_model = []
+                    skill_score_steps = []
+                    loss_per_steps = []
+                    loss_per_steps_normalised = []
                     for val_idx in range(len(val_data)-1):
                         # skip leap year feb 29 and subtract leap day from index
                         time = val_data[val_idx][2].item()
@@ -967,47 +970,65 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         #    u10 (normalised) 0.8
                         #    u10              4460.  ??
                         outputs = self.model(val_input_era5,val_input_sst,scale)
-                        # MSE real space
+                        
+                        # MSE real space - used for skillscore
                         val_g_truth_era5 = val_data[val_idx+1][0]#.squeeze()[self.ordering_reverse[variable]]
-                        output_var = self.normalise(outputs.to("cpu"),reverse=True)#.squeeze()[self.ordering_reverse[variable]]
-                        # val_loss_value = loss_fn(output_var, val_g_truth_era5)
-                        val_loss_value_pervar = loss_fn_pervar(output_var, val_g_truth_era5).mean(dim=(0,2,3)) /self.batch_size
-                        # MSE normalised space
+                        output_real_space = self.normalise(outputs.to("cpu"),reverse=True)#.squeeze()[self.ordering_reverse[variable]]
+                        # val_loss_value = loss_fn(output_real_space_var, val_g_truth_era5) # loss for only one variable
+                        val_loss_value_pervar = loss_fn_pervar(output_real_space, val_g_truth_era5).mean(dim=(0,2,3)) /self.batch_size
+                        
+                        # MSE normalised space - used for MSE plot
                         # val_g_truth_era5 = self.normalise(val_data[val_idx+1][0]).to(self.device).squeeze()[self.ordering_reverse[variable]]
                         val_g_truth_era5_normalised = self.normalise(val_g_truth_era5)
-                        output_var = outputs.squeeze()[self.ordering_reverse[variable]]
                         val_loss_value_pervar_norm = loss_fn_pervar(outputs, val_g_truth_era5_normalised).mean(dim=(0,2,3)) /self.batch_size
                         
 
                         # Doo we neeed to squeeze, what if batches
+                        skill_scores = []
+                        for variable in variable:
+                            ref_img = torch.tensor(ds_ref[variable].isel(time=ref_idx).to_array().squeeze().to_numpy())
+                            ref_loss_value = loss_fn(ref_img,val_g_truth_era5.squeeze()[self.ordering_reverse[variable]])
+                            val_loss_value_variable = val_loss_value_pervar.squeeze()[self.ordering_reverse[variable]]
+                            skill_score  = 1 - val_loss_value_variable/ref_loss_value
+                            skill_scores.append(skill_score.item())
 
-
-                        ref_img = torch.tensor(ds_ref.isel(time=ref_idx).to_array().squeeze().to_numpy())
-                        ref_loss_value = loss_fn(ref_img,val_g_truth_era5)
-                        val_loss_value_variable = val_loss_value_pervar.squeeze()[self.ordering_reverse[variable]]
-                        skill_score  = 1 - val_loss_value_variable/ref_loss_value
-                        skill_score_model.append(skill_score.item())
-
-                        loss_variable_list.append(val_loss_value_pervar.squeeze())
-                        loss_variable_list_normalised.append(val_loss_value_pervar_norm.squeeze())
-
-                        if plot and val_epoch==0: 
-                            self.plot_variable(output_var,val_g_truth_era5,save_path,variable + " step=" +str(val_idx+1))
+                        # accumulate loss vor each autoreressive step in a list
+                        skill_score_steps.append(skill_scores)
+                        loss_per_steps.append(val_loss_value_pervar.squeeze())
+                        loss_per_steps_normalised.append(val_loss_value_pervar_norm.squeeze())
                         
-                    skill_score_model_list.append(skill_score_model)
-                    for i in range(len(skill_score_model)):
-                        print("step ",i,":",round(skill_score_model[i],4))
+                        # plot image of variables for each autoregressive step for first validation point
+                        if plot and val_epoch==0: 
+                            for variable in variables:
+                                output_var = output_real_space.squeeze()[self.ordering_reverse[variable]]
+                                g_truth_var= val_g_truth_era5.squeeze()[self.ordering_reverse[variable]]
+                                self.plot_variable(output_var,g_truth_var,save_path,variable + " step=" +str(val_idx+1))
+                    
+                    # accumulate loss vor each validation point in a list
+                    skill_score_validation_list.append(skill_score_steps)
+                    loss_validation_list.append(loss_per_steps)
+                    loss_validation_list_normalised.append(loss_per_steps_normalised)
+                    
+                    # print skill scores for the validation point
+                    for i in range(len(skill_score_steps)):
+                        print("step ",i,":",round(skill_score_steps[i],4))
 
                     # Do we need Checkpoints?
 
                     # end of validation 
                     if val_epoch > self.validation_epochs:
                         cp_name = checkpoint.split("/")[-1].split(".")[0]
-                        savefile=os.path.join(save_path,"{}_skill_score_{}.pkl")
-                        if cp_idx == 0: np.save(savefile.format("","sfno"),skill_score_model_list)
-                        else:           np.save(savefile.format(cp_name,"film"),skill_score_model_list)
+                        savefile=os.path.join(save_path,"{}_{}_{}.pkl")
+                        if cp_idx == 0: 
+                            np.save(savefile.format("","skill_score","sfno"),skill_score_validation_list)
+                            np.save(savefile.format("","MSE","sfno"),loss_validation_list)
+                            np.save(savefile.format("","MSE_normalised","sfno"),loss_validation_list_normalised)
+                        else:           
+                            np.save(savefile.format(cp_name,"skill_score","film"),skill_score_validation_list)
+                            np.save(savefile.format(cp_name,"MSE","sfno"),loss_validation_list)
+                            np.save(savefile.format(cp_name,"MSE_normalised","sfno"),loss_validation_list_normalised)
                         print("done:")
-                        scml = np.array(skill_score_model_list)
+                        scml = np.array(skill_score_validation_list) ###
                         mean_scml = scml.mean(axis=0)
                         std_scml  = scml.std(axis=0)
                         for i in range(len(skill_score_model_list[0])):
