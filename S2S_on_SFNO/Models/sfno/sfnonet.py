@@ -6,7 +6,6 @@ from functools import partial
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.checkpoint import checkpoint
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn.pool import global_mean_pool
 
@@ -15,8 +14,6 @@ from torch import nn
 
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
-
-import torch.utils.checkpoint as checkpoint
 
 
 import numpy as np
@@ -1048,7 +1045,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         # forward features
         x = self.pos_drop(x)
 
-        if self.checkpointing:
+        if False: #self.checkpointing:
             for i, blk in enumerate(self.blocks):
                 x = checkpoint.checkpoint(self.cp_forward(blk),x,gamma[i],beta[i],scale)
         else:
