@@ -410,7 +410,7 @@ def _main():
     training.add_argument(
         "--checkpointing",
         action="store_true",
-        help="trades compute for memory, needed to perform multistep training. Only partly computes the forward path and recomputes during backward pass. See pytroch checkpointing"
+        help="trades compute for memory. Only partly computes the forward path and recomputes missing parts during backward pass. See pytroch checkpointing. Currently only the checkpoint MLPs in SFNO (encoder,decoder and MLP in SFNO-Block). Needed to perform multistep training. pure sfno alone already consumes 28GB VRAM"
 
     )
 

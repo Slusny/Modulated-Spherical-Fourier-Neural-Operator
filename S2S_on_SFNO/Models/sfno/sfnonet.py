@@ -6,7 +6,6 @@ from functools import partial
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.checkpoint import checkpoint
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn.pool import global_mean_pool
 
@@ -15,8 +14,6 @@ from torch import nn
 
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
-
-import torch.utils.checkpoint as checkpoint
 
 
 import numpy as np
@@ -202,7 +199,7 @@ class FourierNeuralOperatorBlock(nn.Module):
         # norm layer
         self.norm1 = norm_layer[1]()  # ((h,w))
 
-        if mlp_mode != "none":
+        if mlp_mode != "none": # default distributed
             mlp_hidden_dim = int(embed_dim * mlp_ratio)
             self.mlp = MLP(
                 in_features=embed_dim,
@@ -1050,7 +1047,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
 
         if self.checkpointing:
             for i, blk in enumerate(self.blocks):
-                x = checkpoint.checkpoint(self.cp_forward(blk),x,gamma[i],beta[i],scale)
+                x = checkpoint(self.cp_forward(blk),x,gamma[i],beta[i],scale)
         else:
             for i, blk in enumerate(self.blocks):
                 x = blk(x,gamma[i],beta[i],scale)
