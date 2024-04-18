@@ -535,7 +535,6 @@ def _main():
         args.save_path = new_save_path
 
 
-    
     model = load_model(args.model_type, vars(args))
 
     if args.fields:
@@ -591,7 +590,7 @@ def _main():
         # sfno = load_model('sfno', sfno_kwargs)
 
         #save folder
-        save_path = os.path.join(args.eval_checkpoint_path,"figures")
+        save_path = os.path.join(args.eval_checkpoint_path,"figures",str(args.autoregressive_steps))
         os.makedirs(save_path, exist_ok=True)
         model.auto_regressive_skillscore(checkpoint_list,args.autoregressive_steps,save_path)
     elif args.run:

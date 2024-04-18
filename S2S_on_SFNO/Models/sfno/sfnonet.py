@@ -743,13 +743,32 @@ class GCN(torch.nn.Module):
 # Blowes up STD (7 layers -> std=8.3)
 class GCN_custom(nn.Module):
     def __init__(self,batch_size,device,out_features=256,num_layers=12,coarse_level=4,graph_asset_path="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
+        """
+        Paramters: last lin layer: 131072, conv hidden layer (sparse): 262144
+        But Pararmeters SFNO: 
+            blocks.7.norm0.weight                   256
+            blocks.7.norm0.bias                     256
+            blocks.7.filter_layer.filter.wout       262144
+            blocks.7.filter_layer.filter.w.0        262144
+            blocks.7.filter_layer.filter.w.1        524288
+            blocks.7.filter_layer.filter.w.2        524288
+            blocks.7.inner_skip.weight              65536
+            blocks.7.inner_skip.bias                256
+            blocks.7.norm1.weight                   256
+            blocks.7.norm1.bias                     256
+            blocks.7.mlp.fwd.0.weight               131072
+            blocks.7.mlp.fwd.0.bias                 512
+            blocks.7.mlp.fwd.2.weight               131072
+            blocks.7.mlp.fwd.2.bias                 256
+            pos_embed        265789440 ??
+        """
         super().__init__()
         self.batch_size = batch_size
         self.device = device
         self.num_layers = num_layers
         self.hidden_size = out_features*2
         self.conv1 = GraphConvolution(1, self.hidden_size)
-        self.perceptive_field = 6 # 3
+        self.perceptive_field = 1 # 3
         self.conv_layers = nn.ModuleList([GraphConvolution(self.hidden_size, self.hidden_size) for _ in range(self.perceptive_field)])
         self.activation = nn.LeakyReLU() # change parameter for leaky relu also in initalization of GraphConvolution layer
         self.heads_gamma = nn.ModuleList([])
@@ -760,9 +779,12 @@ class GCN_custom(nn.Module):
 
         ## Prepare Graph
         # load sparse adjacentcy matrix from file ( shape: num_node x num_nodes )
-        # self.adj = torch.load(os.path.join(graph_asset_path,"adj_coarsen_"+str(coarse_level)+"_sparse.pt")).to(device)
+        self.adj = torch.load(os.path.join(graph_asset_path,"adj_coarsen_"+str(coarse_level)+"_sparse.pt")).to(device)
+        # sparse adj needs 0.01  GB on memory
         # dense 7
-        self.adj = torch.load(os.path.join(graph_asset_path,"adj_coarsen_"+str(coarse_level)+"_fully.pt")).to(device)
+        
+        # self.adj = torch.load(os.path.join(graph_asset_path,"adj_coarsen_"+str(coarse_level)+"_fully.pt")).to(device)
+        # # adj matrix takes 8.16 GB on memory
         
         # nan mask masks out every nan value on land ( shape: 180x360 for 1° data )
         self.nan_mask = np.load(os.path.join(graph_asset_path,"nan_mask_coarsen_"+str(coarse_level)+"_notflatten.npy"))

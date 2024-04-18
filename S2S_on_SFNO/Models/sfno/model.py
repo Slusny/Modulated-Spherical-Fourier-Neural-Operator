@@ -671,9 +671,13 @@ class FourCastNetv2_filmed(FourCastNetv2):
         # del checkpoint_sfno
 
         # disable grad for sfno
+        #model.requires_grad = False
         for name, param in model.named_parameters():
             if not "film_gen" in name:
                 param.requires_grad = False 
+            # if "film_gen" in name:
+                # param.requires_grad = True
+            # param.requires_grad = False 
 
         return model
 
@@ -683,6 +687,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
     def training(self,wandb_run=None,**kwargs):
         self.load_statistics(kwargs["film_gen_type"])
         self.set_seed(42) #torch.seed()
+        
+        ultra_advanced=False
         
         print("Trainig Data:")
         dataset = ERA5_galvani(
@@ -703,9 +709,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
         if kwargs["advanced_logging"] : 
             mem_log_not_done = True
             print(" ~~~ The GPU Memory will be logged for the first optimization run ~~~")
-            print("mem before loading model : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+            print("mem after initialising model : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
         model = self.load_model(self.checkpoint_path)
-        model.train()
+        model.film_gen.train()
 
         # optimizer = torch.optim.SGD(model.get_film_params(), lr=kwargs["learning_rate"], momentum=0.9)
         self.optimizer = torch.optim.Adam(model.get_film_params(), lr=kwargs["learning_rate"])
@@ -728,7 +734,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         if kwargs["advanced_logging"]: loss_fn_pervar = torch.nn.MSELoss(reduction='none')
 
         if kwargs["advanced_logging"] and mem_log_not_done : 
-            print("mem after init optimizer and scheduler : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+            print("mem after init optimizer and scheduler and loading weights : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
 
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
@@ -760,14 +766,14 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         for val_idx in range(kwargs["autoregressive_steps"]+1):
                             if val_input_era5 is None: val_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
                             else: val_input_era5 = outputs
-                            val_input_sst  = self.normalise_film(val_data[val_idx][1]).to(self.device)
+                            val_input_sst  = self.normalise_film(val_data[val_idx+1][1]).to(self.device) # get gt sst from next step
                             
                             val_g_truth_era5 = self.normalise(val_data[val_idx+1][0]).to(self.device)
                             outputs = model(val_input_era5,val_input_sst,scale)
                             val_loss_value = loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"]
 
                             # loss for each variable
-                            if kwargs["advanced_logging"]:
+                            if kwargs["advanced_logging"] and ultra_advanced:
                                 val_loss_value_pervar = loss_fn_pervar(outputs, val_g_truth_era5).mean(dim=(0,2,3)) / kwargs["batch_size"]
                                 print("MSE for each variable:")
                                 for idx_var,var_name in enumerate(self.ordering):
@@ -829,7 +835,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         np.save(os.path.join( self.save_path,"beta_{}.npy".format(i)),beta_np)
                         print("gamma values mean : ",round(gamma_np.mean(),3),"+/-",round(gamma_np.std(),3))
                         print("beta values mean  : ",round(beta_np.mean(),3),"+/-",round(beta_np.std(),3))
-                model.train()
+                model.film_gen.train()
                 if kwargs["advanced_logging"] and mem_log_not_done : 
                     print("mem after validation : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
             
@@ -845,17 +851,18 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     print("mem before loading data : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
                 if step == 0 : input_era5 = self.normalise(data[step][0]).to(self.device)
                 else: input_era5 = outputs
-                input_sst  = self.normalise_film(data[step][1]).to(self.device)
+                input_sst  = self.normalise_film(data[step+1][1]).to(self.device) # get gt sst from next step
                 g_truth_era5 = self.normalise(data[step+1][0]).to(self.device)
                 
                 if kwargs["advanced_logging"] and mem_log_not_done : 
                     print("mem before exec model : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
                 outputs = model(input_era5,input_sst,scale)
+                # outputs = outputs.detach()
                 # loss.append(loss_fn(outputs, g_truth_era5))#*discount_factor**step
             
                 if kwargs["advanced_logging"] and mem_log_not_done : 
                     print("mem before loss : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-                loss = loss + loss_fn(outputs, g_truth_era5)#*discount_factor**step
+                loss = loss + loss_fn(outputs, g_truth_era5) #*discount_factor**step
             
             # torch.tensor(loss).sum().backward()
             # a = loss[0] + loss[1] 
@@ -913,7 +920,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
             '10m_u_component_of_wind':'hourofyear_mean_for_10m_u_component_of_wind_from_1979_to_2017created_20240123-0404.nc',
             '10m_v_component_of_wind':'hourofyear_mean_for_10m_v_component_of_wind_from_1979_to_2019created_20231211-1339.nc',
             '2m_temperature':'hourofyear_mean_for_2m_temperature_from_1979_to_2017created_20240123-0343.nc',
-            'total_column_water_vapour':'hourofyear_mean_for_total_column_water_vapour_from_1979_to_2017created_20240123-0415.nc'
+            'total_column_water_vapour':'hourofyear_mean_for_total_column_water_vapour_from_1979_to_2017created_20240123-0415.nc',
+            'mean_sea_level_pressure':'hourofyear_mean_for_mean_sea_level_pressure_from_1979_to_2018created_20240417-0044.nc',
+            'surface_pressure':'hourofyear_mean_for_surface_pressure_from_1979_to_2018created_20240417-0047.nc'
         
         }
         # mean_file = os.path.join(basePath,"climate",mean_files[variable])
@@ -1022,7 +1031,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
                     # end of validation 
                     if val_epoch > self.validation_epochs:
-                        savefile=os.path.join(save_path,"{}_{}_{}.pkl")
+                        print("save at ",save_path)
+                        savefile=os.path.join(save_path,"{}_{}_{}.npy")
                         if cp_idx == 0: 
                             np.save(savefile.format("","skill_score","sfno"),skill_score_validation_list)
                             np.save(savefile.format("","MSE","sfno"),loss_validation_list)
@@ -1047,8 +1057,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         
                         # loss for each variable
                         if plot: #self.advanced_logging:
-                            self.plot_skillscores(mean_scml,std_scml,save_path,variables,cp_name,"Skillscore",str(val_idx+1))
-                            self.plot_loss_allvariables(mean_lvl,std_lvl,save_path,cp_name,"MSE",str(val_idx+1))
+                            self.plot_skillscores(mean_scml,std_scml,save_path,variables,cp_name,str(val_idx+1))
+                            # self.plot_loss_allvariables(mean_lvl,std_lvl,save_path,cp_name,"MSE",str(val_idx+1))
                             self.plot_loss_allvariables(mean_lvln,std_lvln,save_path,cp_name,"MSE Normalised",str(val_idx+1))
 
                         
@@ -1067,6 +1077,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
         fig.suptitle(title)
         plt.savefig(os.path.join(save_path,title+".pdf"))
+        plt.close(fig)
     
     def plot_loss_allvariables(self,mean,std,save_path,checkpoint,title,val_epochs):
         yerr_bottom = std.copy()
@@ -1077,23 +1088,24 @@ class FourCastNetv2_filmed(FourCastNetv2):
         cmap=plt.get_cmap('hot')
         fig, ax = plt.subplots(figsize=(16,9))
         plt.title(title)
-        ax.plot(mean,".")
         ax.errorbar(range(mean.shape[1]),mean[0,:],yerr=yerr[:,0,:],fmt='o',c='black',ecolor='midnightblue')
         for i in range(1,mean.shape[0]):
             ax.scatter(range(mean.shape[1]),mean[i,:],marker='o',alpha=0.6,color=cmap(i/mean.shape[0]))
         plt.xticks(np.arange(len(self.ordering)), self.ordering, rotation='vertical')
         plt.grid()
         plt.savefig(os.path.join(save_path,checkpoint+"_"+title+"_validation_steps"+str(val_epochs)+".pdf"))
+        plt.close(fig)
 
-    def plot_skillscores(self,mean,std,save_path,step,variables,checkpoint,val_epochs):
+    def plot_skillscores(self,mean,std,save_path,variables,checkpoint,val_epochs):
         fig, ax = plt.subplots(figsize=(16,9))
         for v in range(mean.shape[1]):
-            ax.errorbar(range(len(mean[:,v])),mean[:,v],yerr=std[:,v],fmt='o',label=variables[v])
+            ax.errorbar(range(len(mean[:,v])),mean[:,v],yerr=std[:,v],fmt='o--',label=variables[v])
         plt.title("Skillscores")
         ax.set_xlabel("steps")
         ax.set_ylabel("skillscore")
         plt.grid()
         plt.savefig(os.path.join(save_path,checkpoint+"_"+"Skillscores"+"_validation_steps"+str(val_epochs)+".pdf"))
+        plt.close(fig)
         
     def test_training(self,**kwargs):
         dataset = ERA5_galvani(
@@ -1102,7 +1114,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
             start_year=kwargs["trainingset_start_year"],
             end_year=kwargs["trainingset_end_year"])
         model = self.load_model(self.checkpoint_path)
-        model.train()
+        model.film_gen.train()
         optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
         loss_fn = torch.nn.MSELoss()
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])

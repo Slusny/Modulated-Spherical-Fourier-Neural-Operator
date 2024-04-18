@@ -668,12 +668,12 @@ class GraphConvolution(Module):
         nn.init.xavier_uniform_(self.weight, gain=nn.init.calculate_gain('leaky_relu',0.01))
 
     def forward(self, input, adj):
-        # single
-        # support = torch.mm(input, self.weight)
-        # output = torch.spmm(adj, support)
-        # batch
-        support = einsum(input,self.weight,'batch nodes features, features out_features -> batch nodes out_features')
-        output = einsum(adj,support,'i nodes, batch nodes features -> batch i features')
+        # single sample in batch needed !!
+        support = torch.mm(input[0], self.weight)
+        output = torch.spmm(adj, support)
+        # # batch
+        # support = einsum(input,self.weight,'batch nodes features, features out_features -> batch nodes out_features')
+        # output = einsum(adj,support,'i nodes, batch nodes features -> batch i features')
         if self.bias is not None:
             return output + self.bias
         else:
