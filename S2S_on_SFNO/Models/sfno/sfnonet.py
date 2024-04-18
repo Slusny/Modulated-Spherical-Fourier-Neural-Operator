@@ -1001,7 +1001,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
                 complex_network=self.complex_network,
                 complex_activation=self.complex_activation,
                 spectral_layers=self.spectral_layers,
-                checkpointing=self.checkpointing,
+                checkpointing=self.checkpointing_mlp,
             )
 
             self.blocks.append(block)
@@ -1045,7 +1045,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         # forward features
         x = self.pos_drop(x)
 
-        if False: #self.checkpointing:
+        if self.checkpointing and not self.checkpointing_mlp: #self.checkpointing:
             for i, blk in enumerate(self.blocks):
                 x = checkpoint(self.cp_forward(blk),x,gamma[i],beta[i],scale)
         else:

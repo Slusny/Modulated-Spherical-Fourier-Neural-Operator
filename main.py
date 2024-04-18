@@ -456,6 +456,12 @@ def _main():
     # !! args from parser become model properties (whatch that no conflicting model properties/methods exist)
     # !! happens in S2S_on_SFNO/Models/models.py:66
     args, unknownargs = parser.parse_known_args()
+    
+    if args.debug: #new
+        pdb.set_trace()
+        args.training_workers = 0
+        print("starting debugger")
+        print("setting training workers to 0")
 
     # Format Assets path
     if args.assets:
@@ -478,6 +484,13 @@ def _main():
     if not os.path.exists(args.path):
         os.makedirs(os.path.dirname(args.path), exist_ok=True)
 
+    # Add extra steps to multi_step_training if we want to skip steps
+    if args.multi_step_skip:
+        if args.multi_step_training:
+            args.multi_step_training = args.multi_step_training + args.multi_step_skip*(args.multi_step_training)
+        else:
+            print("multi-step-skip given but no multi-step-training. Specify the number of steps in multi-step-training.")
+
     if args.file is not None:
         args.input = "file"
 
@@ -486,12 +499,6 @@ def _main():
             level="DEBUG" if args.debug else "INFO",
             format="%(asctime)s %(levelname)s %(message)s",
         )
-    
-    if args.debug: #new
-        pdb.set_trace()
-        args.training_workers = 0
-        print("starting debugger")
-        print("setting training workers to 0")
 
     if args.metadata is None:
         args.metadata = []
@@ -596,7 +603,7 @@ def _main():
         # sfno = load_model('sfno', sfno_kwargs)
 
         #save folder
-        save_path = os.path.join(args.eval_checkpoint_path,"figures",str(args.autoregressive_steps))
+        save_path = os.path.join(args.eval_checkpoint_path,"figures","steps"+str(args.autoregressive_steps))
         os.makedirs(save_path, exist_ok=True)
         model.auto_regressive_skillscore(checkpoint_list,args.autoregressive_steps,save_path)
     elif args.run:
