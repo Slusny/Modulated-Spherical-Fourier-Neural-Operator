@@ -38,4 +38,4 @@
 
 
 //
-// python main.py --model sfno --model-version film --train --validation-interval 10 --validation-epochs 3 --training-workers 6 --batch-size 1 --scheduler None --multi-step-training 0 --advanced-logging --learning-rate 0.001 --debug 
+// python main.py --model sfno --model-version film --train --validation-interval 10 --validation-epochs 3 --training-workers 6 --batch-size 1 --scheduler None --multi-step-training 5 --advanced-logging --learning-rate 0.001 --film-gen gcn --advanced-logging 

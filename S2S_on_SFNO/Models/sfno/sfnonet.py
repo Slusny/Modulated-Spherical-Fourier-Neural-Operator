@@ -16,6 +16,8 @@ from torch import nn
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
 
+import torch.utils.checkpoint as checkpoint
+
 
 import numpy as np
 import os
@@ -1014,6 +1016,12 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         else:
             self.film_gen = GCN_custom(self.batch_size,device,out_features=self.embed_dim,num_layers=1)# num layers is 1 for now
     
+    def cp_forward(self, module):
+        def custom_forward(*inputs):
+            inputs = module(*inputs)
+            return inputs
+        return custom_forward
+    
     def forward(self, x,sst,scale=1):
 
         # calculate gammas and betas for film layers
@@ -1040,8 +1048,12 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         # forward features
         x = self.pos_drop(x)
 
-        for i, blk in enumerate(self.blocks):
-            x = blk(x,gamma[i],beta[i],scale)
+        if self.checkpointing:
+            for i, blk in enumerate(self.blocks):
+                x = checkpoint.checkpoint(self.cp_forward(blk),x,gamma[i],beta[i],scale)
+        else:
+            for i, blk in enumerate(self.blocks):
+                x = blk(x,gamma[i],beta[i],scale)
 
         # concatenate the big skip
         if self.big_skip:

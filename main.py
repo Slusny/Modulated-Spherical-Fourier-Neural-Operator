@@ -407,6 +407,12 @@ def _main():
         type=str,
         help="path to save checkpoints and training data, not used for running the model"
     )
+    training.add_argument(
+        "--checkpointing",
+        action="store_true",
+        help="trades compute for memory, needed to perform multistep training. Only partly computes the forward path and recomputes during backward pass. See pytroch checkpointing"
+
+    )
 
     # Logging
     logging_parser = parser.add_argument_group('Logging')
