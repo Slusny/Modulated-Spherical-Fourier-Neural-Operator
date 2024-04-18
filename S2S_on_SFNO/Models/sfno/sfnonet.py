@@ -1045,7 +1045,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         # forward features
         x = self.pos_drop(x)
 
-        if self.checkpointing:
+        if False: #self.checkpointing:
             for i, blk in enumerate(self.blocks):
                 x = checkpoint(self.cp_forward(blk),x,gamma[i],beta[i],scale)
         else:
