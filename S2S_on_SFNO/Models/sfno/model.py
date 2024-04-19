@@ -820,8 +820,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         LOG.info(val_log_keys[log_idx] + " : " + str(val_log[val_log_keys[log_idx]]) 
                                  + " +/- " + str(val_log[val_log_keys[log_idx+1]]))
                         # log to local file
-                        self.val_means[log_idx].append(val_log[val_log_keys[log_idx]])
-                        self.val_stds[log_idx].append(val_log[val_log_keys[log_idx+1]])
+                        # self.val_means[log_idx].append(val_log[val_log_keys[log_idx]]) ## error here
+                        # self.val_stds[log_idx].append(val_log[val_log_keys[log_idx+1]]) 
                     if wandb_run :
                         wandb.log(val_log)
                 # save model and training statistics for checkpointing
