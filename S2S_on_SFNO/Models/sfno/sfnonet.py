@@ -156,7 +156,8 @@ class FourierNeuralOperatorBlock(nn.Module):
         complex_network=True,
         complex_activation="real",
         spectral_layers=1,
-        checkpointing=False,
+        checkpointing_mlp=False,
+        checkpointing_block=False,
     ):
         super(FourierNeuralOperatorBlock, self).__init__()
 
@@ -206,7 +207,7 @@ class FourierNeuralOperatorBlock(nn.Module):
                 hidden_features=mlp_hidden_dim,
                 act_layer=act_layer,
                 drop_rate=drop_rate,
-                checkpointing=checkpointing,
+                checkpointing_mlp=checkpointing_mlp,
             )
 
         if outer_skip == "linear":
@@ -275,7 +276,8 @@ class FourierNeuralOperatorBlock_Filmed(nn.Module):
         complex_network=True,
         complex_activation="real",
         spectral_layers=1,
-        checkpointing=False,
+        checkpointing_mlp=False,
+        checkpointing_block=False,
     ):
         super().__init__()
 
@@ -329,7 +331,7 @@ class FourierNeuralOperatorBlock_Filmed(nn.Module):
                 hidden_features=mlp_hidden_dim,
                 act_layer=act_layer,
                 drop_rate=drop_rate,
-                checkpointing=checkpointing,
+                checkpointing_mlp=checkpointing_mlp,
             )
 
         if outer_skip == "linear":
@@ -412,7 +414,8 @@ class FourierNeuralOperatorNet(nn.Module):
         complex_activation="real",
         spectral_layers=3,
         laplace_weighting=False,
-        checkpointing=False,
+        checkpointing_mlp=False,
+        checkpointing_block=False,
         batch_size = 1,
         **overflow
     ):
@@ -437,7 +440,8 @@ class FourierNeuralOperatorNet(nn.Module):
         self.complex_activation = complex_activation
         self.spectral_layers = spectral_layers
         self.laplace_weighting = laplace_weighting
-        self.checkpointing = checkpointing
+        self.checkpointing_mlp = checkpointing_mlp
+        self.checkpointing_block = checkpointing_block
         self.batch_size = batch_size
         
 
@@ -491,7 +495,7 @@ class FourierNeuralOperatorNet(nn.Module):
             output_bias=False,
             act_layer=encoder_act,
             drop_rate=0.0,
-            checkpointing=checkpointing,
+            checkpointing_mlp=checkpointing_mlp,
         )
 
         # self.input_encoding = nn.Conv2d(self.in_chans, self.embed_dim, 1)
@@ -579,7 +583,8 @@ class FourierNeuralOperatorNet(nn.Module):
                 complex_network=self.complex_network,
                 complex_activation=self.complex_activation,
                 spectral_layers=self.spectral_layers,
-                checkpointing=self.checkpointing,
+                checkpointing_block=self.checkpointing_block,
+                checkpointing_mlp=self.checkpointing_mlp,
             )
 
             self.blocks.append(block)
@@ -600,7 +605,7 @@ class FourierNeuralOperatorNet(nn.Module):
             output_bias=False,
             act_layer=decoder_act,
             drop_rate=0.0,
-            checkpointing=checkpointing,
+            checkpointing_mlp=checkpointing_mlp,
         )
 
         trunc_normal_(self.pos_embed, std=0.02)
@@ -1045,7 +1050,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         # forward features
         x = self.pos_drop(x)
 
-        if self.checkpointing and not self.checkpointing_mlp: #self.checkpointing:
+        if self.checkpointing_block: #self.checkpointing:
             for i, blk in enumerate(self.blocks):
                 x = checkpoint(self.cp_forward(blk),x,gamma[i],beta[i],scale)
         else:

@@ -150,10 +150,10 @@ class MLP(nn.Module):
         act_layer=nn.GELU,
         output_bias=True,
         drop_rate=0.0,
-        checkpointing=False,
+        checkpointing_mlp=False,
     ):
         super(MLP, self).__init__()
-        self.checkpointing = checkpointing
+        self.checkpointing_mlp = checkpointing_mlp
         out_features = out_features or in_features
         hidden_features = hidden_features or in_features
 
@@ -171,7 +171,7 @@ class MLP(nn.Module):
         return checkpoint(self.fwd, x,use_reentrant=False)
 
     def forward(self, x):
-        if self.checkpointing:
+        if self.checkpointing_mlp:
             return self.checkpoint_forward(x)
         else:
             return self.fwd(x)

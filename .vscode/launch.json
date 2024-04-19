@@ -26,7 +26,8 @@
 // python main.py --model sfno --model-version film --train --validation-interval 20 --validation-epochs 5 --training-workers 6 --batch-size 1 --wandb
 
 // SFNO trained
-// python main.py --model sfno --model-version film --train --validation-interval 30 --validation-epochs 5 --training-workers 6 --batch-size 1 --autoregressive-steps 2 --sfno-weights /mnt/qb/work2/goswami0/gkd965/checkpoints/generous-tree-12/checkpoint_sfno_latest_epoch=9860.pkl --wandb
+// python main.py --model sfno --model-version film --train --validation-interval 50 --validation-epochs 5 --training-workers 6 --batch-size 1 --autoregressive-steps 1 --wandb --film_gen gcn
+// --model sfno --model-version film --train --validation-interval 50 --validation-epochs 10 --training-workers 6 --batch-size 1 --scheduler None --advanced-logging --learning-rate 0.0001 --wandb --autoregressive-steps 1 --checkpointing
 // python main.py --model sfno --model-version film --train --validation-interval 2 --validation-epochs 3 --training-workers 6 --batch-size 1 --sfno-weights /mnt/qb/work2/goswami0/gkd965/checkpoints/generous-tree-12/checkpoint_sfno_latest_epoch=9860.pkl --debug --cpu
 
 // with trained sfno
