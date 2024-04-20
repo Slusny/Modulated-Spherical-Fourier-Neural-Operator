@@ -333,7 +333,7 @@ def _main():
         type=int
     )
     training.add_argument(
-        "--multi-steps-validation",
+        "--multi-step-validation",
         help="how many consecutive datapoints should be loaded to used to calculate an autoregressive validation loss ",
         action="store",
         default=0,
