@@ -896,9 +896,9 @@ class Transformer(nn.Module):
         return self.norm(x)
 
 class ViT(nn.Module):
-    def __init__(self, *, image_size, patch_size, num_classes, dim, depth, heads, mlp_dim, pool = 'cls', channels = 3, dim_head = 64, dropout = 0., emb_dropout = 0.):
+    def __init__(self, *, patch_size, num_classes, dim, depth, heads, mlp_dim, pool = 'cls', channels = 3, dim_head = 64, dropout = 0., emb_dropout = 0., coarse_level=4):
         super().__init__()
-        image_height, image_width = pair(image_size)
+        image_height, image_width = 721//coarse_level, 1440//coarse_level #pair(image_size)
         patch_height, patch_width = pair(patch_size)
 
         assert image_height % patch_height == 0 and image_width % patch_width == 0, 'Image dimensions must be divisible by the patch size.'
@@ -1012,10 +1012,11 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
 
             self.blocks.append(block)
         
+        # coarse level =  4 default, could be changed by coarse_level in film_gen arguments
         if kwargs["film_gen_type"] == "gcn":
             self.film_gen = GCN(self.batch_size,device,out_features=self.embed_dim,num_layers=1)# num layers is 1 for now
         elif kwargs["film_gen_type"] == "transformer":
-            self.film_gen = ViT(image_size=360, patch_size=4, num_classes=256, dim=1024, depth=6, heads=16, mlp_dim = 2048, dropout = 0.1, channels =1)
+            self.film_gen = ViT(patch_size=4, num_classes=256, dim=1024, depth=6, heads=16, mlp_dim = 2048, dropout = 0.1, channels =1)
         else:
             self.film_gen = GCN_custom(self.batch_size,device,out_features=self.embed_dim,num_layers=1)# num layers is 1 for now
     

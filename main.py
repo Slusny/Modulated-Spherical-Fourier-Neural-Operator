@@ -675,4 +675,7 @@ are all kwargs added to model: e.g. film_gen_type is part of model.film_gen_type
 - possible issues for model load: dataset doesn't output real data, model isn't saved correctly
 - parallel training
 - do we need grad for all layers?
+
+# Questions
+Do Transformers need to have a square input
 '''
