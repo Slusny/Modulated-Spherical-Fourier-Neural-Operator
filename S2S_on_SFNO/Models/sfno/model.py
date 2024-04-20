@@ -1020,7 +1020,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                                 for variable in variables:
                                     output_var = output_real_space.squeeze()[self.ordering_reverse[variable]]
                                     g_truth_var= val_g_truth_era5.squeeze()[self.ordering_reverse[variable]]
-                                    self.plot_variable(output_var,g_truth_var,save_path,variable + " step=" +str(val_idx+1))
+                                    self.plot_variable(output_var,g_truth_var,save_path,cp_name, variable + " step=" +str(val_idx+1))
                             if self.advanced_logging: print("step ",val_idx)
                         else:
                             if self.advanced_logging: print("skipping step ",val_idx)
@@ -1073,7 +1073,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         
                         
                         break
-    def plot_variable(self,output,groud_truth,save_path,title):
+    def plot_variable(self,output,groud_truth,save_path,checkpoint,variable):
         fig,ax = plt.subplots(1,2,figsize=(16,4))
         
         ax[0].set_title("FiLM")
@@ -1084,8 +1084,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
         im1 = ax[1].imshow(groud_truth)
         fig.colorbar(im1, ax=ax[1],shrink=0.7)
 
-        fig.suptitle(title)
-        plt.savefig(os.path.join(save_path,title+".pdf"))
+        fig.suptitle(variable)
+        plt.savefig(os.path.join(save_path,checkpoint+"_"+variable+".pdf"))
         plt.close(fig)
     
     def plot_loss_allvariables(self,mean,std,save_path,checkpoint,title,val_epochs):
