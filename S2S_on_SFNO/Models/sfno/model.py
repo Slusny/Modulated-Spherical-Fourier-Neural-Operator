@@ -396,7 +396,7 @@ class FourCastNetv2(Model):
             path=kwargs["trainingdata_path"], 
             start_year=kwargs["validationset_start_year"],
             end_year=kwargs["validationset_end_year"],
-            auto_regressive_steps=kwargs["autoregressive_steps"],
+            auto_regressive_steps=kwargs["multi_step_validation"],
             sst=False)
         
         model = self.load_model(self.checkpoint_path)
@@ -415,8 +415,8 @@ class FourCastNetv2(Model):
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"],pin_memory=torch.cuda.is_available())
         
         ## for logging offline to local file (no wandb)
-        self.val_means = [[]] * (kwargs["autoregressive_steps"]+1)
-        self.val_stds  = [[]] * (kwargs["autoregressive_steps"]+1)
+        self.val_means = [[]] * (kwargs["multi_step_validation"]+1)
+        self.val_stds  = [[]] * (kwargs["multi_step_validation"]+1)
         self.losses    = []
         self.epoch = 0
         self.iter = 0
@@ -467,7 +467,7 @@ class FourCastNetv2(Model):
                     # little complicated console logging - looks nicer
                     print("-- validation after ",i*kwargs["batch_size"], "training examples")
                     val_log_keys = list(val_log.keys())
-                    for log_idx in range(0,kwargs["autoregressive_steps"]*2+1,2):
+                    for log_idx in range(0,kwargs["multi_step_validation"]*2+1,2):
                         # log to console
                         LOG.info(val_log_keys[log_idx] + " : " + str(val_log[val_log_keys[log_idx]]) 
                                  + " +/- " + str(val_log[val_log_keys[log_idx+1]]))
@@ -704,7 +704,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
             path=kwargs["trainingdata_path"], 
             start_year=kwargs["validationset_start_year"],
             end_year=kwargs["validationset_end_year"],
-            auto_regressive_steps=kwargs["autoregressive_steps"])
+            auto_regressive_steps=kwargs["multi_step_validation"])
 
         if kwargs["advanced_logging"] : 
             mem_log_not_done = True
@@ -741,8 +741,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
         scale = 0.0
         # for logging to local file (no wandb)
-        self.val_means = [[]] * (kwargs["autoregressive_steps"]+1)
-        self.val_stds  = [[]] * (kwargs["autoregressive_steps"]+1)
+        self.val_means = [[]] * (kwargs["multi_step_validation"]+1)
+        self.val_stds  = [[]] * (kwargs["multi_step_validation"]+1)
         self.losses    = []
         self.epoch = 0
         self.iter = 0
@@ -763,7 +763,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         # if self.auto_regressive_steps = 0 the dataloader only outputs 2 datapoint 
                         # and the for loop only runs once (calculating the ordinary validation loss with no auto regressive evaluation
                         val_input_era5 = None
-                        for val_idx in range(kwargs["autoregressive_steps"]+1):
+                        for val_idx in range(kwargs["multi_step_validation"]+1):
                             if val_input_era5 is None: val_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
                             else: val_input_era5 = outputs
                             val_input_sst  = self.normalise_film(val_data[val_idx+1][1]).to(self.device) # get gt sst from next step
@@ -816,7 +816,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     # little complicated console logging - looks nicer than LOG.info(str(val_log))
                     print("-- validation after ",i*kwargs["batch_size"], "training examples")
                     val_log_keys = list(val_log.keys())
-                    for log_idx in range(0,kwargs["autoregressive_steps"]*2+1,2): 
+                    for log_idx in range(0,kwargs["multi_step_validation"]*2+1,2): 
                         LOG.info(val_log_keys[log_idx] + " : " + str(val_log[val_log_keys[log_idx]]) 
                                  + " +/- " + str(val_log[val_log_keys[log_idx+1]]))
                         # log to local file
@@ -859,7 +859,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 outputs = model(input_era5,input_sst,scale)
                 # outputs = outputs.detach()
                 # loss.append(loss_fn(outputs, g_truth_era5))#*discount_factor**step
-                if step % (kwargs["multi_step_skip"]+1) == 0:
+                if step % (kwargs["training_step_skip"]+1) == 0:
                     print("loss for ",step)
                     if kwargs["advanced_logging"] and mem_log_not_done : 
                         print("mem before loss : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
@@ -988,7 +988,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         outputs = self.model(val_input_era5,val_input_sst,scale)
 
                         # skip MSE/Skillscore calculation if we want to skip steps in autoregressive rollout
-                        if val_idx % (self.multi_step_skip+1) == 0:
+                        if val_idx % (self.training_step_skip+1) == 0:
                             
                             # MSE real space - used for skillscore
                             val_g_truth_era5 = val_data[val_idx+1][0]#.squeeze()[self.ordering_reverse[variable]]

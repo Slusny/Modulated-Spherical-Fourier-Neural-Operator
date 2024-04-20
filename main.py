@@ -333,8 +333,8 @@ def _main():
         type=int
     )
     training.add_argument(
-        "--autoregressive-steps",
-        help="how many consecutive datapoints should be loaded to used to calculate an autoregressive loss ",
+        "--multi-steps-validation",
+        help="how many consecutive datapoints should be loaded to used to calculate an autoregressive validation loss ",
         action="store",
         default=0,
         type=int
@@ -347,8 +347,15 @@ def _main():
         action="store",
     )
     training.add_argument(
-        "--multi-step-skip",
+        "--training-step-skip",
         help="skip the x amount of autoregressive steps in the multi-step training to calculate the loss",
+        default=0,
+        type=int,
+        action="store",
+    )
+    training.add_argument(
+        "--validation-step-skip",
+        help="skip the x amount of autoregressive steps in the multi-step validation to calculate the loss",
         default=0,
         type=int,
         action="store",
@@ -489,11 +496,16 @@ def _main():
         os.makedirs(os.path.dirname(args.path), exist_ok=True)
 
     # Add extra steps to multi_step_training if we want to skip steps
-    if args.multi_step_skip:
-        if args.multi_step_training:
-            args.multi_step_training = args.multi_step_training + args.multi_step_skip*(args.multi_step_training)
+    if args.training_step_skip > 0:
+        if args.multi_step_training > 0:
+            args.multi_step_training = args.multi_step_training + args.training_step_skip*(args.multi_step_training)
         else:
-            print("multi-step-skip given but no multi-step-training. Specify the number of steps in multi-step-training.")
+            print("multi-step-skip given but no multi-step-training = 0. Specify the number of steps in multi-step-training larger 0.")
+    if args.validation_step_skip > 0:
+        if args.multi_step_validation > 0:
+            args.multi_step_validation = args.multi_step_validation + args.validation_step_skip*(args.multi_step_validation)
+        else:
+            print("multi-step-skip given but no multi-step-validation = 0. Specify the number of steps in multi-step-validation larger 0.")
 
     if args.file is not None:
         args.input = "file"
@@ -607,9 +619,9 @@ def _main():
         # sfno = load_model('sfno', sfno_kwargs)
 
         #save folder
-        save_path = os.path.join(args.eval_checkpoint_path,"figures","steps"+str(args.autoregressive_steps))
+        save_path = os.path.join(args.eval_checkpoint_path,"figures","steps"+str(args.multi_step_validation//(args.validation_step_skip+1)))
         os.makedirs(save_path, exist_ok=True)
-        model.auto_regressive_skillscore(checkpoint_list,args.autoregressive_steps,save_path)
+        model.auto_regressive_skillscore(checkpoint_list,args.multi_step_validation,save_path)
     elif args.run:
 
         try:
