@@ -39,7 +39,7 @@
 #SBATCH --mail-user=lennart.slusny@student.uni-tuebingen.de
 # your mail address
 
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version film --train --validation-interval 50 --validation-epochs 10 --training-workers 6 --batch-size 1 --scheduler None --advanced-logging --learning-rate 0.0001 --wandb --multi-step-training 1 --training-step-skip 0 --checkpointing_mlp
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version film --train --validation-interval 50 --validation-epochs 10 --training-workers 6 --batch-size 1 --scheduler None --advanced-logging --learning-rate 0.0001 --wandb --multi-step-training 1 --training-step-skip 0 --checkpointing_mlp --film_gen gcn
 
 
 echo DONE!
