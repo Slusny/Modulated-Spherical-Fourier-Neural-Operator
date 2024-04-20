@@ -40,3 +40,7 @@
 
 //
 // python main.py --model sfno --model-version film --train --validation-interval 10 --validation-epochs 3 --training-workers 6 --batch-size 1 --scheduler None --multi-step-training 5 --advanced-logging --learning-rate 0.001 --film-gen gcn --advanced-logging 
+
+
+// Eval
+// python main.py --model sfno --model-version film --validation-epochs 30 --training-workers 4 --batch-size 1 --multi-step-validation 5 --validation-step-skip 5 --eval-models-autoregressive --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/devoted-bush-34 --film-gen gcn_custom
