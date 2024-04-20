@@ -988,7 +988,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         outputs = self.model(val_input_era5,val_input_sst,scale)
 
                         # skip MSE/Skillscore calculation if we want to skip steps in autoregressive rollout
-                        if val_idx % (self.training_step_skip+1) == 0:
+                        if val_idx % (self.validation_step_skip+1) == 0:
                             
                             # MSE real space - used for skillscore
                             val_g_truth_era5 = val_data[val_idx+1][0]#.squeeze()[self.ordering_reverse[variable]]
