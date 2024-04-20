@@ -966,6 +966,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     loss_per_steps = []
                     loss_per_steps_normalised = []
                     for val_idx in range(len(val_data)-1):
+                        if self.advanced_logging: print("step ",val_idx)
                         # skip leap year feb 29 and subtract leap day from index
                         time = val_data[val_idx][2].item()
                         if isleap(int(str(time)[:4])) and str(time)[4:8] == "02029" : break
@@ -977,7 +978,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                             
                         if val_idx == 0: val_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
                         else: val_input_era5 = outputs
-                        val_input_sst  = self.normalise_film(val_data[val_idx][1]).to(self.device)
+                        val_input_sst  = self.normalise_film(val_data[val_idx+1][1]).to(self.device)
                         #
                         # loss sfno 
                         #    all (normalised) 0.3
@@ -985,40 +986,44 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         #    u10 (normalised) 0.8
                         #    u10              4460.  ??
                         outputs = self.model(val_input_era5,val_input_sst,scale)
-                        
-                        # MSE real space - used for skillscore
-                        val_g_truth_era5 = val_data[val_idx+1][0]#.squeeze()[self.ordering_reverse[variable]]
-                        output_real_space = self.normalise(outputs.to("cpu"),reverse=True)#.squeeze()[self.ordering_reverse[variable]]
-                        # val_loss_value = loss_fn(output_real_space_var, val_g_truth_era5) # loss for only one variable
-                        val_loss_value_pervar = loss_fn_pervar(output_real_space, val_g_truth_era5).mean(dim=(0,2,3)) /self.batch_size
-                        
-                        # MSE normalised space - used for MSE plot
-                        # val_g_truth_era5 = self.normalise(val_data[val_idx+1][0]).to(self.device).squeeze()[self.ordering_reverse[variable]]
-                        val_g_truth_era5_normalised = self.normalise(val_g_truth_era5)
-                        val_loss_value_pervar_norm = loss_fn_pervar(outputs.to("cpu"), val_g_truth_era5_normalised).mean(dim=(0,2,3)) /self.batch_size
-                        
 
-                        # Doo we neeed to squeeze, what if batches
-                        skill_scores = []
-                        for variable in variables:
-                            ref_img = torch.tensor(ds_ref[variable].isel(time=ref_idx).to_array().squeeze().to_numpy())
-                            ref_loss_value = loss_fn(ref_img,val_g_truth_era5.squeeze()[self.ordering_reverse[variable]])
-                            val_loss_value_variable = val_loss_value_pervar.squeeze()[self.ordering_reverse[variable]]
-                            skill_score  = 1 - val_loss_value_variable/ref_loss_value
-                            skill_scores.append(skill_score.item())
-
-                        # accumulate loss vor each autoreressive step in a list
-                        skill_score_steps.append(skill_scores)
-                        loss_per_steps.append(val_loss_value_pervar.squeeze().numpy())
-                        loss_per_steps_normalised.append(val_loss_value_pervar_norm.squeeze().numpy())
-                        
-                        # plot image of variables for each autoregressive step for first validation point
-                        if plot and val_epoch==0: 
+                        # skip MSE/Skillscore calculation if we want to skip steps in autoregressive rollout
+                        if val_idx % (self.multi_step_skip+1) == 0:
+                            
+                            # MSE real space - used for skillscore
+                            val_g_truth_era5 = val_data[val_idx+1][0]#.squeeze()[self.ordering_reverse[variable]]
+                            output_real_space = self.normalise(outputs.to("cpu"),reverse=True)#.squeeze()[self.ordering_reverse[variable]]
+                            # val_loss_value = loss_fn(output_real_space_var, val_g_truth_era5) # loss for only one variable
+                            val_loss_value_pervar = loss_fn_pervar(output_real_space, val_g_truth_era5).mean(dim=(0,2,3)) /self.batch_size
+                            
+                            # MSE normalised space - used for MSE plot
+                            # val_g_truth_era5 = self.normalise(val_data[val_idx+1][0]).to(self.device).squeeze()[self.ordering_reverse[variable]]
+                            val_g_truth_era5_normalised = self.normalise(val_g_truth_era5)
+                            val_loss_value_pervar_norm = loss_fn_pervar(outputs.to("cpu"), val_g_truth_era5_normalised).mean(dim=(0,2,3)) /self.batch_size
+                            
+    
+                            # Doo we neeed to squeeze, what if batches
+                            skill_scores = []
                             for variable in variables:
-                                output_var = output_real_space.squeeze()[self.ordering_reverse[variable]]
-                                g_truth_var= val_g_truth_era5.squeeze()[self.ordering_reverse[variable]]
-                                self.plot_variable(output_var,g_truth_var,save_path,variable + " step=" +str(val_idx+1))
-                    
+                                ref_img = torch.tensor(ds_ref[variable].isel(time=ref_idx).to_array().squeeze().to_numpy())
+                                ref_loss_value = loss_fn(ref_img,val_g_truth_era5.squeeze()[self.ordering_reverse[variable]])
+                                val_loss_value_variable = val_loss_value_pervar.squeeze()[self.ordering_reverse[variable]]
+                                skill_score  = 1 - val_loss_value_variable/ref_loss_value
+                                skill_scores.append(skill_score.item())
+    
+                            # accumulate loss vor each autoreressive step in a list
+                            skill_score_steps.append(skill_scores)
+                            loss_per_steps.append(val_loss_value_pervar.squeeze().numpy())
+                            loss_per_steps_normalised.append(val_loss_value_pervar_norm.squeeze().numpy())
+                            
+                            # plot image of variables for each autoregressive step for first validation point
+                            if plot and val_epoch==0: 
+                                for variable in variables:
+                                    output_var = output_real_space.squeeze()[self.ordering_reverse[variable]]
+                                    g_truth_var= val_g_truth_era5.squeeze()[self.ordering_reverse[variable]]
+                                    self.plot_variable(output_var,g_truth_var,save_path,variable + " step=" +str(val_idx+1))
+                        else:
+                            if self.advanced_logging: print("skipping step ",val_idx)
                     # accumulate loss vor each validation point in a list
                     skill_score_validation_list.append(skill_score_steps)
                     loss_validation_list.append(loss_per_steps)
