@@ -534,35 +534,6 @@ def _main():
 
     # Manipulation on args
     args.metadata = dict(kv.split("=") for kv in args.metadata)
-      
-    if args.wandb   : 
-        # config_wandb = vars(args).copy()
-        # for key in ['notes','tags','wandb']:del config_wandb[key]
-        # del config_wandb
-        if args.wandb_resume is not None :
-            wandb_run = wandb.init(project=args.model_type + " - " +args.model_version, 
-                config=args,
-                notes=args.notes,
-                tags=args.tags,
-                resume="must",
-                id=args.wandb_resume)
-        else:
-            wandb_run = wandb.init(project=args.model_type + " - " +args.model_version, 
-                config=args,
-                notes=args.notes,
-                tags=args.tags)
-        # create checkpoint folder for run name
-        new_save_path = os.path.join(args.save_path,wandb_run.name)
-        os.mkdir(new_save_path)
-        args.save_path = new_save_path
-    else : 
-        wandb_run = None
-        if args.film_gen_type: film_gen_str = "_"+args.film_gen_type
-        else:                  film_gen_str = ""
-        new_save_path = os.path.join(args.save_path,args.model_type+"_"+args.model_version+film_gen_str+"_"+timestr)
-        os.mkdir(new_save_path)
-        args.save_path = new_save_path
-
 
     model = load_model(args.model_type, vars(args))
 
@@ -586,6 +557,7 @@ def _main():
         model.print_assets_list()
         sys.exit(0)
 
+    # for debugging reasons
     if args.test:
         # from S2S_on_SFNO.Models.train import train
         # train(vars(args))
@@ -596,8 +568,39 @@ def _main():
         # kwargs = vars(args)
         # model.test_training(**kwargs)
         # sys.exit(0)
-      
+    
     if args.train:
+
+        # init wandb and create directory for saveing training results
+        if args.wandb   : 
+            # config_wandb = vars(args).copy()
+            # for key in ['notes','tags','wandb']:del config_wandb[key]
+            # del config_wandb
+            if args.wandb_resume is not None :
+                wandb_run = wandb.init(project=args.model_type + " - " +args.model_version, 
+                    config=args,
+                    notes=args.notes,
+                    tags=args.tags,
+                    resume="must",
+                    id=args.wandb_resume)
+            else:
+                wandb_run = wandb.init(project=args.model_type + " - " +args.model_version, 
+                    config=args,
+                    notes=args.notes,
+                    tags=args.tags)
+            # create checkpoint folder for run name
+            new_save_path = os.path.join(args.save_path,wandb_run.name)
+            os.mkdir(new_save_path)
+            args.save_path = new_save_path
+        else : 
+            wandb_run = None
+            if args.film_gen_type: film_gen_str = "_"+args.film_gen_type
+            else:                  film_gen_str = ""
+            new_save_path = os.path.join(args.save_path,args.model_type+"_"+args.model_version+film_gen_str+"_"+timestr)
+            os.mkdir(new_save_path)
+            args.save_path = new_save_path
+
+        # Start training, catch errors like STRG+C and save model before exiting
         try:
             kwargs = vars(args)
             model.training(wandb_run=wandb_run,**kwargs)
@@ -611,7 +614,8 @@ def _main():
         
         checkpoint_list = np.array(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len)) 
         #[save_path+'checkpoint_sfno_latest_epoch={}.pkl'.format(i) for i in range(0,110,20)]#12930
-        checkpoint_list = checkpoint_list[-1::(args.eval_skip_checkpoints+1)]
+        # checkpoint_list = checkpoint_list[-1::(args.eval_skip_checkpoints+1)]
+        checkpoint_list = [checkpoint_list[0],checkpoint_list[1],checkpoint_list[2],checkpoint_list[-1]]
         print("loading ",len(checkpoint_list), " checkpoints from ", args.eval_checkpoint_path)
         # #sfno
         # sfno_kwargs = vars(args)
