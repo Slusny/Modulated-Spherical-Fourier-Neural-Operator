@@ -966,7 +966,6 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     loss_per_steps = []
                     loss_per_steps_normalised = []
                     for val_idx in range(len(val_data)-1):
-                        if self.advanced_logging: print("step ",val_idx)
                         # skip leap year feb 29 and subtract leap day from index
                         time = val_data[val_idx][2].item()
                         if isleap(int(str(time)[:4])) and str(time)[4:8] == "02029" : break
@@ -1022,6 +1021,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                                     output_var = output_real_space.squeeze()[self.ordering_reverse[variable]]
                                     g_truth_var= val_g_truth_era5.squeeze()[self.ordering_reverse[variable]]
                                     self.plot_variable(output_var,g_truth_var,save_path,variable + " step=" +str(val_idx+1))
+                            if self.advanced_logging: print("step ",val_idx)
                         else:
                             if self.advanced_logging: print("skipping step ",val_idx)
                     # accumulate loss vor each validation point in a list
@@ -1030,10 +1030,11 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     loss_validation_list_normalised.append(loss_per_steps_normalised)
                     
                     # print skill scores for the validation point
-                    for var_idx, variable in enumerate(variables):
-                        print("skillscore ",variable," :")
-                        for i in range(len(skill_score_steps)):
-                            print("step ",i*(self.validation_step_skip+1),":",round(skill_score_steps[i][var_idx],4))
+                    if self.advanced_logging:
+                        for var_idx, variable in enumerate(variables):
+                            print("skillscore ",variable," :")
+                            for i in range(len(skill_score_steps)):
+                                print("step ",i*(self.validation_step_skip+1),":",round(skill_score_steps[i][var_idx],4))
 
                     # Do we need Checkpoints?
 
@@ -1061,7 +1062,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         for var_idx, variable in enumerate(variables): 
                             print("mean skillscore ",variable," :")
                             for i in range(mean_scml.shape[0]):
-                                print("step ",i,":",round(mean_scml[i][var_idx],4),"+/-",round(std_scml[i][var_idx],4))
+                                print("step ",i*(self.validation_step_skip+1),":",round(mean_scml[i][var_idx],4),"+/-",round(std_scml[i][var_idx],4))
                         
                         # loss for each variable
                         if plot: #self.advanced_logging:
