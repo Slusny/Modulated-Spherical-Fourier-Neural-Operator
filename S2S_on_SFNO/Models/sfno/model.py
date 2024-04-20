@@ -141,11 +141,11 @@ class FourCastNetv2(Model):
         "100u":2,
         "100v":3,
         "2m_temperature":4,
-        "sp":5,
-        "msl":6,
+        "surface_pressure":5,
+        "mean_sea_level_pressure":6,
         "total_column_water_vapour":7,
     }
-
+    
     levels_per_pl = {"u_component_of_wind":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
                      "v_component_of_wind":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
                      "geopotential":[1000,925,850,700,600,500,400,300,250,200,150,100,50],
@@ -918,7 +918,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
         # load climatology reference
         basePath = "/mnt/qb/work2/goswami0/gkd965/"
-        variables = ["10m_u_component_of_wind"]
+        variables = ["10m_u_component_of_wind","2m_temperature","mean_sea_level_pressure","surface_pressure"]
         mean_files = {
             '10m_u_component_of_wind':'hourofyear_mean_for_10m_u_component_of_wind_from_1979_to_2017created_20240123-0404.nc',
             '10m_v_component_of_wind':'hourofyear_mean_for_10m_v_component_of_wind_from_1979_to_2019created_20231211-1339.nc',
@@ -1033,7 +1033,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     for var_idx, variable in enumerate(variables):
                         print("skillscore ",variable," :")
                         for i in range(len(skill_score_steps)):
-                            print("step ",i,":",round(skill_score_steps[i][var_idx],4))
+                            print("step ",i*(self.validation_step_skip+1),":",round(skill_score_steps[i][var_idx],4))
 
                     # Do we need Checkpoints?
 
