@@ -860,41 +860,38 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 # outputs = outputs.detach()
                 # loss.append(loss_fn(outputs, g_truth_era5))#*discount_factor**step
                 if step % (kwargs["training_step_skip"]+1) == 0:
-                    print("calculating loss for step ",step)
+                    print("loss for ",step)
                     if kwargs["advanced_logging"] and mem_log_not_done : 
                         print("mem before loss : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
                     loss = loss + loss_fn(outputs, g_truth_era5) #*discount_factor**step
                 else:
-                    print("skipping step ",step)
+                    print("skipping ",step)
             
-            
+            # torch.tensor(loss).sum().backward()
+            # a = loss[0] + loss[1] 
+            # l = torch.tensor(loss).sum()
+            # l.backward()
+            # a.backward()
             if kwargs["advanced_logging"] and mem_log_not_done : 
                 print("mem before backward : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
             loss.backward()
 
             # Adjust learning weights
-            if ((i + 1) % (self.accumulation_steps + 1) == 0) or (i + 1 == len(training_loader)):
-                # Update Optimizer
-                if kwargs["advanced_logging"] and mem_log_not_done : 
-                    print("mem before optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-                optimizer.step()
-                model.zero_grad()
+            if kwargs["advanced_logging"] and mem_log_not_done : 
+                print("mem before optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+            optimizer.step()
+            if kwargs["advanced_logging"] and mem_log_not_done : 
+                print("mem after optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                mem_log_not_done = False
 
-                if kwargs["advanced_logging"] and mem_log_not_done : 
-                    print("mem after optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-                    mem_log_not_done = False
-
-                # logging
-                self.iter += 1
-                loss_value = round(loss.item(),5)
-                if local_logging : self.losses.append(loss_value)
-                if wandb_run is not None:
-                    wandb.log({"loss": loss_value })
-                if kwargs["advanced_logging"]:
-                    print("Iteration: ", i, " Loss: ", loss_value," - scale: ",round(scale,2))
-            else:
-                if kwargs["advanced_logging"] :
-                    print("skipping optimizer step, accumulate gradients")
+            # logging
+            self.iter += 1
+            loss_value = round(loss.item(),5)
+            if local_logging : self.losses.append(loss_value)
+            if wandb_run is not None:
+                wandb.log({"loss": loss_value })
+            if kwargs["advanced_logging"]:
+                print("Iteration: ", i, " Loss: ", loss_value," - scale: ",round(scale,2))
 
         self.save_checkpoint()
 
@@ -1098,27 +1095,42 @@ class FourCastNetv2_filmed(FourCastNetv2):
         yerr_bottom = yerr_bottom + yerr_bottom_div
         yerr = np.array([yerr_bottom,std])
         cmap=plt.get_cmap('hot')
-        fig, ax = plt.subplots(figsize=(16,9))
-        plt.title(title)
-        ax.errorbar(range(mean.shape[1]),mean[0,:],yerr=yerr[:,0,:],fmt='o',c='black',ecolor='midnightblue')
-        for i in range(1,mean.shape[0]):
-            ax.scatter(range(mean.shape[1]),mean[i,:],marker='o',alpha=0.6,color=cmap(i/mean.shape[0]))
-        plt.xticks(np.arange(len(self.ordering)), self.ordering, rotation='vertical')
-        plt.grid()
-        plt.savefig(os.path.join(save_path,checkpoint+"_"+title+"_validation_steps"+str(val_epochs)+".pdf"))
-        plt.close(fig)
+        hrs = np.array(range(mean.shape[0]))*(self.validation_step_skip+1)*6 + 6
+        for f in range(2):
+            fig, ax = plt.subplots(figsize=(16,9))
+            plt.title(title)
+            ax.errorbar(range(mean.shape[1]),mean[0,:],yerr=yerr[:,0,:],fmt='o',c='black',ecolor='midnightblue',label=str(hrs[0])+" hrs")
+            for i in range(1,mean.shape[0]):
+                ax.scatter(range(mean.shape[1]),mean[i,:],marker='o',alpha=0.6,color=cmap(i/mean.shape[0]),label=str(hrs[i])+" hrs")
+            plt.xticks(np.arange(len(self.ordering)), self.ordering, rotation='vertical')
+            plt.grid()
+            plt.legend()
+            if f == 0:
+                plt.ylim(0,5)
+                plt.savefig(os.path.join(save_path,checkpoint+"_"+title+"_validation_steps"+str(val_epochs)+"_ylimited.pdf"))
+            else:
+                plt.savefig(os.path.join(save_path,checkpoint+"_"+title+"_validation_steps"+str(val_epochs)+".pdf"))
+            plt.close(fig)
 
     def plot_skillscores(self,mean,std,save_path,variables,checkpoint,val_epochs):
-        fig, ax = plt.subplots(figsize=(16,9))
-        for v in range(mean.shape[1]):
-            ax.errorbar(range(len(mean[:,v])),mean[:,v],yerr=std[:,v],fmt='o--',label=variables[v])
-        plt.title("Skillscores")
-        ax.set_xlabel("steps")
-        ax.set_ylabel("skillscore")
-        plt.grid()
-        plt.savefig(os.path.join(save_path,checkpoint+"_"+"Skillscores"+"_validation_steps"+str(val_epochs)+".pdf"))
-        plt.close(fig)
         
+        hrs = np.array(range(mean.shape[0]))*(self.validation_step_skip+1)*6 + 6
+        for f in range(2):
+            fig, ax = plt.subplots(figsize=(16,9))
+            for v in range(mean.shape[1]):
+                ax.errorbar(hr,mean[:,v],yerr=std[:,v],fmt='o--',label=variables[v])
+            plt.title("Skillscores")
+            ax.set_xlabel("forecast [hr]")
+            ax.set_ylabel("skillscore")
+            plt.grid()
+            plt.legend()
+            if f == 0:
+                plt.ylim(-1,1)
+                plt.savefig(os.path.join(save_path,checkpoint+"_"+"Skillscores"+"_validation_steps"+str(val_epochs)+"_ylimited.pdf"))
+            else:
+                plt.savefig(os.path.join(save_path,checkpoint+"_"+"Skillscores"+"_validation_steps"+str(val_epochs)+".pdf"))
+            plt.close(fig)
+            
     def test_training(self,**kwargs):
         dataset = ERA5_galvani(
             self,
