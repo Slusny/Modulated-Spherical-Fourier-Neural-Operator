@@ -870,12 +870,25 @@ class Attention(nn.Module):
 
         dots = torch.matmul(q, k.transpose(-1, -2)) * self.scale
 
-        attn = self.attend(torch.nan_to_num(dots,nan=-torch.inf))
+        # my first idea
+        # attn = self.attend(torch.nan_to_num(dots,nan=-torch.inf))
+        attn = self.attend(dots)
         attn = self.dropout(attn)
 
         out = torch.matmul(attn, v)
         out = rearrange(out, 'b h n d -> b n (h d)')
         return self.to_out(out)
+
+def posemb_sincos_2d(h, w, dim, temperature: int = 10000, dtype = torch.float32):
+    y, x = torch.meshgrid(torch.arange(h), torch.arange(w), indexing="ij")
+    assert (dim % 4) == 0, "feature dimension must be multiple of 4 for sincos emb"
+    omega = torch.arange(dim // 4) / (dim // 4 - 1)
+    omega = 1.0 / (temperature ** omega)
+
+    y = y.flatten()[:, None] * omega[None, :]
+    x = x.flatten()[:, None] * omega[None, :]
+    pe = torch.cat((x.sin(), x.cos(), y.sin(), y.cos()), dim=1)
+    return pe.type(dtype)
 
 class Transformer(nn.Module):
     def __init__(self, dim, depth, heads, dim_head, mlp_dim, dropout = 0.):
@@ -896,10 +909,12 @@ class Transformer(nn.Module):
         return self.norm(x)
 
 class ViT(nn.Module):
-    def __init__(self, *, patch_size, num_classes, dim, depth, heads, mlp_dim, pool = 'cls', channels = 3, dim_head = 64, dropout = 0., emb_dropout = 0., coarse_level=4):
+    # simple vit doesn't have dropout, different pos emb and no cls token
+    def __init__(self, *, patch_size, num_classes, dim, depth, heads, mlp_dim, pool = 'cls', channels = 3, dim_head = 64, dropout = 0., emb_dropout = 0., coarse_level=4,device="cpu"):
         super().__init__()
         image_height, image_width = 721//coarse_level, 1440//coarse_level #pair(image_size)
         patch_height, patch_width = pair(patch_size)
+        self.device = device
 
         assert image_height % patch_height == 0 and image_width % patch_width == 0, 'Image dimensions must be divisible by the patch size.'
 
@@ -914,7 +929,12 @@ class ViT(nn.Module):
             nn.LayerNorm(dim),
         )
 
-        self.pos_embedding = nn.Parameter(torch.randn(1, num_patches + 1, dim))
+        # self.pos_embedding = nn.Parameter(torch.randn(1, num_patches + 1, dim))
+        self.pos_embedding = posemb_sincos_2d(
+            h = image_height // patch_height,
+            w = image_width // patch_width,
+            dim = dim,
+        ) 
         self.cls_token = nn.Parameter(torch.randn(1, 1, dim))
         self.dropout = nn.Dropout(emb_dropout)
 
@@ -928,11 +948,16 @@ class ViT(nn.Module):
     def forward(self, img):
         img = img[None]
         x = self.to_patch_embedding(img)
-        b, n, _ = x.shape
 
+        # class token?
+        b, n, _ = x.shape
         cls_tokens = repeat(self.cls_token, '1 1 d -> b 1 d', b = b)
         x = torch.cat((cls_tokens, x), dim=1)
-        x += self.pos_embedding[:, :(n + 1)]
+
+        # x += self.pos_embedding[:, :(n + 1)]
+        x += self.pos_embedding.to(self.device, dtype=x.dtype)
+
+        x = x[torch.isnan(x).logical_not()]
         x = self.dropout(x)
 
         x = self.transformer(x)
