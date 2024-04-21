@@ -1119,9 +1119,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
         for f in range(2):
             fig, ax = plt.subplots(figsize=(16,9))
             for v in range(mean.shape[1]):
-                ax.errorbar(hr,mean[:,v],yerr=std[:,v],fmt='o--',label=variables[v])
+                ax.errorbar(hrs,mean[:,v],yerr=std[:,v],fmt='o--',label=variables[v])
             plt.title("Skillscores")
-            ax.set_xlabel("forecast [hr]")
+            ax.set_xlabel("forecast [hrs]")
             ax.set_ylabel("skillscore")
             plt.grid()
             plt.legend()
