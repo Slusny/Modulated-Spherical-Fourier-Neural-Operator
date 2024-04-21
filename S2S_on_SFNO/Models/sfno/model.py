@@ -588,7 +588,7 @@ class FourCastNetv2(Model):
             "optimizer_state_dict":self.optimizer.state_dict(),
             "hyperparameters": self.params
             }
-        if self.scheduler: save_dict["scheduler_state_dict"]: self.scheduler.state_dict()
+        if self.scheduler: save_dict["scheduler_state_dict"]= self.scheduler.state_dict()
         torch.save(save_dict,os.path.join( self.save_path,save_file))
 
 
@@ -687,6 +687,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
     def training(self,wandb_run=None,**kwargs):
         self.load_statistics(kwargs["film_gen_type"])
         self.set_seed(42) #torch.seed()
+        LOG.info("Save path: %s", self.save_path)
         
         ultra_advanced=False
         
