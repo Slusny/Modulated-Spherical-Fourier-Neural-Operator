@@ -949,10 +949,10 @@ class ViT(nn.Module):
         img = img[None]
         x = self.to_patch_embedding(img)
 
-        # class token?
-        b, n, _ = x.shape
-        cls_tokens = repeat(self.cls_token, '1 1 d -> b 1 d', b = b)
-        x = torch.cat((cls_tokens, x), dim=1)
+        # # class token? needs changes to the pos_embedding, add the extra token
+        # b, n, _ = x.shape
+        # cls_tokens = repeat(self.cls_token, '1 1 d -> b 1 d', b = b)
+        # x = torch.cat((cls_tokens, x), dim=1)
 
         # x += self.pos_embedding[:, :(n + 1)]
         x += self.pos_embedding.to(self.device, dtype=x.dtype)
