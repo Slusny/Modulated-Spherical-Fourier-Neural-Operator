@@ -11,19 +11,19 @@
 
 ##SBATCH --nodes=1
 
-#SBATCH --cpus-per-task=10 # 14 is max for cpu-short
+#SBATCH --cpus-per-task=8 # 14 is max for cpu-short
 # the job can use and see 4 CPUs (from max 24).
 # needet task count -n, maybe there is a better way to specify cores
 
 #SBATCH --partition=a100-galvani#a100-galvani#cpu-galvani#2080-galvani#cpu-long#cpu-short #gpu-v100  #gpu-2080ti #cpu-long
 
-#SBATCH --mem-per-cpu=20G # Per CPU -> Per Core
+#SBATCH --mem-per-cpu=15G # Per CPU -> Per Core
 # the job will need 12GB of memory equally distributed on 4 cpus.(251GB are available in total on one node)
 
 #SBATCH --gres=gpu:1
 #the job can use and see 1 GPUs (4 GPUs are available in total on one node) use SBATCH --gres=gpu:1080ti:1 to explicitly demand a Geforce 1080 Ti GPU. Use SBATCH --gres=gpu:A4000:1 to explicitly demand a RTX A4000 GPU
 
-#SBATCH --time=01-01:00
+#SBATCH --time=00-06:00
 # the maximum time the scripts needs to run
 # "minutes:seconds", "hours:minutes:seconds", "days-hours","days-hours:minutes" and "days-hours:minutes:seconds"
 
@@ -39,7 +39,7 @@
 #SBATCH --mail-user=lennart.slusny@student.uni-tuebingen.de
 # your mail address
 
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version film --train --validation-interval 50 --validation-epochs 10 --training-workers 6 --batch-size 1 --scheduler None --advanced-logging --learning-rate 0.0001 --wandb --multi-step-training 1 --training-step-skip 0 --checkpointing_mlp --film_gen gcn
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version film --train --validation-interval 50 --validation-epochs 10 --training-workers 6 --batch-size 1 --scheduler None --advanced-logging --learning-rate 0.0001 --wandb --multi-step-training 1 --training-step-skip 0 --checkpointing_mlp --film_gen gcn --accumulation-steps 10
 
 
 echo DONE!
