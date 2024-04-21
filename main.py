@@ -354,13 +354,6 @@ def _main():
         action="store",
     )
     training.add_argument(
-        "--accumulation-steps",
-        help="accumulate gradients over x steps. Increases batch size by withoutincreasing memory consumption",
-        default=0,
-        type=int,
-        action="store",
-    )
-    training.add_argument(
         "--validation-step-skip",
         help="skip the x amount of autoregressive steps in the multi-step validation to calculate the loss",
         default=0,
@@ -539,6 +532,38 @@ def _main():
         print("using film generator: gcn_custom")
         args.film_gen_type = "gcn_custom"
 
+    
+    # init wandb and create directory for saveing training results
+    if args.train:
+        if args.wandb   : 
+            # config_wandb = vars(args).copy()
+            # for key in ['notes','tags','wandb']:del config_wandb[key]
+            # del config_wandb
+            if args.wandb_resume is not None :
+                wandb_run = wandb.init(project=args.model_type + " - " +args.model_version, 
+                    config=args,
+                    notes=args.notes,
+                    tags=args.tags,
+                    resume="must",
+                    id=args.wandb_resume)
+            else:
+                wandb_run = wandb.init(project=args.model_type + " - " +args.model_version, 
+                    config=args,
+                    notes=args.notes,
+                    tags=args.tags)
+            # create checkpoint folder for run name
+            new_save_path = os.path.join(args.save_path,wandb_run.name)
+            os.mkdir(new_save_path)
+            args.save_path = new_save_path
+        else : 
+            wandb_run = None
+            if args.film_gen_type: film_gen_str = "_"+args.film_gen_type
+            else:                  film_gen_str = ""
+            new_save_path = os.path.join(args.save_path,args.model_type+"_"+args.model_version+film_gen_str+"_"+timestr)
+            os.mkdir(new_save_path)
+            args.save_path = new_save_path
+            print("wandb ",args.save_path)
+
     # Manipulation on args
     args.metadata = dict(kv.split("=") for kv in args.metadata)
 
@@ -577,38 +602,9 @@ def _main():
         # sys.exit(0)
     
     if args.train:
-
-        # init wandb and create directory for saveing training results
-        if args.wandb   : 
-            # config_wandb = vars(args).copy()
-            # for key in ['notes','tags','wandb']:del config_wandb[key]
-            # del config_wandb
-            if args.wandb_resume is not None :
-                wandb_run = wandb.init(project=args.model_type + " - " +args.model_version, 
-                    config=args,
-                    notes=args.notes,
-                    tags=args.tags,
-                    resume="must",
-                    id=args.wandb_resume)
-            else:
-                wandb_run = wandb.init(project=args.model_type + " - " +args.model_version, 
-                    config=args,
-                    notes=args.notes,
-                    tags=args.tags)
-            # create checkpoint folder for run name
-            new_save_path = os.path.join(args.save_path,wandb_run.name)
-            os.mkdir(new_save_path)
-            args.save_path = new_save_path
-        else : 
-            wandb_run = None
-            if args.film_gen_type: film_gen_str = "_"+args.film_gen_type
-            else:                  film_gen_str = ""
-            new_save_path = os.path.join(args.save_path,args.model_type+"_"+args.model_version+film_gen_str+"_"+timestr)
-            os.mkdir(new_save_path)
-            args.save_path = new_save_path
-
         # Start training, catch errors like STRG+C and save model before exiting
         try:
+            print("train ",args.save_path)
             kwargs = vars(args)
             model.training(wandb_run=wandb_run,**kwargs)
         except Exception as e:
@@ -622,7 +618,7 @@ def _main():
         checkpoint_list = np.array(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len)) 
         #[save_path+'checkpoint_sfno_latest_epoch={}.pkl'.format(i) for i in range(0,110,20)]#12930
         # checkpoint_list = checkpoint_list[-1::(args.eval_skip_checkpoints+1)]
-        checkpoint_list = [checkpoint_list[0],checkpoint_list[1],checkpoint_list[2],checkpoint_list[-1]]
+        checkpoint_list = [checkpoint_list[0],checkpoint_list[1]]#,checkpoint_list[2],checkpoint_list[-1]]
         print("loading ",len(checkpoint_list), " checkpoints from ", args.eval_checkpoint_path)
         # #sfno
         # sfno_kwargs = vars(args)
