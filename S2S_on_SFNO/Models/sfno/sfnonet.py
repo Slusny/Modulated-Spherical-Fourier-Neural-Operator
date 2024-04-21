@@ -946,7 +946,7 @@ class ViT(nn.Module):
         self.mlp_head = nn.Linear(dim, num_classes)
 
     def forward(self, img):
-        # img = img[None] ?? do i need this
+        img = img[None] #?? do i need this, get a key error if i don't
         x = self.to_patch_embedding(img)
 
         # # class token? needs changes to the pos_embedding, add the extra token
