@@ -1041,7 +1041,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         if kwargs["film_gen_type"] == "gcn":
             self.film_gen = GCN(self.batch_size,device,out_features=self.embed_dim,num_layers=1)# num layers is 1 for now
         elif kwargs["film_gen_type"] == "transformer":
-            self.film_gen = ViT(patch_size=4, num_classes=256, dim=1024, depth=6, heads=16, mlp_dim = 2048, dropout = 0.1, channels =1, device=self.device)
+            self.film_gen = ViT(patch_size=4, num_classes=256, dim=1024, depth=6, heads=16, mlp_dim = 2048, dropout = 0.1, channels =1, device=device)
         else:
             self.film_gen = GCN_custom(self.batch_size,device,out_features=self.embed_dim,num_layers=1)# num layers is 1 for now
     
