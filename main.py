@@ -438,6 +438,11 @@ def _main():
         action="store_true",
         help="Trades compute for memory. Checkpoints SFNO-encoder. Only partly computes the forward path and recomputes missing parts during backward pass. See pytroch checkpointing. Needed to perform multistep training. pure sfno alone already consumes 28GB VRAM"
     )
+    training.add_argument(
+        "--checkpointing_posemb",
+        action="store_true",
+        help="Trades compute for memory. Checkpoints SFNO-position embedding. Only partly computes the forward path and recomputes missing parts during backward pass. See pytroch checkpointing. Needed to perform multistep training. pure sfno alone already consumes 28GB VRAM"
+    )
 
     # Logging
     logging_parser = parser.add_argument_group('Logging')
