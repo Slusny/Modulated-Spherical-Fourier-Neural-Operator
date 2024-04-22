@@ -393,12 +393,14 @@ def _main():
         default=5,
         type=int
     )
+    # FourCastNet uses 0.0005
     training.add_argument(
         "--learning-rate",
         action="store",
         default=0.001,#2
         type=float
     )
+    # FourCastNet uses Cosine
     training.add_argument(
         "--scheduler",
         action="store",
@@ -422,12 +424,12 @@ def _main():
         help="path to save checkpoints and training data, not used for running the model"
     )
     training.add_argument(
-        "--checkpointing_mlp",
+        "--checkpointing-mlp",
         action="store_true",
         help="Trades compute for memory. Checkpoints MLPs in SFNO (encoder,decoder and MLP in SFNO-Block). Only partly computes the forward path and recomputes missing parts during backward pass. See pytroch checkpointing. Needed to perform multistep training. pure sfno alone already consumes 28GB VRAM"
     )
     training.add_argument(
-        "--checkpointing_block",
+        "--checkpointing-block",
         action="store_true",
         help="Trades compute for memory. Checkpoints SFNO-Block. Only partly computes the forward path and recomputes missing parts during backward pass. See pytroch checkpointing. Needed to perform multistep training. pure sfno alone already consumes 28GB VRAM"
     )
