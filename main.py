@@ -433,6 +433,11 @@ def _main():
         action="store_true",
         help="Trades compute for memory. Checkpoints SFNO-Block. Only partly computes the forward path and recomputes missing parts during backward pass. See pytroch checkpointing. Needed to perform multistep training. pure sfno alone already consumes 28GB VRAM"
     )
+    training.add_argument(
+        "--checkpointing-encoder",
+        action="store_true",
+        help="Trades compute for memory. Checkpoints SFNO-encoder. Only partly computes the forward path and recomputes missing parts during backward pass. See pytroch checkpointing. Needed to perform multistep training. pure sfno alone already consumes 28GB VRAM"
+    )
 
     # Logging
     logging_parser = parser.add_argument_group('Logging')
@@ -479,6 +484,13 @@ def _main():
         type=int,
         default=1,
         help='How many sfno blocks should be modulated with a dedicated film layer. Default: 1',
+    )
+    architecture_parser.add_argument(
+        '--model-depth', 
+        action='store',
+        type=int,
+        default=8,
+        help='Number of layers for film generator',
     )
     
 

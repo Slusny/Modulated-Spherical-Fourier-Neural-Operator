@@ -659,7 +659,7 @@ class FourierNeuralOperatorNet(nn.Module):
         return x
 
 class GCN(torch.nn.Module):
-    def __init__(self,batch_size,device,out_features=256,num_layers=12,coarse_level=4,graph_asset_path="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
+    def __init__(self,batch_size,device,depth=8,out_features=256,num_layers=12,coarse_level=4,graph_asset_path="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
         super().__init__()
 
         # Model
@@ -668,7 +668,7 @@ class GCN(torch.nn.Module):
         self.hidden_size = out_features*2
         self.activation = nn.LeakyReLU()
         self.conv1 = GCNConv(1, self.hidden_size,cached=True)
-        self.perceptive_field = 3
+        self.perceptive_field = depth
         self.conv_layers = nn.ModuleList([GCNConv(self.hidden_size, self.hidden_size,cached=True) for _ in range(self.perceptive_field)])
         self.heads_gamma = nn.ModuleList([])
         self.heads_beta = nn.ModuleList([])
@@ -747,7 +747,7 @@ class GCN(torch.nn.Module):
 
 # Blowes up STD (7 layers -> std=8.3)
 class GCN_custom(nn.Module):
-    def __init__(self,batch_size,device,out_features=256,num_layers=12,coarse_level=4,graph_asset_path="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
+    def __init__(self,batch_size,device,depth,out_features=256,num_layers=12,coarse_level=4,graph_asset_path="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
         """
         Paramters: last lin layer: 131072, conv hidden layer (sparse): 262144
         But Pararmeters SFNO: 
@@ -773,7 +773,7 @@ class GCN_custom(nn.Module):
         self.num_layers = num_layers
         self.hidden_size = out_features*2
         self.conv1 = GraphConvolution(1, self.hidden_size)
-        self.perceptive_field = 1 # 3
+        self.perceptive_field = depth # 3
         self.conv_layers = nn.ModuleList([GraphConvolution(self.hidden_size, self.hidden_size) for _ in range(self.perceptive_field)])
         self.activation = nn.LeakyReLU() # change parameter for leaky relu also in initalization of GraphConvolution layer
         self.heads_gamma = nn.ModuleList([])
@@ -1016,6 +1016,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         # save gamma and beta in model if advanced logging is required
         self.advanced_logging = kwargs["advanced_logging"]
         self.film_layers = kwargs["film_layers"]
+        self.depth = kwargs["model_depth"]
         
         # new SFNO-Block with Film Layer
         self.blocks = nn.ModuleList([])
@@ -1064,11 +1065,11 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         
         # coarse level =  4 default, could be changed by coarse_level in film_gen arguments
         if kwargs["film_gen_type"] == "gcn":
-            self.film_gen = GCN(self.batch_size,device,out_features=self.embed_dim,num_layers=self.film_layers)# num layers is 1 for now
+            self.film_gen = GCN(self.batch_size,device,depth=self.depth,out_features=self.embed_dim,num_layers=self.film_layers)# num layers is 1 for now
         elif kwargs["film_gen_type"] == "transformer":
-            self.film_gen = ViT(patch_size=4, num_classes=256, dim=1024, depth=6, heads=16, mlp_dim = 2048, dropout = 0.1, channels =1, device=device)
+            self.film_gen = ViT(patch_size=4, num_classes=256, dim=1024, depth=self.depth, heads=16, mlp_dim = 2048, dropout = 0.1, channels =1, device=device)
         else:
-            self.film_gen = GCN_custom(self.batch_size,device,out_features=self.embed_dim,num_layers=self.film_layers)# num layers is 1 for now
+            self.film_gen = GCN_custom(self.batch_size,device,depth=self.depth,out_features=self.embed_dim,num_layers=self.film_layers)# num layers is 1 for now
     
     def cp_forward(self, module):
         def custom_forward(*inputs):
@@ -1094,7 +1095,10 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
             residual = x
 
         # encoder
-        x = self.encoder(x)
+        if self.checkpointing_encoder:
+            x = checkpoint(self.encoder,x,use_reentrant=False)
+        else:
+            x = self.encoder(x)
 
         # do positional embedding
         x = x + self.pos_embed
@@ -1104,7 +1108,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
 
         if self.checkpointing_block: #self.checkpointing:
             for i, blk in enumerate(self.blocks):
-                # if i < 11:
+                # if i < 11: # don't want to checkpoint everything? All is needed to be able to go to 4 steps (1|2)
                 x = checkpoint(blk,x,gamma[i],beta[i],scale,use_reentrant=False)
                 # else:
                 #     x = blk(x,gamma[i],beta[i],scale)
