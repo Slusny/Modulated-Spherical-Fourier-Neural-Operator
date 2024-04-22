@@ -443,11 +443,9 @@ class FourCastNetv2(Model):
                             outputs = model(val_input_era5)
                             val_loss_value = loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"]
                             if val_epoch == 0: 
-                                val_loss["validation loss (n={}, autoregress={})".format(
-                                    kwargs["validation_epochs"],val_idx)] = [val_loss_value.cpu()]
+                                val_loss["validation loss step={}".format(val_idx)] = [val_loss_value.cpu()]
                             else:
-                                val_loss["validation loss (n={}, autoregress={})".format(
-                                    kwargs["validation_epochs"],val_idx)].append(val_loss_value.cpu())
+                                val_loss["validation loss step={}".format(val_idx)].append(val_loss_value.cpu())
 
                         # end of validation 
                         if val_epoch > kwargs["validation_epochs"]:
@@ -544,11 +542,9 @@ class FourCastNetv2(Model):
                         outputs = self.model(val_input_era5)
                         val_loss_value = loss_fn(outputs, val_g_truth_era5) / self.batch_size
                         if val_epoch == 0: 
-                            val_loss["validation loss (n={}, autoregress={})".format(
-                                self.validation_epochs,val_idx)] = [val_loss_value.cpu()]
+                            val_loss["validation loss step={}".format(val_idx)] = [val_loss_value.cpu()]
                         else:
-                            val_loss["validation loss (n={}, autoregress={})".format(
-                                self.validation_epochs,val_idx)].append(val_loss_value.cpu())
+                            val_loss["validation loss step={}".format(val_idx)].append(val_loss_value.cpu())
 
                     # end of validation 
                     if val_epoch > self.validation_epochs:
@@ -781,11 +777,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
                                     print("    ",var_name," = ",round(val_loss_value_pervar[idx_var].item(),5))
                             
                             if val_epoch == 0: 
-                                val_loss["validation loss (n={}, autoregress={})".format(
-                                    kwargs["validation_epochs"],val_idx)] = [val_loss_value.cpu()]
+                                val_loss["validation loss step={}".format(val_idx)] = [val_loss_value.cpu()] #kwargs["validation_epochs"]
                             else:
-                                val_loss["validation loss (n={}, autoregress={})".format(
-                                    kwargs["validation_epochs"],val_idx)].append(val_loss_value.cpu())
+                                val_loss["validation loss step={}".format(val_idx)].append(val_loss_value.cpu())
 
                         # end of validation 
                         if val_epoch > kwargs["validation_epochs"]:
