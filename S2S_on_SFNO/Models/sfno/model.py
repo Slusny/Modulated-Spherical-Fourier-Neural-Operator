@@ -740,7 +740,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
 
-        scale = 0.0
+        scale = 0.001
         # for logging to local file (no wandb)
         self.val_means = [[]] * (kwargs["multi_step_validation"]+1)
         self.val_stds  = [[]] * (kwargs["multi_step_validation"]+1)
@@ -751,7 +751,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         for i, data in enumerate(training_loader):
 
             # Validation
-            if i % kwargs["validation_interval"] == 0:
+            if i % kwargs["validation_interval"]+1 == 0: # +1 to skip sfno eval but then scale needs to be higher not 0 for sfno
                 if kwargs["advanced_logging"] and mem_log_not_done : 
                     print("mem before validation : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
                 val_loss = {}
