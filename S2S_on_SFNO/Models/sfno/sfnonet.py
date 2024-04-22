@@ -912,6 +912,30 @@ class Transformer(nn.Module):
 
         return self.norm(x)
 
+# This torch module realises patch embedding for the transformer and handles nan values in the input
+class Transformer_patch_embedding(nn.Module):
+    def __init__(self, patch_height, patch_width, patch_dim, dim):
+        super().__init__()
+        
+        self.rearrange = Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1 = patch_height, p2 = patch_width)
+        self.norm1 = nn.LayerNorm(patch_dim)
+        self.lin = nn.Linear(patch_dim, dim)
+        self.norm1 = nn.LayerNorm(dim)
+
+    def rm_embed_nan(self, x, batch):
+        mask = torch.any(torch.isnan(x),dim=-1).logical_not() # x is rearranged sst to patches 
+        return x[...,mask,:]
+
+
+    def forward(self, x):
+        batch = x.shape[0] ## not correct
+        x = self.rearrange(x)
+        x = self.rm_embed_nan(x,batch)
+        x = self.norm1(x)
+        x = self.lin(x)
+        x = self.norm2(x)
+        return x
+
 class ViT(nn.Module):
     # simple vit doesn't have dropout, different pos emb and no cls token
     def __init__(self, *, patch_size, num_classes, dim, depth, heads, mlp_dim, pool = 'mean', channels = 3, dim_head = 64, dropout = 0., emb_dropout = 0., coarse_level=4,device="cpu"):
@@ -927,12 +951,14 @@ class ViT(nn.Module):
         patch_dim = channels * patch_height * patch_width
         assert pool in {'cls', 'mean'}, 'pool type must be either cls (cls token) or mean (mean pooling)'
 
-        self.to_patch_embedding = nn.Sequential(
-            Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1 = patch_height, p2 = patch_width),
-            nn.LayerNorm(patch_dim),
-            nn.Linear(patch_dim, dim),
-            nn.LayerNorm(dim),
-        )
+        # self.to_patch_embedding = nn.Sequential(
+        #     Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1 = patch_height, p2 = patch_width),
+        #     nn.LayerNorm(patch_dim),
+        #     nn.Linear(patch_dim, dim),
+        #     nn.LayerNorm(dim),
+        # )
+
+        self.to_patch_embedding = Transformer_patch_embedding(patch_height, patch_width, patch_dim, dim)
 
         # if we load the mask from  file once instead of calculating it each time in the forward pass, do we save significant run time?
         # self.nan_mask = np.load(os.path.join(graph_asset_path,"nan_mask_coarsen_"+str(coarse_level)+"_notflatten.npy"))
@@ -959,10 +985,6 @@ class ViT(nn.Module):
         x = x[self.nan_mask]
         return x.reshape(batch,-1,self.dim)
     
-    def rm_embed_nan(self, x, batch):
-        mask = torch.any(torch.isnan(x),dim=-1).logical_not() # x is rearranged sst to patches 
-        return x[...,mask,:]
-
     def forward(self, img):
         img = img[None] #?? do i need this, get a key error if i don't
         b = 1 #cringe
@@ -977,7 +999,7 @@ class ViT(nn.Module):
         # x += self.pos_embedding.to(self.device, dtype=x.dtype) # ([1, 4050, 1024]) ->  
 
         # remove nan values from sst
-        x = self.rm_nan(img,b)
+        # x = self.rm_nan(img,b)
         x = self.to_patch_embedding(x)
         pos_embed = self.pos_embedding.to(self.device, dtype=x.dtype)
         x += self.rm_nan(pos_embed,b)

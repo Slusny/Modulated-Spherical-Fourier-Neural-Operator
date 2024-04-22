@@ -853,12 +853,12 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 # outputs = outputs.detach()
                 # loss.append(loss_fn(outputs, g_truth_era5))#*discount_factor**step
                 if step % (kwargs["training_step_skip"]+1) == 0:
-                    print("calculating loss for step ",step)
+                    if kwargs["advanced_logging"] and ultra_advanced: print("calculating loss for step ",step)
                     if kwargs["advanced_logging"] and mem_log_not_done : 
                         print("mem before loss : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
                     loss = loss + loss_fn(outputs, g_truth_era5) #*discount_factor**step
                 else:
-                    print("skipping step",step)
+                    if kwargs["advanced_logging"] and ultra_advanced : print("skipping step",step)
             loss = loss / (self.accumulation_steps+1)
             if kwargs["advanced_logging"] and mem_log_not_done : 
                 print("mem before backward : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
@@ -884,7 +884,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 if kwargs["advanced_logging"]:
                     print("Iteration: ", i, " Loss: ", loss_value," - scale: ",round(scale,2))
             else:
-                if kwargs["advanced_logging"] :
+                if kwargs["advanced_logging"] and ultra_advanced:
                     print("skipping optimizer step, accumulate gradients")
 
         # end of epoch

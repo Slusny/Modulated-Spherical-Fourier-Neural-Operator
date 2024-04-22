@@ -41,7 +41,7 @@
 //transformer
 // python main.py --model sfno --model-version film --train --validation-interval 3 --validation-epochs 3 --training-workers 6 --batch-size 1 --scheduler None --multi-step-training 0 --training-step-skip 0 --advanced-logging --learning-rate 0.0001 --film-gen transformer 
 // python main.py --model sfno --model-version film --train --validation-interval 100 --validation-epochs 5 --training-workers 6 --batch-size 1 --scheduler None --multi-step-training 2 --training-step-skip 1 --checkpointing-block --checkpointing-encoder --learning-rate 0.0001 --film-gen gcn --wandb  
-// main.py --model sfno --model-version film --train --validation-interval 100 --validation-epochs 5 --training-workers 6 --batch-size 1 --scheduler CosineAnnealingLR --scheduler-horizon 20000 --learning-rate 0.001 --multi-step-training 0 --training-step-skip 0 --film-gen gcn --accumulation-steps 100 --wandb 
+// main.py --model sfno --model-version film --train --validation-interval 100 --validation-epochs 5 --training-workers 6 --batch-size 1 --learning-rate 0.0005 --multi-step-training 1 --training-step-skip 0 --film-gen gcn --film-layers 12 --wandb 
 
 
 // Eval
