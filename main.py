@@ -471,6 +471,15 @@ def _main():
         action='store_true',
         help='Log more values like the gamma, beta activations. Consumes more GPU memory.'
     )
+    # Architecture
+    architecture_parser = parser.add_argument_group('Architecture')
+    architecture_parser.add_argument(
+        '--film-layers', 
+        action='store',
+        type=int,
+        default=1,
+        help='How many sfno blocks should be modulated with a dedicated film layer. Default: 1',
+    )
     
 
     # !! args from parser become model properties (whatch that no conflicting model properties/methods exist)

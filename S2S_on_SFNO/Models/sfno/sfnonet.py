@@ -1063,11 +1063,11 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         
         # coarse level =  4 default, could be changed by coarse_level in film_gen arguments
         if kwargs["film_gen_type"] == "gcn":
-            self.film_gen = GCN(self.batch_size,device,out_features=self.embed_dim,num_layers=12)# num layers is 1 for now
+            self.film_gen = GCN(self.batch_size,device,out_features=self.embed_dim,num_layers=self.film_layers)# num layers is 1 for now
         elif kwargs["film_gen_type"] == "transformer":
             self.film_gen = ViT(patch_size=4, num_classes=256, dim=1024, depth=6, heads=16, mlp_dim = 2048, dropout = 0.1, channels =1, device=device)
         else:
-            self.film_gen = GCN_custom(self.batch_size,device,out_features=self.embed_dim,num_layers=12)# num layers is 1 for now
+            self.film_gen = GCN_custom(self.batch_size,device,out_features=self.embed_dim,num_layers=self.film_layers)# num layers is 1 for now
     
     def cp_forward(self, module):
         def custom_forward(*inputs):
