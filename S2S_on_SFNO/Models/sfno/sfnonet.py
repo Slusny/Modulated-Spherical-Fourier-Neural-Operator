@@ -910,7 +910,7 @@ class Transformer(nn.Module):
 
 class ViT(nn.Module):
     # simple vit doesn't have dropout, different pos emb and no cls token
-    def __init__(self, *, patch_size, num_classes, dim, depth, heads, mlp_dim, pool = 'cls', channels = 3, dim_head = 64, dropout = 0., emb_dropout = 0., coarse_level=4,device="cpu"):
+    def __init__(self, *, patch_size, num_classes, dim, depth, heads, mlp_dim, pool = 'mean', channels = 3, dim_head = 64, dropout = 0., emb_dropout = 0., coarse_level=4,device="cpu"):
         super().__init__()
         image_height, image_width = 721//coarse_level, 1440//coarse_level #pair(image_size)
         patch_height, patch_width = pair(patch_size)
