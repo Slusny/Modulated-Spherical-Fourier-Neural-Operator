@@ -501,7 +501,10 @@ def _main():
 
     # !! args from parser become model properties (whatch that no conflicting model properties/methods exist)
     # !! happens in S2S_on_SFNO/Models/models.py:66
-    args, unknownargs = parser.parse_known_args()
+   
+    # this ignores all unknown args
+    # args, unknownargs = parser.parse_known_args()
+    args = parser.parse_args()
     
     if args.debug: #new
         pdb.set_trace()
