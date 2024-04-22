@@ -1101,7 +1101,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         yerr_bottom = yerr_bottom + yerr_bottom_div
         yerr = np.array([yerr_bottom,std])
         cmap=plt.get_cmap('hot')
-        v = np.array(range(mean.shape[0]))*(self.validation_step_skip+1)*6 + 6
+        hrs = np.array(range(mean.shape[0]))*(self.validation_step_skip+1)*6 + 6
         for f in range(2):
             fig, ax = plt.subplots(figsize=(16,9))
             plt.title(title)
