@@ -1023,7 +1023,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                                 for variable in variables:
                                     output_var = output_real_space.squeeze()[self.ordering_reverse[variable]]
                                     g_truth_var= val_g_truth_era5.squeeze()[self.ordering_reverse[variable]]
-                                    self.plot_variable(output_var,g_truth_var,save_path,cp_name, variable,step=val_idx,sfno=(cp_idx==0))
+                                    self.plot_variable(output_var,g_truth_var,save_path,cp_name, variable,steps=val_idx,sfno=(cp_idx==0))
                             if self.advanced_logging: print("step ",val_idx)
                         else:
                             if self.advanced_logging: print("skipping step ",val_idx)
