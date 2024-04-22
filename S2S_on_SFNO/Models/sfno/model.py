@@ -859,7 +859,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     loss = loss + loss_fn(outputs, g_truth_era5) #*discount_factor**step
                 else:
                     print("skipping step",step)
-            
+            loss = loss / (self.accumulation_steps+1)
             if kwargs["advanced_logging"] and mem_log_not_done : 
                 print("mem before backward : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
             loss.backward()
