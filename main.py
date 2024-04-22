@@ -601,7 +601,8 @@ def _main():
             new_save_path = os.path.join(args.save_path,args.model_type+"_"+args.model_version+film_gen_str+"_"+timestr)
             os.mkdir(new_save_path)
             args.save_path = new_save_path
-            print("wandb ",args.save_path)
+            print("")
+            print("no wandb")
 
     # Manipulation on args
     args.metadata = dict(kv.split("=") for kv in args.metadata)
@@ -643,7 +644,8 @@ def _main():
     if args.train:
         # Start training, catch errors like STRG+C and save model before exiting
         try:
-            print("train ",args.save_path)
+            print("Started training ")
+            print("save path: ",args.save_path)
             kwargs = vars(args)
             model.training(wandb_run=wandb_run,**kwargs)
         except Exception as e:
@@ -653,7 +655,7 @@ def _main():
             model.save_checkpoint()
             sys.exit(0)
     elif args.eval_models_autoregressive:
-        
+        print("evaluating models")
         checkpoint_list = np.array(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len)) 
         #[save_path+'checkpoint_sfno_latest_epoch={}.pkl'.format(i) for i in range(0,110,20)]#12930
         # checkpoint_list = checkpoint_list[-1::(args.eval_skip_checkpoints+1)]

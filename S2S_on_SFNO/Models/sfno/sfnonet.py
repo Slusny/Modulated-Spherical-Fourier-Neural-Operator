@@ -1000,7 +1000,7 @@ class ViT(nn.Module):
 
         # remove nan values from sst
         # x = self.rm_nan(img,b)
-        x = self.to_patch_embedding(x)
+        x = self.to_patch_embedding(img)
         pos_embed = self.pos_embedding.to(self.device, dtype=x.dtype)
         x += self.rm_nan(pos_embed,b)
 
