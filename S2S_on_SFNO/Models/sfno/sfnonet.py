@@ -414,6 +414,7 @@ class FourierNeuralOperatorNet(nn.Module):
         laplace_weighting=False,
         checkpointing_mlp=False,
         checkpointing_block=False,
+        checkpointing_encoder=False,
         batch_size = 1,
         **overflow
     ):
@@ -440,6 +441,7 @@ class FourierNeuralOperatorNet(nn.Module):
         self.laplace_weighting = laplace_weighting
         self.checkpointing_mlp = checkpointing_mlp
         self.checkpointing_block = checkpointing_block
+        self.checkpointing_encoder = checkpointing_encoder
         self.batch_size = batch_size
         
 
