@@ -925,10 +925,14 @@ class ViT(nn.Module):
 
         self.to_patch_embedding = nn.Sequential(
             Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1 = patch_height, p2 = patch_width),
-            #nn.LayerNorm(patch_dim),
+            nn.LayerNorm(patch_dim),
             nn.Linear(patch_dim, dim),
-            #nn.LayerNorm(dim),
+            nn.LayerNorm(dim),
         )
+
+        # if we load the mask from  file once instead of calculating it each time in the forward pass, do we save significant run time?
+        # self.nan_mask = np.load(os.path.join(graph_asset_path,"nan_mask_coarsen_"+str(coarse_level)+"_notflatten.npy"))
+        self.nan_mask = None
 
         # self.pos_embedding = nn.Parameter(torch.randn(1, num_patches + 1, dim))
         self.pos_embedding = posemb_sincos_2d(
@@ -946,9 +950,14 @@ class ViT(nn.Module):
 
         self.mlp_head = nn.Linear(dim, num_classes)
 
+    def rm_nan(self, x, batch):
+        if not self.nan_mask: self.nan_mask = torch.isnan(x).logical_not()
+        x = x[self.nan_mask]
+        return x.reshape(batch,-1,self.dim)
+    
     def forward(self, img):
         img = img[None] #?? do i need this, get a key error if i don't
-        x = self.to_patch_embedding(img)
+        # x = self.to_patch_embedding(img)
 
         # # class token? needs changes to the pos_embedding, add the extra token
         b, n, _ = x.shape
@@ -956,7 +965,13 @@ class ViT(nn.Module):
         # x = torch.cat((cls_tokens, x), dim=1)
 
         # x += self.pos_embedding[:, :(n + 1)]
-        x += self.pos_embedding.to(self.device, dtype=x.dtype) # ([1, 4050, 1024]) ->  
+        # x += self.pos_embedding.to(self.device, dtype=x.dtype) # ([1, 4050, 1024]) ->  
+
+        # remove nan values from sst
+        x = self.rm_nan(img,b)
+        x = self.to_patch_embedding(x)
+        pos_embed = self.pos_embedding.to(self.device, dtype=x.dtype)
+        x += self.rm_nan(pos_embed,b)
 
         x = x[torch.isnan(x).logical_not()]
         x = x.reshape(b,-1,self.dim)
