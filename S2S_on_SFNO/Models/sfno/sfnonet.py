@@ -920,7 +920,7 @@ class Transformer_patch_embedding(nn.Module):
         self.rearrange = Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1 = patch_height, p2 = patch_width)
         self.norm1 = nn.LayerNorm(patch_dim)
         self.lin = nn.Linear(patch_dim, dim)
-        self.norm1 = nn.LayerNorm(dim)
+        self.norm2 = nn.LayerNorm(dim)
 
     def rm_embed_nan(self, x, batch):
         mask = torch.any(torch.isnan(x),dim=-1).logical_not() # x is rearranged sst to patches 
