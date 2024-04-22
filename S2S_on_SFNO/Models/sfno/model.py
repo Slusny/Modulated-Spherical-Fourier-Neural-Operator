@@ -1023,7 +1023,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                                 for variable in variables:
                                     output_var = output_real_space.squeeze()[self.ordering_reverse[variable]]
                                     g_truth_var= val_g_truth_era5.squeeze()[self.ordering_reverse[variable]]
-                                    self.plot_variable(output_var,g_truth_var,save_path,cp_name, variable + " step=" +str(val_idx+1))
+                                    self.plot_variable(output_var,g_truth_var,save_path,cp_name, variable,step=val_idx,sfno=(cp_idx==0))
                             if self.advanced_logging: print("step ",val_idx)
                         else:
                             if self.advanced_logging: print("skipping step ",val_idx)
@@ -1069,17 +1069,20 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         
                         # loss for each variable
                         if plot: #self.advanced_logging:
-                            self.plot_skillscores(mean_scml,std_scml,save_path,variables,cp_name,str(val_idx+1))
+                            self.plot_skillscores(mean_scml,std_scml,save_path,variables,cp_name,str(val_epoch+1))
                             # self.plot_loss_allvariables(mean_lvl,std_lvl,save_path,cp_name,"MSE",str(val_idx+1))
-                            self.plot_loss_allvariables(mean_lvln,std_lvln,save_path,cp_name,"MSE Normalised",str(val_idx+1))
+                            self.plot_loss_allvariables(mean_lvln,std_lvln,save_path,cp_name,"MSE Normalised",str(val_epoch+1))
 
                         
                         
                         break
-    def plot_variable(self,output,groud_truth,save_path,checkpoint,variable):
+    def plot_variable(self,output,groud_truth,save_path,checkpoint,variable,steps,sfno=False):
         fig,ax = plt.subplots(1,2,figsize=(16,4))
-        
-        ax[0].set_title("FiLM")
+        hrs =  steps*(self.validation_step_skip+1)*6 + 6
+        if sfno: 
+            ax[0].set_title("SFNO")
+        else:
+            ax[0].set_title("FiLM")
         im0 = ax[0].imshow(output)
         fig.colorbar(im0, ax=ax[0],shrink=0.7)
     
@@ -1087,8 +1090,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
         im1 = ax[1].imshow(groud_truth)
         fig.colorbar(im1, ax=ax[1],shrink=0.7)
 
-        fig.suptitle(variable)
-        plt.savefig(os.path.join(save_path,'variable_plots',checkpoint+"_"+variable+".pdf"))
+        fig.suptitle(variable + " " + str(hrs) + "hr forecast")
+        plt.savefig(os.path.join(save_path,'variable_plots',checkpoint+"_"+variable+"_steps"+steps+".pdf"))
         plt.close(fig)
     
     def plot_loss_allvariables(self,mean,std,save_path,checkpoint,title,val_epochs):
