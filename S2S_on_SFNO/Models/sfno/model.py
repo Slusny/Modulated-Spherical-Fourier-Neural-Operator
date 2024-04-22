@@ -1088,7 +1088,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         fig.colorbar(im1, ax=ax[1],shrink=0.7)
 
         fig.suptitle(variable)
-        plt.savefig(os.path.join(save_path,checkpoint+"_"+variable+".pdf"))
+        plt.savefig(os.path.join(save_path,'variable_plots',checkpoint+"_"+variable+".pdf"))
         plt.close(fig)
     
     def plot_loss_allvariables(self,mean,std,save_path,checkpoint,title,val_epochs):
@@ -1107,7 +1107,10 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 ax.scatter(range(mean.shape[1]),mean[i,:],marker='o',alpha=0.6,color=cmap(i/mean.shape[0]),label=str(hrs[i])+" hrs")
             plt.xticks(np.arange(len(self.ordering)), self.ordering, rotation='vertical')
             plt.grid()
-            plt.legend()
+            handles, labels = plt.gca().get_legend_handles_labels()
+            order = list(range(len(handles)))
+            order = [order[-1]] + order[:-1]
+            plt.legend([handles[idx] for idx in order],[labels[idx] for idx in order])
             if f == 0:
                 plt.ylim(0,5)
                 plt.savefig(os.path.join(save_path,checkpoint+"_"+title+"_validation_steps"+str(val_epochs)+"_ylimited.pdf"))

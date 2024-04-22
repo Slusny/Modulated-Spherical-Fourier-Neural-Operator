@@ -634,8 +634,9 @@ def _main():
         # sfno = load_model('sfno', sfno_kwargs)
 
         #save folder
-        save_path = os.path.join(args.eval_checkpoint_path,"figures","steps"+str(args.multi_step_validation//(args.validation_step_skip+1)))
+        save_path = os.path.join(args.eval_checkpoint_path,"figures","vaid_iter"+str(args.validation_epochs))#str(args.multi_step_validation//(args.validation_step_skip+1))
         os.makedirs(save_path, exist_ok=True)
+        os.makedirs(os.path.join(save_path,"variable_plots"), exist_ok=True)
         model.auto_regressive_skillscore(checkpoint_list,args.multi_step_validation,save_path)
     elif args.run:
 

@@ -955,6 +955,10 @@ class ViT(nn.Module):
         x = x[self.nan_mask]
         return x.reshape(batch,-1,self.dim)
     
+    def rm_embed_nan(self, x, batch):
+        mask = torch.any(torch.isnan(x),dim=-1).logical_not() # x is rearranged sst to patches 
+        return x[...,mask,:]
+
     def forward(self, img):
         img = img[None] #?? do i need this, get a key error if i don't
         b = 1 #cringe
