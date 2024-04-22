@@ -354,6 +354,13 @@ def _main():
         action="store",
     )
     training.add_argument(
+        "--accumulation-steps",
+        help="accumulate gradients over x steps. Increases batch size by withoutincreasing memory consumption",
+        default=0,
+        type=int,
+        action="store",
+    )
+    training.add_argument(
         "--validation-step-skip",
         help="skip the x amount of autoregressive steps in the multi-step validation to calculate the loss",
         default=0,

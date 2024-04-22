@@ -841,8 +841,6 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     print("mem after validation : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
             
             # Training  
-            model.zero_grad()
-
             # loss = []
             loss = 0
             discount_factor = 1
@@ -861,39 +859,43 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 # outputs = outputs.detach()
                 # loss.append(loss_fn(outputs, g_truth_era5))#*discount_factor**step
                 if step % (kwargs["training_step_skip"]+1) == 0:
-                    print("loss for step",step)
+                    print("calculating loss for step ",step)
                     if kwargs["advanced_logging"] and mem_log_not_done : 
                         print("mem before loss : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
                     loss = loss + loss_fn(outputs, g_truth_era5) #*discount_factor**step
                 else:
                     print("skipping step",step)
             
-            # torch.tensor(loss).sum().backward()
-            # a = loss[0] + loss[1] 
-            # l = torch.tensor(loss).sum()
-            # l.backward()
-            # a.backward()
             if kwargs["advanced_logging"] and mem_log_not_done : 
                 print("mem before backward : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
             loss.backward()
 
             # Adjust learning weights
-            if kwargs["advanced_logging"] and mem_log_not_done : 
-                print("mem before optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-            optimizer.step()
-            if kwargs["advanced_logging"] and mem_log_not_done : 
-                print("mem after optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-                mem_log_not_done = False
+            if ((i + 1) % (self.accumulation_steps + 1) == 0) or (i + 1 == len(training_loader)):
+                # Update Optimizer
+                if kwargs["advanced_logging"] and mem_log_not_done : 
+                    print("mem before optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                optimizer.step()
+                if kwargs["advanced_logging"] and mem_log_not_done : 
+                    print("mem after optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                    mem_log_not_done = False
+                model.zero_grad()
 
-            # logging
-            self.iter += 1
-            loss_value = round(loss.item(),5)
-            if local_logging : self.losses.append(loss_value)
-            if wandb_run is not None:
-                wandb.log({"loss": loss_value })
-            if kwargs["advanced_logging"]:
-                print("Iteration: ", i, " Loss: ", loss_value," - scale: ",round(scale,2))
+                # logging
+                self.iter += 1
+                loss_value = round(loss.item(),5)
+                if local_logging : self.losses.append(loss_value)
+                if wandb_run is not None:
+                    wandb.log({"loss": loss_value })
+                if kwargs["advanced_logging"]:
+                    print("Iteration: ", i, " Loss: ", loss_value," - scale: ",round(scale,2))
+            else:
+                if kwargs["advanced_logging"] :
+                    print("skipping optimizer step, accumulate gradients")
 
+        # end of epoch
+        self.epoch += 1
+        print("End of epoch ",self.epoch)
         self.save_checkpoint()
 
     def auto_regressive_skillscore(self,checkpoint_list,auto_regressive_steps,save_path):
