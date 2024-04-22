@@ -926,7 +926,7 @@ class Transformer_patch_embedding(nn.Module):
 
     def rm_embed_nan(self, x, batch):
         if not self.mask:
-            self.mask = torch.any(torch.isnan(x),dim=-1).logical_not() # x is rearranged sst to patches 
+            self.mask = torch.any(torch.isnan(x),dim=-1).logical_not() # keeps batch dimension in mask and removes it by this # x is rearranged sst to patches 
         return x[...,self.mask,:]
 
 
@@ -1005,10 +1005,10 @@ class ViT(nn.Module):
         # x = self.rm_nan(img,b)
         x = self.to_patch_embedding(img)
         pos_embed = self.pos_embedding.to(self.device, dtype=x.dtype)
-        x += self.rm_nan(pos_embed,b)
+        x += pos_embed[...,self.to_patch_embedding.mask[0],:] #######!!!!! batch aah, and handle this in to_patch_embedding
 
-        x = x[torch.isnan(x).logical_not()]
-        x = x.reshape(b,-1,self.dim)
+        # x = x[torch.isnan(x).logical_not()]
+        # x = x.reshape(b,-1,self.dim)
         x = self.dropout(x)
 
         x = self.transformer(x)
