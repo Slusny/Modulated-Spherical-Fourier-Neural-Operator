@@ -957,10 +957,11 @@ class ViT(nn.Module):
     
     def forward(self, img):
         img = img[None] #?? do i need this, get a key error if i don't
+        b = 1 #cringe
         # x = self.to_patch_embedding(img)
 
         # # class token? needs changes to the pos_embedding, add the extra token
-        b, n, _ = x.shape
+        # b, n, _ = x.shape ## !!!! batch has to be size 1 ? The [None] is needed since the Transformer has a channel dimension
         # cls_tokens = repeat(self.cls_token, '1 1 d -> b 1 d', b = b)
         # x = torch.cat((cls_tokens, x), dim=1)
 
