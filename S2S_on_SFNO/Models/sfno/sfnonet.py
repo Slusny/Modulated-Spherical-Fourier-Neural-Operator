@@ -915,6 +915,7 @@ class ViT(nn.Module):
         image_height, image_width = 721//coarse_level, 1440//coarse_level #pair(image_size)
         patch_height, patch_width = pair(patch_size)
         self.device = device
+        self.dim = dim
 
         assert image_height % patch_height == 0 and image_width % patch_width == 0, 'Image dimensions must be divisible by the patch size.'
 
@@ -958,7 +959,7 @@ class ViT(nn.Module):
         x += self.pos_embedding.to(self.device, dtype=x.dtype) # ([1, 4050, 1024]) ->  
 
         x = x[torch.isnan(x).logical_not()]
-        x = x.reshape(b,-1,1024)
+        x = x.reshape(b,-1,self.dim)
         x = self.dropout(x)
 
         x = self.transformer(x)
@@ -966,7 +967,9 @@ class ViT(nn.Module):
         x = x.mean(dim = 1) if self.pool == 'mean' else x[:, 0]
 
         x = self.to_latent(x)
-        return self.mlp_head(x)
+        
+        # heads for gamma and beta (curretly only 1 gamma/beta used across blocks)
+        return self.mlp_head(x),self.mlp_head(x)
     
 class FiLM(nn.Module):
     """
