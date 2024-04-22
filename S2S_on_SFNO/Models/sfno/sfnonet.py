@@ -415,6 +415,7 @@ class FourierNeuralOperatorNet(nn.Module):
         checkpointing_mlp=False,
         checkpointing_block=False,
         checkpointing_encoder=False,
+        checkpointing_posemb=False,
         batch_size = 1,
         **overflow
     ):
