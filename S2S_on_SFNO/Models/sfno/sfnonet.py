@@ -415,7 +415,6 @@ class FourierNeuralOperatorNet(nn.Module):
         checkpointing_mlp=False,
         checkpointing_block=False,
         checkpointing_encoder=False,
-        checkpointing_posemb=False,
         checkpointing_decoder=False,
         batch_size = 1,
         **overflow
@@ -445,7 +444,6 @@ class FourierNeuralOperatorNet(nn.Module):
         self.checkpointing_block = checkpointing_block
         self.checkpointing_encoder = checkpointing_encoder
         self.checkpointing_decoder = checkpointing_decoder
-        self.checkpointing_posemb = checkpointing_posemb
         self.batch_size = batch_size
         
 
@@ -1107,10 +1105,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
             x = self.encoder(x)
 
         # do positional embedding
-        if self.checkpointing_posemb:
-            x = x + checkpoint(self.pos_embed,use_reentrant=False)
-        else:
-            x = x + self.pos_embed
+        x = x + self.pos_embed
 
         # forward features
         x = self.pos_drop(x)

@@ -3,7 +3,7 @@
 #a) Define slurm job parameters
 ####
 
-#SBATCH --job-name=film
+#SBATCH --job-name=21gcn
 
 #resources:
 
@@ -23,14 +23,14 @@
 #SBATCH --gres=gpu:1
 #the job can use and see 1 GPUs (4 GPUs are available in total on one node) use SBATCH --gres=gpu:1080ti:1 to explicitly demand a Geforce 1080 Ti GPU. Use SBATCH --gres=gpu:A4000:1 to explicitly demand a RTX A4000 GPU
 
-#SBATCH --time=00-06:00
+#SBATCH --time=00-22:00
 # the maximum time the scripts needs to run
 # "minutes:seconds", "hours:minutes:seconds", "days-hours","days-hours:minutes" and "days-hours:minutes:seconds"
 
-#SBATCH --error=/home/goswami/gkd965/jobs/job.film.%J.err
+#SBATCH --error=/home/goswami/gkd965/jobs/job.step2skip1gcn.%J.err
 # write the error output to job.*jobID*.err
 
-#SBATCH --output=/home/goswami/gkd965/jobs/job.film.%J.out
+#SBATCH --output=/home/goswami/gkd965/jobs/job.step2skip1gcn.%J.out
 # write the standard output to job.*jobID*.out
 
 #SBATCH --mail-type=ALL
@@ -39,7 +39,7 @@
 #SBATCH --mail-user=lennart.slusny@student.uni-tuebingen.de
 # your mail address
 
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version film --train --validation-interval 50 --validation-epochs 10 --training-workers 6 --batch-size 1 --scheduler None --advanced-logging --learning-rate 0.0001 --wandb --multi-step-training 1 --training-step-skip 0 --checkpointing_mlp --film_gen gcn --accumulation-steps 10
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version film --train --validation-interval 100 --validation-epochs 5 --training-workers 6 --batch-size 1 --scheduler None --multi-step-training 2 --training-step-skip 1 --checkpointing-block --checkpointing-encoder --learning-rate 0.0001 --film-gen gcn --wandb 
 
 
 echo DONE!
