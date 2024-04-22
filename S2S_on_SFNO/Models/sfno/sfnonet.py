@@ -1015,6 +1015,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
 
         # save gamma and beta in model if advanced logging is required
         self.advanced_logging = kwargs["advanced_logging"]
+        self.film_layers = kwargs["film_layers"]
         
         # new SFNO-Block with Film Layer
         self.blocks = nn.ModuleList([])
