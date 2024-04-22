@@ -1078,7 +1078,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         break
     def plot_variable(self,output,groud_truth,save_path,checkpoint,variable,steps,sfno=False):
         fig,ax = plt.subplots(1,2,figsize=(16,4))
-        hrs =  steps*(self.validation_step_skip+1)*6 + 6
+        hrs =  steps + 6
         if sfno: 
             ax[0].set_title("SFNO")
         else:
@@ -1116,9 +1116,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
             plt.legend([handles[idx] for idx in order],[labels[idx] for idx in order])
             if f == 0:
                 plt.ylim(0,5)
-                plt.savefig(os.path.join(save_path,checkpoint+"_"+title+"_validation_steps"+str(val_epochs)+"_steps"+str(mean.shape[0])+"_skips"+str(self.validation_step_skip+1)+"_ylimited.pdf"))
+                plt.savefig(os.path.join(save_path,checkpoint+"_"+title+"_validation_steps"+str(val_epochs)+"_steps"+str(mean.shape[0])+"_skips"+str(self.validation_step_skip)+"_ylimited.pdf"))
             else:
-                plt.savefig(os.path.join(save_path,checkpoint+"_"+title+"_validation_steps"+str(val_epochs)+"_steps"+str(mean.shape[0])+"_skips"+str(self.validation_step_skip+1)+".pdf"))
+                plt.savefig(os.path.join(save_path,checkpoint+"_"+title+"_validation_steps"+str(val_epochs)+"_steps"+str(mean.shape[0])+"_skips"+str(self.validation_step_skip)+".pdf"))
             plt.close(fig)
 
     def plot_skillscores(self,mean,std,save_path,variables,checkpoint,val_epochs):
@@ -1135,9 +1135,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
             plt.legend()
             if f == 0:
                 plt.ylim(-1,1)
-                plt.savefig(os.path.join(save_path,checkpoint+"_"+"Skillscores"+"_validation_steps"+str(val_epochs)+"_steps"+str(mean.shape[0])+"_skips"+str(self.validation_step_skip+1)+"_ylimited.pdf"))
+                plt.savefig(os.path.join(save_path,checkpoint+"_"+"Skillscores"+"_validation_steps"+str(val_epochs)+"_steps"+str(mean.shape[0])+"_skips"+str(self.validation_step_skip)+"_ylimited.pdf"))
             else:
-                plt.savefig(os.path.join(save_path,checkpoint+"_"+"Skillscores"+"_validation_steps"+str(val_epochs)+"_steps"+str(mean.shape[0])+"_skips"+str(self.validation_step_skip+1)+".pdf"))
+                plt.savefig(os.path.join(save_path,checkpoint+"_"+"Skillscores"+"_validation_steps"+str(val_epochs)+"_steps"+str(mean.shape[0])+"_skips"+str(self.validation_step_skip)+".pdf"))
             plt.close(fig)
             
     def test_training(self,**kwargs):
