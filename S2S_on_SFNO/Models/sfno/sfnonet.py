@@ -416,6 +416,7 @@ class FourierNeuralOperatorNet(nn.Module):
         checkpointing_block=False,
         checkpointing_encoder=False,
         checkpointing_posemb=False,
+        checkpointing_decoder=False,
         batch_size = 1,
         **overflow
     ):
@@ -443,6 +444,7 @@ class FourierNeuralOperatorNet(nn.Module):
         self.checkpointing_mlp = checkpointing_mlp
         self.checkpointing_block = checkpointing_block
         self.checkpointing_encoder = checkpointing_encoder
+        self.checkpointing_decoder = checkpointing_decoder
         self.checkpointing_posemb = checkpointing_posemb
         self.batch_size = batch_size
         
@@ -1128,7 +1130,10 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
             x = torch.cat((x, residual), dim=1)
 
         # decoder
-        x = self.decoder(x)
+        if self.checkpointing_encoder:
+             x = checkpoint(self.decoder,x,use_reentrant=False)
+        else:
+            x = self.decoder(x)
 
         return x
     
