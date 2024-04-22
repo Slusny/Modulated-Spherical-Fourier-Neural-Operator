@@ -477,6 +477,7 @@ def _main():
     
     if args.debug: #new
         pdb.set_trace()
+        torch.autograd.set_detect_anomaly(True)
         args.training_workers = 0
         print("starting debugger")
         print("setting training workers to 0")
