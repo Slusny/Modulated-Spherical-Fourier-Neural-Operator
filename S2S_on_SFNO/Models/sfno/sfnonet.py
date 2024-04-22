@@ -1104,10 +1104,10 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
 
         if self.checkpointing_block: #self.checkpointing:
             for i, blk in enumerate(self.blocks):
-                if i < 11:
-                    x = checkpoint(blk,x,gamma[i],beta[i],scale,use_reentrant=False)
-                else:
-                    x = blk(x,gamma[i],beta[i],scale)
+                # if i < 11:
+                x = checkpoint(blk,x,gamma[i],beta[i],scale,use_reentrant=False)
+                # else:
+                #     x = blk(x,gamma[i],beta[i],scale)
         else:
             for i, blk in enumerate(self.blocks):
                 x = blk(x,gamma[i],beta[i],scale)

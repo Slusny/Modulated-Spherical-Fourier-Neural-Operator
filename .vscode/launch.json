@@ -38,10 +38,11 @@
 // python main.py --model sfno --model-version film --validation-epochs 3 --training-workers 6 --batch-size 1 --autoregressive-steps 6 --multi-step-skip 5 --eval-models-autoregressive --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/devoted-bush-34 --film-gen gcn_custom --advanced-logging #--eval-skip-checkpoints 5 
 
 
-//
-// python main.py --model sfno --model-version film --train --validation-interval 3 --validation-epochs 3 --training-workers 6 --batch-size 1 --scheduler None --multi-step-training 0 --advanced-logging --learning-rate 0.001 --film-gen transformer 
+//transformer
+// python main.py --model sfno --model-version film --train --validation-interval 3 --validation-epochs 3 --training-workers 6 --batch-size 1 --scheduler None --multi-step-training 0 --training-step-skip 0 --advanced-logging --learning-rate 0.0001 --film-gen transformer 
+// python main.py --model sfno --model-version film --train --validation-interval 3 --validation-epochs 3 --training-workers 6 --batch-size 1 --scheduler None --multi-step-training 1 --training-step-skip 5 --checkpointing_mlp --advanced-logging --learning-rate 0.0001 --film-gen gcn  
 
 
 // Eval
 // python main.py --model sfno --model-version film --validation-epochs 30 --training-workers 4 --batch-size 1 --multi-step-validation 5 --validation-step-skip 5 --eval-models-autoregressive --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/devoted-bush-34 --film-gen gcn_custom
-// python main.py --model sfno --model-version film --validation-epochs 30 --training-workers 4 --batch-size 1 --multi-step-validation 5 --validation-step-skip 5 --eval-models-autoregressive --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/efficient-paper-37 --film-gen gcn
+// python main.py --model sfno --model-version film --validation-epochs 3 --training-workers 4 --batch-size 1 --multi-step-validation 5 --validation-step-skip 5 --eval-models-autoregressive --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/efficient-paper-37 --film-gen gcn
