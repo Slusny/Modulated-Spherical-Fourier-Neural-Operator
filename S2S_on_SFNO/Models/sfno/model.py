@@ -1091,7 +1091,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         fig.colorbar(im1, ax=ax[1],shrink=0.7)
 
         fig.suptitle(variable + " " + str(hrs) + "hr forecast")
-        plt.savefig(os.path.join(save_path,'variable_plots',checkpoint+"_"+variable+"_steps"+steps+".pdf"))
+        plt.savefig(os.path.join(save_path,'variable_plots',checkpoint+"_"+variable+"_hrs"+str(hrs)+".pdf"))
         plt.close(fig)
     
     def plot_loss_allvariables(self,mean,std,save_path,checkpoint,title,val_epochs):
@@ -1101,7 +1101,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         yerr_bottom = yerr_bottom + yerr_bottom_div
         yerr = np.array([yerr_bottom,std])
         cmap=plt.get_cmap('hot')
-        hrs = np.array(range(mean.shape[0]))*(self.validation_step_skip+1)*6 + 6
+        v = np.array(range(mean.shape[0]))*(self.validation_step_skip+1)*6 + 6
         for f in range(2):
             fig, ax = plt.subplots(figsize=(16,9))
             plt.title(title)
@@ -1116,9 +1116,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
             plt.legend([handles[idx] for idx in order],[labels[idx] for idx in order])
             if f == 0:
                 plt.ylim(0,5)
-                plt.savefig(os.path.join(save_path,checkpoint+"_"+title+"_validation_steps"+str(val_epochs)+"_ylimited.pdf"))
+                plt.savefig(os.path.join(save_path,checkpoint+"_"+title+"_validation_steps"+str(val_epochs)+"_steps"+str(mean.shape[0])+"_skips"+str(self.validation_step_skip+1)+"_ylimited.pdf"))
             else:
-                plt.savefig(os.path.join(save_path,checkpoint+"_"+title+"_validation_steps"+str(val_epochs)+".pdf"))
+                plt.savefig(os.path.join(save_path,checkpoint+"_"+title+"_validation_steps"+str(val_epochs)+"_steps"+str(mean.shape[0])+"_skips"+str(self.validation_step_skip+1)+".pdf"))
             plt.close(fig)
 
     def plot_skillscores(self,mean,std,save_path,variables,checkpoint,val_epochs):
@@ -1135,9 +1135,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
             plt.legend()
             if f == 0:
                 plt.ylim(-1,1)
-                plt.savefig(os.path.join(save_path,checkpoint+"_"+"Skillscores"+"_validation_steps"+str(val_epochs)+"_ylimited.pdf"))
+                plt.savefig(os.path.join(save_path,checkpoint+"_"+"Skillscores"+"_validation_steps"+str(val_epochs)+"_steps"+str(mean.shape[0])+"_skips"+str(self.validation_step_skip+1)+"_ylimited.pdf"))
             else:
-                plt.savefig(os.path.join(save_path,checkpoint+"_"+"Skillscores"+"_validation_steps"+str(val_epochs)+".pdf"))
+                plt.savefig(os.path.join(save_path,checkpoint+"_"+"Skillscores"+"_validation_steps"+str(val_epochs)+"_steps"+str(mean.shape[0])+"_skips"+str(self.validation_step_skip+1)+".pdf"))
             plt.close(fig)
             
     def test_training(self,**kwargs):
