@@ -925,7 +925,7 @@ class Transformer_patch_embedding(nn.Module):
         self.mask = None
 
     def rm_embed_nan(self, x, batch):
-        if not self.mask:
+        if not torch.is_tensor(self.mask):
             self.mask = torch.any(torch.isnan(x),dim=-1).logical_not()[0] # keeps batch dimension in mask and removes it by this # x is rearranged sst to patches 
         return x[...,self.mask,:]
 
