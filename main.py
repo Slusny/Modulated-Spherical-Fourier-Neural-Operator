@@ -523,8 +523,8 @@ def _main():
         pdb.set_trace()
         torch.autograd.set_detect_anomaly(True)
         args.training_workers = 0
-        print("starting debugger")
-        print("setting training workers to 0")
+        print("starting debugger") 
+        print("setting training workers to 0 to be able to debug code in ")
 
     # Format Assets path
     if args.assets:
@@ -676,7 +676,7 @@ def _main():
         if args.eval_checkpoint_num > 1:
             num_checkpoints = len(checkpoint_list)
             checkpoint_list_shorten = checkpoint_list[::num_checkpoints//args.eval_checkpoint_num]
-            if len(checkpoint_list_shorten)>num_checkpoints:
+            if len(checkpoint_list_shorten)>args.eval_checkpoint_num:
                 checkpoint_list_shorten[-1] = checkpoint_list[-1]
             else:
                 checkpoint_list_shorten.append(checkpoint_list[-1])

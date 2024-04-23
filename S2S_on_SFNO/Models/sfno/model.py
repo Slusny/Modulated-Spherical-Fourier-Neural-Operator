@@ -5,6 +5,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+ultra_advanced_logging=False
 
 import logging
 import os
@@ -685,8 +686,6 @@ class FourCastNetv2_filmed(FourCastNetv2):
         self.set_seed(42) #torch.seed()
         LOG.info("Save path: %s", self.save_path)
         
-        ultra_advanced=False
-        
         print("Trainig Data:")
         dataset = ERA5_galvani(
             self,
@@ -776,7 +775,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                             val_loss_value = loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"]
 
                             # loss for each variable
-                            if kwargs["advanced_logging"] and ultra_advanced:
+                            if kwargs["advanced_logging"] and ultra_advanced_logging:
                                 val_loss_value_pervar = loss_fn_pervar(outputs, val_g_truth_era5).mean(dim=(0,2,3)) / kwargs["batch_size"]
                                 print("MSE for each variable:")
                                 for idx_var,var_name in enumerate(self.ordering):
@@ -859,12 +858,12 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 # outputs = outputs.detach()
                 # loss.append(loss_fn(outputs, g_truth_era5))#*discount_factor**step
                 if step % (kwargs["training_step_skip"]+1) == 0:
-                    if kwargs["advanced_logging"] and ultra_advanced: print("calculating loss for step ",step)
+                    if kwargs["advanced_logging"] and ultra_advanced_logging: print("calculating loss for step ",step)
                     if kwargs["advanced_logging"] and mem_log_not_done : 
                         print("mem before loss : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
                     loss = loss + loss_fn(outputs, g_truth_era5) #*discount_factor**step
                 else:
-                    if kwargs["advanced_logging"] and ultra_advanced : print("skipping step",step)
+                    if kwargs["advanced_logging"] and ultra_advanced_logging : print("skipping step",step)
             loss = loss / (self.accumulation_steps+1)
             if kwargs["advanced_logging"] and mem_log_not_done : 
                 print("mem before backward : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
@@ -890,7 +889,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 if kwargs["advanced_logging"]:
                     print("Iteration: ", i, " Loss: ", loss_value," - scale: ",round(scale,2))
             else:
-                if kwargs["advanced_logging"] and ultra_advanced:
+                if kwargs["advanced_logging"] and ultra_advanced_logging:
                     print("skipping optimizer step, accumulate gradients")
 
         # end of epoch
@@ -1029,9 +1028,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
                                     output_var = output_real_space.squeeze()[self.ordering_reverse[variable]]
                                     g_truth_var= val_g_truth_era5.squeeze()[self.ordering_reverse[variable]]
                                     self.plot_variable(output_var,g_truth_var,save_path,cp_name, variable,steps=val_idx,sfno=sfno)
-                            if self.advanced_logging: print("step ",val_idx)
+                            if self.advanced_logging and ultra_advanced_logging : print("step ",val_idx)
                         else:
-                            if self.advanced_logging: print("skipping step ",val_idx)
+                            if self.advanced_logging and ultra_advanced_logging: print("skipping step ",val_idx)
                     # accumulate loss vor each validation point in a list
                     skill_score_validation_list.append(skill_score_steps)
                     loss_validation_list.append(loss_per_steps)
