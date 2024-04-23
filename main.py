@@ -158,6 +158,18 @@ def _main():
         action="store_true",
     )
     parser.add_argument(
+        "--eval-sfno",
+        help="evaluate base sfno model",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--eval-checkpoint-num",
+        help="how many checkpoints should be evaluated from --eval-checkpoint-path. The checkpoints are selected equidistantly. -1 evaluates all checkpoints",
+        action="store",
+        type=int,
+        default=1,
+    )
+    parser.add_argument(
         "--eval-checkpoint-path",
         help="evaluate model list of checkpoints for autoregressive forecast",
         action="store",
@@ -659,10 +671,21 @@ def _main():
     elif args.eval_models_autoregressive:
         print("evaluating models")
         checkpoint_list = np.array(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len)) 
-        #[save_path+'checkpoint_sfno_latest_epoch={}.pkl'.format(i) for i in range(0,110,20)]#12930
-        # checkpoint_list = checkpoint_list[-1::(args.eval_skip_checkpoints+1)]
-        checkpoint_list = [checkpoint_list[0],checkpoint_list[1]]#,checkpoint_list[2],checkpoint_list[-1]]
-        print("loading ",len(checkpoint_list), " checkpoints from ", args.eval_checkpoint_path)
+        
+        # select equidistance checkpoints from all checkpoints
+        if args.eval_checkpoint_num > 1:
+            num_checkpoints = len(checkpoint_list)
+            checkpoint_list_shorten = checkpoint_list[::num_checkpoints//args.eval_checkpoint_num]
+            if len(checkpoint_list_shorten)>num_checkpoints:
+                checkpoint_list_shorten[-1] = checkpoint_list[-1]
+            else:
+                checkpoint_list_shorten.append(checkpoint_list[-1])
+            checkpoint_list_shorten.pop(0)
+        elif args.eval_checkpoint_num == -1:
+            checkpoint_list_shorten = checkpoint_list
+        else:
+            checkpoint_list_shorten = [checkpoint_list[-1]]#,checkpoint_list[2],checkpoint_list[-1]]
+        print("loading ",checkpoint_list_shorten, " checkpoints from ", args.eval_checkpoint_path)
         # #sfno
         # sfno_kwargs = vars(args)
         # sfno_kwargs["model_version"] = "release"
@@ -672,7 +695,7 @@ def _main():
         save_path = os.path.join(args.eval_checkpoint_path,"figures","valid_iter"+str(args.validation_epochs))#str(args.multi_step_validation//(args.validation_step_skip+1))
         os.makedirs(save_path, exist_ok=True)
         os.makedirs(os.path.join(save_path,"variable_plots"), exist_ok=True)
-        model.auto_regressive_skillscore(checkpoint_list,args.multi_step_validation,save_path)
+        model.auto_regressive_skillscore(checkpoint_list_shorten,args.multi_step_validation,save_path,args.eval_sfno)
     elif args.run:
 
         try:

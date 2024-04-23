@@ -147,6 +147,6 @@ echo DONE!
 # 
 
 
-
+# to kill a job go to the node where it runs and execute
 # scontrol listpids
 #  kill -INT <pid>
