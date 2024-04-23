@@ -644,13 +644,14 @@ def _main():
     if args.train:
         # Start training, catch errors like STRG+C and save model before exiting
         try:
+            print("")
             print("Started training ")
             print("save path: ",args.save_path)
+            LOG.info("Process ID: %s", os.getpid())
             kwargs = vars(args)
             model.training(wandb_run=wandb_run,**kwargs)
-        except Exception as e:
+        except :
             LOG.error(traceback.format_exc())
-            print(e)
             print("shutting down training")
             model.save_checkpoint()
             sys.exit(0)
