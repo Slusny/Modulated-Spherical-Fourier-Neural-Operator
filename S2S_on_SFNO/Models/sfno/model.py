@@ -506,7 +506,7 @@ class FourCastNetv2(Model):
         
         self.save_checkpoint()
 
-    def auto_regressive_skillscore(self,checkpoint_list,auto_regressive_steps,save_path):
+    def auto_regressive_skillscore(self,checkpoint_list,auto_regressive_steps,save_path,sfno=False):
         """
         Method to calculate the skill score of the model for different auto-regressive steps.
         """
@@ -898,7 +898,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         print("End of epoch ",self.epoch)
         self.save_checkpoint()
 
-    def auto_regressive_skillscore(self,checkpoint_list,auto_regressive_steps,save_path):
+    def auto_regressive_skillscore(self,checkpoint_list,auto_regressive_steps,save_path,sfno=False):
         """
         Method to calculate the skill score of the model for different auto-regressive steps.
         Needs batch size 1
@@ -939,19 +939,24 @@ class FourCastNetv2_filmed(FourCastNetv2):
         #     sfno.load_statistics()
         #     sfno_model = sfno.load_model(sfno.checkpoint_path)
         #     sfno_model.eval()
+        
+        # add iteration to for loop to calculate sfno skillscores
+        if sfno:
+            checkpoint_list.insert(0,"sfno")
 
         print("skillscores for ",variables,":")
         for cp_idx, checkpoint in enumerate(checkpoint_list):
             # the first checkpoint is always pure sfno with film scale = 0
-            if cp_idx == 0: 
+            if cp_idx == 0 and sfno: 
                 scale = 0.
                 cp_name = "sfno"
                 print(" --- sfno --- ")
+                model = self.load_model(checkpoint_list[1])
             else: 
                 scale = 1.
                 cp_name = checkpoint.split("/")[-1].split(".")[0]
                 print(" --- checkpoint : ",checkpoint," --- ")
-            model = self.load_model(checkpoint)
+                model = self.load_model(checkpoint)
             model.eval()
             with torch.no_grad():
                 val_log = {}
@@ -1023,7 +1028,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                                 for variable in variables:
                                     output_var = output_real_space.squeeze()[self.ordering_reverse[variable]]
                                     g_truth_var= val_g_truth_era5.squeeze()[self.ordering_reverse[variable]]
-                                    self.plot_variable(output_var,g_truth_var,save_path,cp_name, variable,steps=val_idx,sfno=(cp_idx==0))
+                                    self.plot_variable(output_var,g_truth_var,save_path,cp_name, variable,steps=val_idx,sfno=sfno)
                             if self.advanced_logging: print("step ",val_idx)
                         else:
                             if self.advanced_logging: print("skipping step ",val_idx)
@@ -1045,7 +1050,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     if val_epoch > self.validation_epochs:
                         print("save at ",save_path)
                         savefile=os.path.join(save_path,"{}_{}_{}.npy")
-                        if cp_idx == 0: 
+                        if cp_idx == 0 and sfno: 
                             np.save(savefile.format("","skill_score","sfno"),skill_score_validation_list)
                             np.save(savefile.format("","MSE","sfno"),loss_validation_list)
                             np.save(savefile.format("","MSE_normalised","sfno"),loss_validation_list_normalised)

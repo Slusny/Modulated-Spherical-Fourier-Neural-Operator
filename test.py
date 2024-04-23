@@ -163,21 +163,29 @@ import traceback
 # a = net()
 # x = torch.tensor([1,np.nan,3])
 # o = a(x)
-# print(o)
-k="hi "
-try:
-    for i in range(100000):
-        print(i)
-        k += str(i)
-        sleep(2)
-except Exception as e:
-    print(e)
-except KeyboardInterrupt as kk:
-    print(kk)
-    print(traceback.format_exc())
-    print("done1")
-except :
-    print(k)
-    print("done")
+# # print(o)
 
-print("haa")
+
+# k="hi "
+# try:
+#     for i in range(100000):
+#         print(i)
+#         k += str(i)
+#         sleep(2)
+# except Exception as e:
+#     print(e)
+# except KeyboardInterrupt as kk:
+#     print(kk)
+#     print(traceback.format_exc())
+#     print("done1")
+# except :
+#     print(k)
+#     print("done")
+
+# print("haa")
+
+
+
+for i in range(5):
+    print(i)
+    i = -1

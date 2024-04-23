@@ -670,7 +670,7 @@ def _main():
             sys.exit(0)
     elif args.eval_models_autoregressive:
         print("evaluating models")
-        checkpoint_list = np.array(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len)) 
+        checkpoint_list = list(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len)) 
         
         # select equidistance checkpoints from all checkpoints
         if args.eval_checkpoint_num > 1:
