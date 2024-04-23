@@ -149,16 +149,35 @@
 # t.p()
 
 import torch
+from time import sleep
 import numpy as np
-class net(torch.nn.Module):
-    def __init__(self):
-        super(net,self).__init__()
-        self.lin = torch.nn.Linear(3,3)
+import traceback
+# class net(torch.nn.Module):
+#     def __init__(self):
+#         super(net,self).__init__()
+#         self.lin = torch.nn.Linear(3,3)
     
-    def forward(self,x):
-        return self.lin(x)
+#     def forward(self,x):
+#         return self.lin(x)
     
-a = net()
-x = torch.tensor([1,np.nan,3])
-o = a(x)
-print(o)
+# a = net()
+# x = torch.tensor([1,np.nan,3])
+# o = a(x)
+# print(o)
+k="hi "
+try:
+    for i in range(100000):
+        print(i)
+        k += str(i)
+        sleep(2)
+except Exception as e:
+    print(e)
+except KeyboardInterrupt as kk:
+    print(kk)
+    print(traceback.format_exc())
+    print("done1")
+except :
+    print(k)
+    print("done")
+
+print("haa")

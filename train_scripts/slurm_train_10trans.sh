@@ -3,7 +3,7 @@
 #a) Define slurm job parameters
 ####
 
-#SBATCH --job-name=00gcn100b #21gcn
+#SBATCH --job-name=10trans #21gcn
 
 #resources:
 
@@ -27,10 +27,10 @@
 # the maximum time the scripts needs to run
 # "minutes:seconds", "hours:minutes:seconds", "days-hours","days-hours:minutes" and "days-hours:minutes:seconds"
 
-#SBATCH --error=/home/goswami/gkd965/jobs/job.00gcn100b.%J.err
+#SBATCH --error=/home/goswami/gkd965/jobs/job.10trans.%J.err
 # write the error output to job.*jobID*.err
 
-#SBATCH --output=/home/goswami/gkd965/jobs/job.00gcn100b.%J.out
+#SBATCH --output=/home/goswami/gkd965/jobs/job.10trans.%J.out
 # write the standard output to job.*jobID*.out
 
 #SBATCH --mail-type=ALL
@@ -39,7 +39,7 @@
 #SBATCH --mail-user=lennart.slusny@student.uni-tuebingen.de
 # your mail address
 
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version film --train --validation-interval 30 --validation-epochs 5 --training-workers 6 --batch-size 1 --scheduler CosineAnnealingLR --scheduler-horizon 500 --learning-rate 0.001 --multi-step-training 0 --training-step-skip 0 --film-gen gcn --accumulation-steps 100 --wandb --save-checkpoint-interval 1 --advanced-logging
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version film --train --validation-interval 100 --validation-epochs 5 --training-workers 6 --batch-size 1 --learning-rate 0.0005 --save-checkpoint-interval 5 --film-gen transformer --wandb --advanced-logging --checkpointing-block --checkpointing-encoder 
 
 
 echo DONE!

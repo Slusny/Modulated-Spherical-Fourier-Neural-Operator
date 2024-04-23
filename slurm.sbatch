@@ -145,3 +145,8 @@ echo DONE!
 # sacct for ended jobs
 
 # 
+
+
+
+# scontrol listpids
+#  kill -INT <pid>
