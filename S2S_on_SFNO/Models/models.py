@@ -427,7 +427,7 @@ def available_models():
     return result
 
 def load_model(name, kwargs):
-    if name == 'fourcastnet':
+    if name == 'fcn':
         from .fourcastnet.model import get_model
     if name == 'sfno':
         from .sfno.model import get_model

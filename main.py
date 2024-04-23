@@ -51,7 +51,8 @@ def _main():
         "--model",
         action="store",
         required=True,
-        choices=available_models(),
+        #choices=available_models(),
+        choices=["sfno","fcn"],
         dest="model_type",
         help="Specify the model to run",
     )
