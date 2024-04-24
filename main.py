@@ -173,8 +173,7 @@ def _main():
     parser.add_argument(
         "--eval-checkpoints",
         help="Name the epoch for which checkpoints should be loaded",
-        action="store",
-        type=list,
+        action='append',
         default=[],
     )
     parser.add_argument(
