@@ -638,8 +638,8 @@ def _main():
         resume_cp = checkpoint_list = list(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len))[-1]
     if resume_cp:
         cp = torch.load(resume_cp)
-        if not 'hyperparameters' in resume_cp.keys(): print("couldn't load model configuration from checkpoint")
-        model = load_model(cp["hyperparameters"].model_type, **cp["hyperparameters"])
+        if not 'hyperparameters' in cp.keys(): print("couldn't load model configuration from checkpoint")
+        model = load_model(cp["hyperparameters"]["model_type"], **cp["hyperparameters"])
     else:
         model = load_model(args.model_type, vars(args))
 
