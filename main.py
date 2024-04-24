@@ -695,7 +695,8 @@ def _main():
             checkpoint_list_shorten = checkpoint_list
         else:
             checkpoint_list_shorten = [checkpoint_list[-1]]#,checkpoint_list[2],checkpoint_list[-1]]
-        print("loading ",checkpoint_list_shorten, " checkpoints from ", args.eval_checkpoint_path)
+        print("loading :")
+        for cp in checkpoint_list_shorten:print("    "+cp)
         # #sfno
         # sfno_kwargs = vars(args)
         # sfno_kwargs["model_version"] = "release"
