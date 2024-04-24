@@ -10,3 +10,5 @@ for f in $(ls -d -a $1/** ); do
         rm -f $f
     fi
 done
+
+rm -r -f $1
