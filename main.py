@@ -682,7 +682,7 @@ def _main():
         
         # select equidistance checkpoints from all checkpoints
         if len(args.eval_checkpoints) > 0:
-            checkpoint_file = re.sub(r"\d+","{}",checkpoint_list[-1])
+            checkpoint_file = re.sub(r"\d+","{}",checkpoint_list[-1].split("/")[-1])
             checkpoint_list_shorten = [os.path.join(args.eval_checkpoint_path,checkpoint_file.format(checkpoint)) for checkpoint in args.eval_checkpoints]
         elif args.eval_checkpoint_num > 1:
             num_checkpoints = len(checkpoint_list)

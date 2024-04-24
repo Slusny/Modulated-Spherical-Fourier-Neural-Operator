@@ -743,11 +743,11 @@ class FourCastNetv2_filmed(FourCastNetv2):
         self.epoch = 0
         self.iter = 0
 
-        # to debug training don't start with validation
+        # to debug training don't start with validation, actually never start training with validation, we do not have space on the cluster
         if self.debug:
             start_valid = 1
         else:
-            start_valid = 0
+            start_valid = 1
 
         for i, data in enumerate(training_loader):
 
