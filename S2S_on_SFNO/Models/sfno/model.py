@@ -609,9 +609,10 @@ class FourCastNetv2_filmed(FourCastNetv2):
         weights = {k: v for k, v in weights.items() if k not in drop_vars}
 
         # print state of loaded model:
-        if self.advanced_logging and 'hyperparameters' in checkpoint_sfno.items():
+        if self.advanced_logging and 'hyperparameters' in checkpoint_sfno.keys():
             print("loaded model with following hyperparameters:")
-            for k,v in pp['hyperparameters'].items():print("    ",k,":",v)
+            print("    iter:",checkpoint_sfno["iter"])
+            for k,v in checkpoint_sfno['hyperparameters'].items():print("    ",k,":",v)
 
         # Make sure the parameter names are the same as the checkpoint
         # need to use strict = False to avoid this error message when
