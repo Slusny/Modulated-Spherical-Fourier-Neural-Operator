@@ -463,6 +463,12 @@ def _main():
         action="store_true",
         help="Trades compute for memory. Checkpoints SFNO-decoder. Only partly computes the forward path and recomputes missing parts during backward pass. See pytroch checkpointing. Needed to perform multistep training. pure sfno alone already consumes 28GB VRAM"
     )
+    training.add_argument(
+        "--resume-checkpoint",
+        action="store",
+        default=None,
+        help="Load model from checkpoint and use its configuration to initialize the model"
+    )
 
     # Logging
     logging_parser = parser.add_argument_group('Logging')
@@ -627,7 +633,15 @@ def _main():
     # Manipulation on args
     args.metadata = dict(kv.split("=") for kv in args.metadata)
 
-    model = load_model(args.model_type, vars(args))
+    resume_cp = args.resume_checkpoint
+    if args.eval_models_autoregressive:
+        resume_cp = checkpoint_list = list(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len))[-1]
+    if args.resume_checkpoint:
+        cp = torch.load(resume_cp)
+        if not 'hyperparameters' in resume_cp.keys(): print("couldn't load model configuration from checkpoint")
+        model = load_model(cp["hyperparameters"].model_type, **cp["hyperparameters"])
+    else:
+        model = load_model(args.model_type, vars(args))
 
     if args.fields:
         model.print_fields()
