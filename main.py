@@ -172,8 +172,8 @@ def _main():
     )
     parser.add_argument(
         "--eval-checkpoints",
-        help="Name the epoch for which checkpoints should be loaded",
-        action='append',
+        help="Name the epoch for which checkpoints should be loaded. E.g. --eval-checkpoints 500 700 900",
+        args='+',
         default=[],
     )
     parser.add_argument(
