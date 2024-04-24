@@ -639,7 +639,16 @@ def _main():
     if resume_cp:
         cp = torch.load(resume_cp)
         if not 'hyperparameters' in cp.keys(): print("couldn't load model configuration from checkpoint")
-        model = load_model(cp["hyperparameters"]["model_type"], cp["hyperparameters"])
+        model_args = cp["hyperparameters"]
+        model_args["trainingdata_path"] = args.trainingdata_path
+        model_args["validationset_start_year"] = args.validationset_start_year
+        model_args["validationset_end_year"] = args.validationset_end_year
+        model_args["training_workers"] = args.training_workers
+        model_args["batch_size"] = args.batch_size
+        model_args["validation_step_skip"] = args.validation_step_skip
+        model_args["validation_epochs"] = args.validation_epochs
+        model_args["advanced_logging"] = args.advanced_logging
+        model = load_model(cp["hyperparameters"]["model_type"], model_args)
     else:
         model = load_model(args.model_type, vars(args))
 
