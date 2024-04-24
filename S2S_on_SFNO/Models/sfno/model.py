@@ -1068,7 +1068,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         std_lvl   = np.array(loss_validation_list).std(axis=0)
                         
                         for var_idx, variable in enumerate(variables): 
-                            print("mean skillscore ",variable," :")
+                            LOG.info("mean skillscore {} (n={}) :".format(variable,val_epoch+1))#
                             for i in range(mean_scml.shape[0]):
                                 print("step ",i*(self.validation_step_skip+1),":",round(mean_scml[i][var_idx],4),"+/-",round(std_scml[i][var_idx],4))
                         
