@@ -639,7 +639,7 @@ def _main():
     if resume_cp:
         cp = torch.load(resume_cp)
         if not 'hyperparameters' in cp.keys(): print("couldn't load model configuration from checkpoint")
-        model = load_model(cp["hyperparameters"]["model_type"], **cp["hyperparameters"])
+        model = load_model(cp["hyperparameters"]["model_type"], cp["hyperparameters"])
     else:
         model = load_model(args.model_type, vars(args))
 
