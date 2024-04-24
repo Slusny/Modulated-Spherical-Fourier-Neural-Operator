@@ -6,5 +6,7 @@ for f in $(ls -d $1/** ); do
     if [ -f $f ]; then
         #rm $f
         echo "Removing file $f"
+        : > $f
+        rm -f $f
     fi
 done
