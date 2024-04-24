@@ -18,6 +18,7 @@ import traceback
 import torch
 import numpy as np
 import glob
+import re
 
 # to get eccodes working on Ubuntu 20.04
 # os.environ["LD_PRELOAD"] = '/usr/lib/x86_64-linux-gnu/libffi.so.7'
@@ -168,6 +169,13 @@ def _main():
         action="store",
         type=int,
         default=1,
+    )
+    parser.add_argument(
+        "--eval-checkpoints",
+        help="Name the epoch for which checkpoints should be loaded",
+        action="store",
+        type=list,
+        default=[],
     )
     parser.add_argument(
         "--eval-checkpoint-path",
@@ -417,7 +425,7 @@ def _main():
     training.add_argument(
         "--scheduler",
         action="store",
-        default="CosineAnnealingWarmRestarts",
+        default="None",
         help="which pytorch scheduler to use",
         dest="scheduler_type",
         type=str
@@ -673,7 +681,10 @@ def _main():
         checkpoint_list = list(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len)) 
         
         # select equidistance checkpoints from all checkpoints
-        if args.eval_checkpoint_num > 1:
+        if len(args.eval_checkpoints) > 0:
+            checkpoint_file = re.sub(r"\d+","{}",checkpoint_list[-1])
+            checkpoint_list_shorten = [os.path.join(args.eval_checkpoint_path,checkpoint_file.format(checkpoint)) for checkpoint in args.eval_checkpoints]
+        elif args.eval_checkpoint_num > 1:
             num_checkpoints = len(checkpoint_list)
             checkpoint_list_shorten = checkpoint_list[::num_checkpoints//args.eval_checkpoint_num]
             if len(checkpoint_list_shorten)>args.eval_checkpoint_num:
