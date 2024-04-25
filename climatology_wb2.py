@@ -39,8 +39,8 @@ from time import time
 
 # Edit this
 years = list(range(1979,2019)) # 
-variable_index = 6
-multi_pressure_level = 1000 #1000 # the pressure level in hPa (e.g. 850)
+variable_index = 8
+multi_pressure_level = 200 #1000 # the pressure level in hPa (e.g. 850)
 
 
 
