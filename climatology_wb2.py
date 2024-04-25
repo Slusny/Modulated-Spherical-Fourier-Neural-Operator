@@ -111,7 +111,7 @@ def calc_mean(variable,level,years,savepath):
     if years[0] in range(1948,2025,4):
         print("please don't start with a leap year")
         exit(0)
-    mean = IterMean(wb.sel(time=slice(str(years[0])+'-01-01', str(years[0])+'-12-31'),level=level)[variable])
+    mean = IterMean(wb.sel(time=slice(str(years[0])+'-01-01', str(years[0])+'-12-31'),level=level)[variable].load())
     idx = 0
     for year in years[1:]:
         print("--------------------------")
@@ -128,12 +128,12 @@ def calc_mean(variable,level,years,savepath):
             sys.exit(0)
 
         # calculate mean
-        mean + data 
+        mean + data.load()
         stats = system_monitor(True,[os.getpid()],["main"])
         idx += 1
         if idx % save_interval == 0:
             mean.save(savepath)
-    mean.get().compute()
+    # mean.get().compute()
     mean.save(savepath)
 
 print("using xarray")
