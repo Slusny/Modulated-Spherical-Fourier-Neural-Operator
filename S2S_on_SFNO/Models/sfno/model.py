@@ -381,8 +381,9 @@ class FourCastNetv2(Model):
                 )
 
                 stepper(i, step)
-                
+
     def training(self,wandb_run=None,**kwargs):
+        print("Training SFNO")
         self.load_statistics()
         self.set_seed(42) #torch.seed()
         LOG.info("Save path: %s", self.save_path)
@@ -524,204 +525,58 @@ class FourCastNetv2(Model):
 
             
             
-            # # Training  
-            
-            # loss = 0
-            # discount_factor = 1
-            # with amp.autocast(self.enable_amp):
-            #     for step in range(kwargs["multi_step_training"]+1):
-            #         #print(" - step : ", step) ## Log multistep loss better
-            #         if kwargs["advanced_logging"] and mem_log_not_done : 
-            #             print("mem before loading data : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-            #         if step == 0 : input_era5 = self.normalise(data[step][0]).to(self.device)
-            #         else: input_era5 = outputs# get gt sst from next step
-            #         g_truth_era5 = self.normalise(data[step+1][0]).to(self.device)
-                    
-            #         if kwargs["advanced_logging"] and mem_log_not_done : 
-            #             print("mem before exec model : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-            #         outputs = model(input_era5)
-            #         # outputs = outputs.detach()
-            #         # loss.append(loss_fn(outputs, g_truth_era5))#*discount_factor**step
-            #         if step % (kwargs["training_step_skip"]+1) == 0:
-            #             if kwargs["advanced_logging"] and ultra_advanced_logging: print("calculating loss for step ",step)
-            #             if kwargs["advanced_logging"] and mem_log_not_done : 
-            #                 print("mem before loss : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-            #             loss = loss + loss_fn(outputs, g_truth_era5) #*discount_factor**step
-            #         else:
-            #             if kwargs["advanced_logging"] and ultra_advanced_logging : print("skipping step",step)
-            #     loss = loss / (self.accumulation_steps+1)
-            # if kwargs["advanced_logging"] and mem_log_not_done : 
-            #     print("mem before backward : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-            
-
-            # #backward
-            # if self.enable_amp:
-            #     self.gscaler.scale(loss).backward()
-            # else:
-            #     loss.backward()
-
-
-
-            # # Adjust learning weights
-            # if ((i + 1) % (self.accumulation_steps + 1) == 0) or (i + 1 == len(training_loader)):
-            #     # Update Optimizer
-            #     if kwargs["advanced_logging"] and mem_log_not_done : 
-            #         print("mem before optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-            #     if self.enable_amp:
-            #         self.gscaler.step(self.optimizer)
-            #         self.gscaler.update()
-            #     else:
-            #         optimizer.step()
-            #     if kwargs["advanced_logging"] and mem_log_not_done : 
-            #         print("mem after optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-            #         mem_log_not_done = False
-            #     model.zero_grad()
-                
-            # old training
-                # Training  
-            input_era5 = self.normalise(data[0][0]).to(self.device)
-            g_truth_era5 = self.normalise(data[1][1]).to(self.device)
-            
-            optimizer.zero_grad()
-
-            # Make predictions for this batch
-            outputs = model(input_era5)
-
-            # Compute the loss and its gradients
-            loss = loss_fn(outputs, g_truth_era5)
-            loss.backward()
-
-            # Adjust learning weights
-            optimizer.step()
-
-            # logging
-            self.iter += 1
-            loss_value = round(loss.item(),5)
-            if local_logging : self.losses.append(loss_value)
-            if wandb_run is not None:
-                wandb.log({"loss": loss_value })
-            if kwargs["debug"]:
-                print("Epoch: ", i, " Loss: ", loss_value)
-        
-        self.save_checkpoint()
-
-    def training_old(self,wandb_run=None,**kwargs):
-        self.load_statistics()
-        
-        print("Trainig Data:")
-        dataset = ERA5_galvani(
-            self,
-            path=kwargs["trainingdata_path"], 
-            start_year=kwargs["trainingset_start_year"],
-            end_year=kwargs["trainingset_end_year"],
-            sst=False
-        )
-        print("Validation Data:")
-        dataset_validation = ERA5_galvani(
-            self,
-            path=kwargs["trainingdata_path"], 
-            start_year=kwargs["validationset_start_year"],
-            end_year=kwargs["validationset_end_year"],
-            auto_regressive_steps=kwargs["multi_step_validation"],
-            sst=False)
-        
-        model = self.load_model(self.checkpoint_path)
-        model.train()
-
-        # optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-        optimizer = torch.optim.Adam(model.parameters(), lr=2*0.001)
-        scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,T_0=kwargs["scheduler_horizon"])
-        # store the optimizer and scheduler in the model class
-        self.optimizer = optimizer
-        self.scheduler = scheduler
-
-        loss_fn = torch.nn.MSELoss()
-
-        training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
-        validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
-        
-        ## for logging offline to local file (no wandb)
-        self.val_means = [[]] * (kwargs["multi_step_validation"]+1)
-        self.val_stds  = [[]] * (kwargs["multi_step_validation"]+1)
-        self.losses    = []
-        self.epoch = 0
-        self.iter = 0
-
-
-        for i, (input, g_truth) in enumerate(training_loader):
-
-            # Validation
-            if (i+1) % kwargs["validation_interval"] == 0:
-                val_loss = {}
-                val_log  = {}
-                model.eval()
-                with torch.no_grad():
-                    # For loop over validation dataset, calculates the validation loss mean for number of kwargs["validation_epochs"]
-                    for val_epoch, val_data in enumerate(validation_loader):
-                        # Calculates the validation loss for autoregressive model evaluation
-                        # if self.auto_regressive_steps = 0 the dataloader only outputs 2 datapoint 
-                        # and the for loop only runs once (calculating the ordinary validation loss with no auto regressive evaluation
-                        val_input_era5 = None
-                        for val_idx in range(len(val_data)-1):
-                            if val_input_era5 is None: val_input_era5 = self.normalise(val_data[val_idx]).to(self.device)
-                            else: val_input_era5 = outputs
-                            val_g_truth_era5 = self.normalise(val_data[val_idx+1]).to(self.device)
-                            outputs = model(val_input_era5)
-                            val_loss_value = loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"]
-                            if val_epoch == 0: 
-                                val_loss["validation loss (n={}, autoregress={})".format(
-                                    kwargs["validation_epochs"],val_idx)] = [val_loss_value.cpu()]
-                            else:
-                                val_loss["validation loss (n={}, autoregress={})".format(
-                                    kwargs["validation_epochs"],val_idx)].append(val_loss_value.cpu())
-
-                        # end of validation 
-                        if val_epoch > kwargs["validation_epochs"]:
-                            for k in val_loss.keys():
-                                val_loss_array      = np.array(val_loss[k])
-                                val_log[k]          = round(val_loss_array.mean(),5)
-                                val_log["std " + k] = round(val_loss_array.std(),5)
-                            break
-                    
-                    if scheduler: 
-                        lr = scheduler.get_last_lr()[0]
-                        val_log["learning rate"] = lr
-                        scheduler.step(i)
-                   
-                    # LOG.info("Validation loss: "+str(mean_val_loss)+" +/- "+str(std_val_loss)+" (n={})".format(kwargs["validation_epochs"]))
-
-                    # little complicated console logging - looks nicer
-                    print("-- validation after ",i*kwargs["batch_size"], "training examples")
-                    val_log_keys = list(val_log.keys())
-                    for log_idx in range(0,kwargs["multi_step_validation"]*2+1,2):
-                        # log to console
-                        LOG.info(val_log_keys[log_idx] + " : " + str(val_log[val_log_keys[log_idx]]) 
-                                 + " +/- " + str(val_log[val_log_keys[log_idx+1]]))
-                        # log to local file
-                        self.val_means[log_idx].append(val_log[val_log_keys[log_idx]])
-                        self.val_stds[log_idx].append(val_log[val_log_keys[log_idx+1]])
-                    if wandb_run :
-                        wandb.log(val_log)
-                if i % (kwargs["validation_interval"]*kwargs["save_checkpoint_interval"]) == 0:
-                    save_file ="checkpoint_"+kwargs["model_type"]+"_"+kwargs["model_version"]+"_epoch={}.pkl".format(i)
-                    self.save_checkpoint(save_file)
-                model.train()
-            
             # Training  
-            input_era5 = self.normalise(input).to(self.device)
-            g_truth_era5 = self.normalise(g_truth).to(self.device)
             
-            optimizer.zero_grad()
+            loss = 0
+            discount_factor = 1
+            with amp.autocast(self.enable_amp):
+                for step in range(kwargs["multi_step_training"]+1):
+                    #print(" - step : ", step) ## Log multistep loss better
+                    if kwargs["advanced_logging"] and mem_log_not_done : 
+                        print("mem before loading data : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                    if step == 0 : input_era5 = self.normalise(data[step][0]).to(self.device)
+                    else: input_era5 = outputs# get gt sst from next step
+                    g_truth_era5 = self.normalise(data[step+1][0]).to(self.device)
+                    
+                    if kwargs["advanced_logging"] and mem_log_not_done : 
+                        print("mem before exec model : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                    outputs = model(input_era5)
+                    # outputs = outputs.detach()
+                    # loss.append(loss_fn(outputs, g_truth_era5))#*discount_factor**step
+                    if step % (kwargs["training_step_skip"]+1) == 0:
+                        if kwargs["advanced_logging"] and ultra_advanced_logging: print("calculating loss for step ",step)
+                        if kwargs["advanced_logging"] and mem_log_not_done : 
+                            print("mem before loss : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                        loss = loss + loss_fn(outputs, g_truth_era5) #*discount_factor**step
+                    else:
+                        if kwargs["advanced_logging"] and ultra_advanced_logging : print("skipping step",step)
+                loss = loss / (self.accumulation_steps+1)
+            if kwargs["advanced_logging"] and mem_log_not_done : 
+                print("mem before backward : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+            
 
-            # Make predictions for this batch
-            outputs = model(input_era5)
+            #backward
+            if self.enable_amp:
+                self.gscaler.scale(loss).backward()
+            else:
+                loss.backward()
 
-            # Compute the loss and its gradients
-            loss = loss_fn(outputs, g_truth_era5)
-            loss.backward()
+
 
             # Adjust learning weights
-            optimizer.step()
+            if ((i + 1) % (self.accumulation_steps + 1) == 0) or (i + 1 == len(training_loader)):
+                # Update Optimizer
+                if kwargs["advanced_logging"] and mem_log_not_done : 
+                    print("mem before optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                if self.enable_amp:
+                    self.gscaler.step(self.optimizer)
+                    self.gscaler.update()
+                else:
+                    optimizer.step()
+                if kwargs["advanced_logging"] and mem_log_not_done : 
+                    print("mem after optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                    mem_log_not_done = False
+                model.zero_grad()
 
             # logging
             self.iter += 1
