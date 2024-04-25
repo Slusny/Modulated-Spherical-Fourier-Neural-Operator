@@ -410,7 +410,7 @@ def _main():
     training.add_argument(
         "--batch-size",
         action="store",
-        default=5,
+        default=1,
         type=int
     )
     # FourCastNet uses 0.0005
@@ -700,6 +700,9 @@ def _main():
             print("save path: ",args.save_path)
             LOG.info("Process ID: %s", os.getpid())
             kwargs = vars(args)
+            for k,v in kwargs.items():
+                print("called training with following arguments:")
+                print(f"    {k} : {v}")
             model.training(wandb_run=wandb_run,**kwargs)
         except :
             LOG.error(traceback.format_exc())
