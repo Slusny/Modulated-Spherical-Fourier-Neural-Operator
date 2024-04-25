@@ -117,9 +117,10 @@ def calc_mean(variable,level,years,savepath):
         print("--------------------------")
         print(year)
         data = wb.sel(time=slice(str(year)+'-01-01', str(year)+'-12-31'),level=level)[variable]
+        print("timesteps: ",data.time.size)
         if year in range(1948,2025,4):
             print("leap year")
-            print("timesteps: ",data.dims["time"])
+            print("timesteps: ",data.time.size)
             # if (data.dims["time"] != 8784): 
             #     print("ERROR: leapyear timesteps != 8784")
             #     continue
