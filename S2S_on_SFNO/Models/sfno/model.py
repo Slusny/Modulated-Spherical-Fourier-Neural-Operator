@@ -641,7 +641,6 @@ class FourCastNetv2(Model):
                             
                         if val_idx == 0: val_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
                         else: val_input_era5 = outputs
-                        val_input_sst  = self.normalise_film(val_data[val_idx+1][1]).to(self.device)
                         #
                         # loss sfno 
                         #    all (normalised) 0.3

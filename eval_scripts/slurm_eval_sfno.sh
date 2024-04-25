@@ -3,7 +3,7 @@
 #a) Define slurm job parameters
 ####
 
-#SBATCH --job-name=evalgcnb
+#SBATCH --job-name=sfnofs
 
 #resources:
 
@@ -27,10 +27,10 @@
 # the maximum time the scripts needs to run
 # "minutes:seconds", "hours:minutes:seconds", "days-hours","days-hours:minutes" and "days-hours:minutes:seconds"
 
-#SBATCH --error=/home/goswami/gkd965/jobs/job.eval00gcn100b.%J.err
+#SBATCH --error=/home/goswami/gkd965/jobs/job.sfnofinesunset.%J.err
 # write the error output to job.*jobID*.err
 
-#SBATCH --output=/home/goswami/gkd965/jobs/job.eval00gcn100b.%J.out
+#SBATCH --output=/home/goswami/gkd965/jobs/job.sfnofinesunset.%J.out
 # write the standard output to job.*jobID*.out
 
 #SBATCH --mail-type=ALL
