@@ -523,58 +523,75 @@ class FourCastNetv2(Model):
 
             
             
-            # Training  
+            # # Training  
             
-            loss = 0
-            discount_factor = 1
-            with amp.autocast(self.enable_amp):
-                for step in range(kwargs["multi_step_training"]+1):
-                    #print(" - step : ", step) ## Log multistep loss better
-                    if kwargs["advanced_logging"] and mem_log_not_done : 
-                        print("mem before loading data : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-                    if step == 0 : input_era5 = self.normalise(data[step][0]).to(self.device)
-                    else: input_era5 = outputs# get gt sst from next step
-                    g_truth_era5 = self.normalise(data[step+1][0]).to(self.device)
+            # loss = 0
+            # discount_factor = 1
+            # with amp.autocast(self.enable_amp):
+            #     for step in range(kwargs["multi_step_training"]+1):
+            #         #print(" - step : ", step) ## Log multistep loss better
+            #         if kwargs["advanced_logging"] and mem_log_not_done : 
+            #             print("mem before loading data : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+            #         if step == 0 : input_era5 = self.normalise(data[step][0]).to(self.device)
+            #         else: input_era5 = outputs# get gt sst from next step
+            #         g_truth_era5 = self.normalise(data[step+1][0]).to(self.device)
                     
-                    if kwargs["advanced_logging"] and mem_log_not_done : 
-                        print("mem before exec model : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-                    outputs = model(input_era5)
-                    # outputs = outputs.detach()
-                    # loss.append(loss_fn(outputs, g_truth_era5))#*discount_factor**step
-                    if step % (kwargs["training_step_skip"]+1) == 0:
-                        if kwargs["advanced_logging"] and ultra_advanced_logging: print("calculating loss for step ",step)
-                        if kwargs["advanced_logging"] and mem_log_not_done : 
-                            print("mem before loss : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-                        loss = loss + loss_fn(outputs, g_truth_era5) #*discount_factor**step
-                    else:
-                        if kwargs["advanced_logging"] and ultra_advanced_logging : print("skipping step",step)
-                loss = loss / (self.accumulation_steps+1)
-            if kwargs["advanced_logging"] and mem_log_not_done : 
-                print("mem before backward : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+            #         if kwargs["advanced_logging"] and mem_log_not_done : 
+            #             print("mem before exec model : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+            #         outputs = model(input_era5)
+            #         # outputs = outputs.detach()
+            #         # loss.append(loss_fn(outputs, g_truth_era5))#*discount_factor**step
+            #         if step % (kwargs["training_step_skip"]+1) == 0:
+            #             if kwargs["advanced_logging"] and ultra_advanced_logging: print("calculating loss for step ",step)
+            #             if kwargs["advanced_logging"] and mem_log_not_done : 
+            #                 print("mem before loss : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+            #             loss = loss + loss_fn(outputs, g_truth_era5) #*discount_factor**step
+            #         else:
+            #             if kwargs["advanced_logging"] and ultra_advanced_logging : print("skipping step",step)
+            #     loss = loss / (self.accumulation_steps+1)
+            # if kwargs["advanced_logging"] and mem_log_not_done : 
+            #     print("mem before backward : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
             
 
-            #backward
-            if self.enable_amp:
-                self.gscaler.scale(loss).backward()
-            else:
-                loss.backward()
+            # #backward
+            # if self.enable_amp:
+            #     self.gscaler.scale(loss).backward()
+            # else:
+            #     loss.backward()
 
 
+
+            # # Adjust learning weights
+            # if ((i + 1) % (self.accumulation_steps + 1) == 0) or (i + 1 == len(training_loader)):
+            #     # Update Optimizer
+            #     if kwargs["advanced_logging"] and mem_log_not_done : 
+            #         print("mem before optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+            #     if self.enable_amp:
+            #         self.gscaler.step(self.optimizer)
+            #         self.gscaler.update()
+            #     else:
+            #         optimizer.step()
+            #     if kwargs["advanced_logging"] and mem_log_not_done : 
+            #         print("mem after optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+            #         mem_log_not_done = False
+            #     model.zero_grad()
+                
+            # old training
+                # Training  
+            input_era5 = self.normalise(data[0][0]).to(self.device)
+            g_truth_era5 = self.normalise(data[1][1]).to(self.device)
+            
+            optimizer.zero_grad()
+
+            # Make predictions for this batch
+            outputs = model(input_era5)
+
+            # Compute the loss and its gradients
+            loss = loss_fn(outputs, g_truth_era5)
+            loss.backward()
 
             # Adjust learning weights
-            if ((i + 1) % (self.accumulation_steps + 1) == 0) or (i + 1 == len(training_loader)):
-                # Update Optimizer
-                if kwargs["advanced_logging"] and mem_log_not_done : 
-                    print("mem before optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-                if self.enable_amp:
-                    self.gscaler.step(self.optimizer)
-                    self.gscaler.update()
-                else:
-                    optimizer.step()
-                if kwargs["advanced_logging"] and mem_log_not_done : 
-                    print("mem after optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-                    mem_log_not_done = False
-                model.zero_grad()
+            optimizer.step()
 
             # logging
             self.iter += 1
@@ -587,7 +604,7 @@ class FourCastNetv2(Model):
         
         self.save_checkpoint()
 
-    def training(self,wandb_run=None,**kwargs):
+    def training_old(self,wandb_run=None,**kwargs):
         self.load_statistics()
         
         print("Trainig Data:")
