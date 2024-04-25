@@ -17,7 +17,7 @@
 
 #SBATCH --partition=2080-galvani#a100-galvani#cpu-galvani#2080-galvani#cpu-long#cpu-short #gpu-v100  #gpu-2080ti #cpu-long
 
-#SBATCH --mem-per-cpu=15G # Per CPU -> Per Core
+#SBATCH --mem-per-cpu=25G # Per CPU -> Per Core
 # the job will need 12GB of memory equally distributed on 4 cpus.(251GB are available in total on one node)
 
 #SBATCH --gres=gpu:1
@@ -39,5 +39,6 @@
 #SBATCH --mail-user=lennart.slusny@student.uni-tuebingen.de
 # your mail address
 
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version latest --validation-epochs 300 --training-workers 5 --batch-size 1 --multi-step-validation 5 --validation-step-skip 5 --eval-models-autoregressive --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/sfno/doctor-t-pol-11 
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version latest --validation-epochs 50 --training-workers 5 --batch-size 1 --multi-step-validation 5 --validation-step-skip 5 --eval-models-autoregressive --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/sfno/doctor-poll-11 --eval-checkpoints 300 2000 4200 
+#--eval-checkpoint-num 3
 echo DONE!

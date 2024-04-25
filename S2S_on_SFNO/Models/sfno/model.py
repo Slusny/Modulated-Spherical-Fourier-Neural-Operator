@@ -733,7 +733,7 @@ class FourCastNetv2(Model):
                         break
     def plot_variable(self,output,groud_truth,save_path,checkpoint,variable,steps,sfno=True):
         fig,ax = plt.subplots(1,2,figsize=(16,4))
-        hrs =  steps + 6
+        hrs =  steps*6 + 6
         if sfno: 
             ax[0].set_title("SFNO")
         else:

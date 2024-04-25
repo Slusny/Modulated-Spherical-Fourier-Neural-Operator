@@ -17,7 +17,7 @@
 
 #SBATCH --partition=2080-galvani#a100-galvani#cpu-galvani#2080-galvani#cpu-long#cpu-short #gpu-v100  #gpu-2080ti #cpu-long
 
-#SBATCH --mem-per-cpu=15G # Per CPU -> Per Core
+#SBATCH --mem-per-cpu=25G # Per CPU -> Per Core
 # the job will need 12GB of memory equally distributed on 4 cpus.(251GB are available in total on one node)
 
 #SBATCH --gres=gpu:1
