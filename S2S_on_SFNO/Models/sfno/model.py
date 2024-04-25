@@ -219,7 +219,6 @@ class FourCastNetv2(Model):
         # model = FourierNeuralOperatorNet()
         model = self.model # since self.model is a class this is passed by reference and modified in place
 
-        model.zero_grad()
         # Load weights
 
         checkpoint = torch.load(checkpoint_file)
@@ -232,7 +231,7 @@ class FourCastNetv2(Model):
         # print state of loaded model:
         if self.advanced_logging and 'hyperparameters' in checkpoint.items():
             print("loaded model with following hyperparameters:")
-            for k,v in pp['hyperparameters'].items():print("    ",k,":",v)
+            for k,v in checkpoint['hyperparameters'].items():print("    ",k,":",v)
 
         # Make sure the parameter names are the same as the checkpoint
         # need to use strict = False to avoid this error message when
@@ -269,14 +268,15 @@ class FourCastNetv2(Model):
 
         # Set model to eval mode and return
         model.eval()
+        model.zero_grad()
         model.to(self.device)
 
         # free VRAM
         # del checkpoint ?? still needed if weights are send to device in same line as load_state_dict?
 
         # don't need to update sfno
-        for name, param in model.named_parameters():
-                param.requires_grad = False 
+        # for name, param in model.named_parameters():
+        #         param.requires_grad = False 
 
         return model
 
@@ -400,17 +400,36 @@ class FourCastNetv2(Model):
             auto_regressive_steps=kwargs["multi_step_validation"],
             sst=False)
         
+        if kwargs["advanced_logging"] : 
+            mem_log_not_done = True
+            print(" ~~~ The GPU Memory will be logged for the first optimization run ~~~")
+            print("mem after initialising model : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+        
         model = self.load_model(self.checkpoint_path)
         model.train()
 
         # optimizer = torch.optim.SGD(model.parameters(), lr=kwargs["learning_rate"]), momentum=0.9)
-        optimizer = torch.optim.Adam(model.parameters(), lr=kwargs["learning_rate"])
-        scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,T_0=kwargs["scheduler_horizon"])
+        self.optimizer = torch.optim.Adam(model.parameters(), lr=kwargs["learning_rate"])# store the optimizer and scheduler in the model class
+        
+        # Scheduler
+        if kwargs["scheduler_type"] == 'ReduceLROnPlateau':
+            self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, factor=0.2, patience=5, mode='min')
+        elif kwargs["scheduler_type"] == 'CosineAnnealingLR':
+            self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=kwargs["scheduler_horizon"])
+        elif kwargs["scheduler_type"] == 'CosineAnnealingWarmRestarts':
+            self.scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer,T_0=kwargs["scheduler_horizon"])
+        else:
+            self.scheduler = None
+        
+
         # store the optimizer and scheduler in the model class
-        self.optimizer = optimizer
-        self.scheduler = scheduler
+        optimizer = self.optimizer 
+        scheduler = self.scheduler 
 
         loss_fn = torch.nn.MSELoss()
+
+        if kwargs["advanced_logging"] and mem_log_not_done : 
+            print("mem after init optimizer and scheduler and loading weights : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
 
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"],pin_memory=torch.cuda.is_available())
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"],pin_memory=torch.cuda.is_available())
@@ -423,10 +442,16 @@ class FourCastNetv2(Model):
         self.iter = 0
 
 
-        for i, (input, g_truth) in enumerate(training_loader):
+        # to debug training don't start with validation, actually never start training with validation, we do not have space on the cluster
+        if self.debug:
+            start_valid = 1
+        else:
+            start_valid = 1
+
+        for i, data in enumerate(training_loader):
 
             # Validation
-            if i % kwargs["validation_interval"] == 0:
+            if (i+start_valid) % kwargs["validation_interval"] == 0:
                 val_loss = {}
                 val_log  = {}
                 model.eval()
@@ -455,13 +480,21 @@ class FourCastNetv2(Model):
                                 val_log[k]          = round(val_loss_array.mean(),5)
                                 val_log["std " + k] = round(val_loss_array.std(),5)
                             break
-                    
-                    if scheduler: 
+                
+                   
+                        #scheduler
+                    valid_mean = list(val_log.values())[0]
+                    if kwargs["scheduler_type"] == 'ReduceLROnPlateau':
+                        self.scheduler.step(valid_mean)
+                    elif kwargs["scheduler_type"] == 'CosineAnnealingLR':
+                        self.scheduler.step()
+                        if self.epoch >= kwargs["scheduler_horizon"]:
+                            LOG.info("Terminating training after reaching params.max_epochs while LR scheduler is set to CosineAnnealingLR") 
+                    elif kwargs["scheduler_type"] == 'CosineAnnealingWarmRestarts':
+                        self.scheduler.step(i)
+                    if scheduler is not None and scheduler != "None": 
                         lr = scheduler.get_last_lr()[0]
                         val_log["learning rate"] = lr
-                        scheduler.step(i)
-                   
-                    # LOG.info("Validation loss: "+str(mean_val_loss)+" +/- "+str(std_val_loss)+" (n={})".format(kwargs["validation_epochs"]))
 
                     # little complicated console logging - looks nicer
                     print("-- validation after ",i*kwargs["batch_size"], "training examples")
@@ -470,31 +503,59 @@ class FourCastNetv2(Model):
                         # log to console
                         LOG.info(val_log_keys[log_idx] + " : " + str(val_log[val_log_keys[log_idx]]) 
                                  + " +/- " + str(val_log[val_log_keys[log_idx+1]]))
-                        # log to local file
-                        self.val_means[log_idx].append(val_log[val_log_keys[log_idx]])
-                        self.val_stds[log_idx].append(val_log[val_log_keys[log_idx+1]])
+                        # # log to local file
+                        # self.val_means[log_idx].append(val_log[val_log_keys[log_idx]])
+                        # self.val_stds[log_idx].append(val_log[val_log_keys[log_idx+1]])
                     if wandb_run :
                         wandb.log(val_log)
+
                 if i % (kwargs["validation_interval"]*kwargs["save_checkpoint_interval"]) == 0:
                     save_file ="checkpoint_"+kwargs["model_type"]+"_"+kwargs["model_version"]+"_epoch={}.pkl".format(i)
                     self.save_checkpoint(save_file)
                 model.train()
+
+            
             
             # Training  
-            input_era5 = self.normalise(input).to(self.device)
-            g_truth_era5 = self.normalise(g_truth).to(self.device)
             
-            optimizer.zero_grad()
-
-            # Make predictions for this batch
-            outputs = model(input_era5)
-
-            # Compute the loss and its gradients
-            loss = loss_fn(outputs, g_truth_era5)
+            loss = 0
+            discount_factor = 1
+            for step in range(kwargs["multi_step_training"]+1):
+                #print(" - step : ", step) ## Log multistep loss better
+                if kwargs["advanced_logging"] and mem_log_not_done : 
+                    print("mem before loading data : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                if step == 0 : input_era5 = self.normalise(data[step][0]).to(self.device)
+                else: input_era5 = outputs# get gt sst from next step
+                g_truth_era5 = self.normalise(data[step+1][0]).to(self.device)
+                
+                if kwargs["advanced_logging"] and mem_log_not_done : 
+                    print("mem before exec model : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                outputs = model(input_era5)
+                # outputs = outputs.detach()
+                # loss.append(loss_fn(outputs, g_truth_era5))#*discount_factor**step
+                if step % (kwargs["training_step_skip"]+1) == 0:
+                    if kwargs["advanced_logging"] and ultra_advanced_logging: print("calculating loss for step ",step)
+                    if kwargs["advanced_logging"] and mem_log_not_done : 
+                        print("mem before loss : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                    loss = loss + loss_fn(outputs, g_truth_era5) #*discount_factor**step
+                else:
+                    if kwargs["advanced_logging"] and ultra_advanced_logging : print("skipping step",step)
+            loss = loss / (self.accumulation_steps+1)
+            if kwargs["advanced_logging"] and mem_log_not_done : 
+                print("mem before backward : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
             loss.backward()
 
+
             # Adjust learning weights
-            optimizer.step()
+            if ((i + 1) % (self.accumulation_steps + 1) == 0) or (i + 1 == len(training_loader)):
+                # Update Optimizer
+                if kwargs["advanced_logging"] and mem_log_not_done : 
+                    print("mem before optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                optimizer.step()
+                if kwargs["advanced_logging"] and mem_log_not_done : 
+                    print("mem after optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                    mem_log_not_done = False
+                model.zero_grad()
 
             # logging
             self.iter += 1
