@@ -121,17 +121,16 @@ def calc_mean(variable,level,years,savepath):
         if year in range(1948,2025,4):
             print("leap year")
             print("timesteps: ",data.time.size)
-            # if (data.dims["time"] != 8784): 
-            #     print("ERROR: leapyear timesteps != 8784")
-            #     continue
+            if (data.time.size != 1464): 
+                print("ERROR: leapyear timesteps != 8784")
+                sys.exit(0)
             data = data.drop_isel(time=[236,237,238,239])
-            # data  = data.drop_isel(time=list(range((31+28)*24,(31+29)*24))) # remove leap day
-        # if (data.dims["time"] != 8760): 
-        #     print("ERROR: timesteps per year != 8760")
-        #     continue
+        if (data.time.size != 1460): 
+            print("ERROR: timesteps per year != 8760")
+            sys.exit(0)
 
         # calculate mean
-        mean + data #.to_array().squeeze().assign_coords(time=list(range(0,8760)))#.to_numpy() # numpy / xarray
+        mean + data 
         stats = system_monitor(True,[os.getpid()],["main"])
         idx += 1
         if idx % save_interval == 0:
