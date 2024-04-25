@@ -604,7 +604,7 @@ class FourCastNetv2(Model):
             path=kwargs["trainingdata_path"], 
             start_year=kwargs["validationset_start_year"],
             end_year=kwargs["validationset_end_year"],
-            auto_regressive_steps=kwargs["autoregressive_steps"],
+            auto_regressive_steps=kwargs["multi_step_validation"],
             sst=False)
         
         model = self.load_model(self.checkpoint_path)
@@ -623,8 +623,8 @@ class FourCastNetv2(Model):
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
         
         ## for logging offline to local file (no wandb)
-        self.val_means = [[]] * (kwargs["autoregressive_steps"]+1)
-        self.val_stds  = [[]] * (kwargs["autoregressive_steps"]+1)
+        self.val_means = [[]] * (kwargs["multi_step_validation"]+1)
+        self.val_stds  = [[]] * (kwargs["multi_step_validation"]+1)
         self.losses    = []
         self.epoch = 0
         self.iter = 0
@@ -633,7 +633,7 @@ class FourCastNetv2(Model):
         for i, (input, g_truth) in enumerate(training_loader):
 
             # Validation
-            if i % kwargs["validation_interval"] == 0:
+            if (i+1) % kwargs["validation_interval"] == 0:
                 val_loss = {}
                 val_log  = {}
                 model.eval()
@@ -675,7 +675,7 @@ class FourCastNetv2(Model):
                     # little complicated console logging - looks nicer
                     print("-- validation after ",i*kwargs["batch_size"], "training examples")
                     val_log_keys = list(val_log.keys())
-                    for log_idx in range(0,kwargs["autoregressive_steps"]*2+1,2):
+                    for log_idx in range(0,kwargs["multi_step_validation"]*2+1,2):
                         # log to console
                         LOG.info(val_log_keys[log_idx] + " : " + str(val_log[val_log_keys[log_idx]]) 
                                  + " +/- " + str(val_log[val_log_keys[log_idx+1]]))
