@@ -976,10 +976,10 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     for val_idx in range(len(val_data)-1):
                         # skip leap year feb 29 and subtract leap day from index
                         time = val_data[val_idx][2].item()
-                        if isleap(int(str(time)[:4])) and str(time)[4:8] == "02029" : break
+                        if isleap(int(str(time)[:4])) and str(time)[4:8] == "02029" : break # skip leap days ?????????????????????????????????????????
                         # calculates the days since the 1.1. of the same year
                         yday = datetime.strptime(str(time), '%Y%m%d%H').timetuple().tm_yday
-                        ref_idx = ((yday-1)*24 + int(str(time)[-2:]))#//6
+                        ref_idx = ((yday-1)*24 + int(str(time)[-2:])) + 1 # + 1 since we want a reference to the prediction
                         # if we are in a leap year we subtract the leap day 29.2. from reference index to get the correct idx for clim ref
                         if isleap(int(str(time)[:4])) and int(str(time)[4:6]) > 2 : ref_idx = ref_idx - 24
                             
