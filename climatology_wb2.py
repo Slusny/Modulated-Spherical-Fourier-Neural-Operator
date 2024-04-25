@@ -111,7 +111,7 @@ def calc_mean(variable,level,years,savepath):
     if years[0] in range(1948,2025,4):
         print("please don't start with a leap year")
         exit(0)
-    mean = IterMean(wb.sel(time=slice(str(year)+'-01-01', str(year)+'-12-31'),level=level)[variable])
+    mean = IterMean(wb.sel(time=slice(str(years[0])+'-01-01', str(years[0])+'-12-31'),level=level)[variable])
     idx = 0
     for year in years[1:]:
         print("--------------------------")
