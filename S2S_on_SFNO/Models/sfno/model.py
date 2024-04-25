@@ -389,6 +389,7 @@ class FourCastNetv2(Model):
             path=kwargs["trainingdata_path"], 
             start_year=kwargs["trainingset_start_year"],
             end_year=kwargs["trainingset_end_year"],
+            auto_regressive_steps=kwargs["multi_step_training"]
             sst=False
         )
         print("Validation Data:")
