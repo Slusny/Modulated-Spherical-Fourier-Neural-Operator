@@ -131,7 +131,7 @@ def calc_mean(variable,level,years,savepath):
         #     continue
 
         # calculate mean
-        mean + data.to_array().squeeze().assign_coords(time=list(range(0,8760)))#.to_numpy() # numpy / xarray
+        mean + data #.to_array().squeeze().assign_coords(time=list(range(0,8760)))#.to_numpy() # numpy / xarray
         stats = system_monitor(True,[os.getpid()],["main"])
         idx += 1
         if idx % save_interval == 0:
