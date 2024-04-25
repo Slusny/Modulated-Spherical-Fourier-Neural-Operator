@@ -469,6 +469,11 @@ def _main():
         default=None,
         help="Load model from checkpoint and use its configuration to initialize the model"
     )
+    training.add_argument(
+        "--enable-amp",
+        action="store_true",
+        help="Save RAM with AMP"
+    )
 
     # Logging
     logging_parser = parser.add_argument_group('Logging')
