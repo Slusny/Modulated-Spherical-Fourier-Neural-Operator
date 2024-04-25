@@ -395,6 +395,13 @@ def _main():
         type=float
     )
     training.add_argument(
+        "--scaling-horizon",
+        help="how many steps should it take to reach scale=1",
+        action="store",
+        default=2000,
+        type=float
+    )
+    training.add_argument(
         "--trainingdata-path",
         help="path to training data zarr file",
         action="store",

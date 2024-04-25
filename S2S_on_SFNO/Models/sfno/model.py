@@ -1124,7 +1124,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     # change scale value based on validation loss
                     if valid_mean < kwargs["val_loss_threshold"] and scale < 1.0:
                         val_log["scale"] = scale
-                        scale = scale + 0.05
+                        scale = scale + 0.02
 
                     # little complicated console logging - looks nicer than LOG.info(str(val_log))
                     print("-- validation after ",i*kwargs["batch_size"], "training examples")
