@@ -381,7 +381,8 @@ class FourCastNetv2(Model):
                 )
 
                 stepper(i, step)
-    def training_real(self,wandb_run=None,**kwargs):
+                
+    def training(self,wandb_run=None,**kwargs):
         self.load_statistics()
         self.set_seed(42) #torch.seed()
         LOG.info("Save path: %s", self.save_path)
