@@ -3,7 +3,7 @@
 #a) Define slurm job parameters
 ####
 
-#SBATCH --job-name=sfnofs
+#SBATCH --job-name=sfnoee
 
 #resources:
 
@@ -23,14 +23,14 @@
 #SBATCH --gres=gpu:1
 #the job can use and see 1 GPUs (4 GPUs are available in total on one node) use SBATCH --gres=gpu:1080ti:1 to explicitly demand a Geforce 1080 Ti GPU. Use SBATCH --gres=gpu:A4000:1 to explicitly demand a RTX A4000 GPU
 
-#SBATCH --time=00-09:00
+#SBATCH --time=00-19:00
 # the maximum time the scripts needs to run
 # "minutes:seconds", "hours:minutes:seconds", "days-hours","days-hours:minutes" and "days-hours:minutes:seconds"
 
-#SBATCH --error=/home/goswami/gkd965/jobs/job.sfnofinesunset.%J.err
+#SBATCH --error=/home/goswami/gkd965/jobs/job.sfnoee.%J.err
 # write the error output to job.*jobID*.err
 
-#SBATCH --output=/home/goswami/gkd965/jobs/job.sfnofinesunset.%J.out
+#SBATCH --output=/home/goswami/gkd965/jobs/job.sfnoee.%J.out
 # write the standard output to job.*jobID*.out
 
 #SBATCH --mail-type=ALL
@@ -39,5 +39,5 @@
 #SBATCH --mail-user=lennart.slusny@student.uni-tuebingen.de
 # your mail address
 
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version latest --validation-epochs 3 --training-workers 5 --batch-size 1 --multi-step-validation 3 --validation-step-skip 3 --eval-models-autoregressive --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/sfno/fine-sunset-13 #--eval-checkpoints
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version latest --validation-epochs 300 --training-workers 5 --batch-size 1 --multi-step-validation 5 --validation-step-skip 5 --eval-models-autoregressive --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/sfno/emissary-enterprise-8 
 echo DONE!
