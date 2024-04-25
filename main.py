@@ -700,8 +700,8 @@ def _main():
             print("save path: ",args.save_path)
             LOG.info("Process ID: %s", os.getpid())
             kwargs = vars(args)
+            print("called training with following arguments:")
             for k,v in kwargs.items():
-                print("called training with following arguments:")
                 print(f"    {k} : {v}")
             model.training(wandb_run=wandb_run,**kwargs)
         except :
