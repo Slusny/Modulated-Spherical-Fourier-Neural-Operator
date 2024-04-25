@@ -135,6 +135,7 @@ def calc_mean(variable,level,years,savepath):
         idx += 1
         if idx % save_interval == 0:
             mean.save(savepath)
+    mean.compute()
     mean.save(savepath)
 
 print("using xarray")
