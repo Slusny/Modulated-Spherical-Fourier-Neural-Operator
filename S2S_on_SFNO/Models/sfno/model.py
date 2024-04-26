@@ -18,6 +18,7 @@ from calendar import isleap
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
+import torch.cuda.amp as amp
 from ..models import Model
 from datetime import datetime
 # import xskillscore as xs
@@ -219,7 +220,6 @@ class FourCastNetv2(Model):
         # model = FourierNeuralOperatorNet()
         model = self.model # since self.model is a class this is passed by reference and modified in place
 
-        model.zero_grad()
         # Load weights
 
         checkpoint = torch.load(checkpoint_file)
@@ -230,9 +230,9 @@ class FourCastNetv2(Model):
         weights = {k: v for k, v in weights.items() if k not in drop_vars}
 
         # print state of loaded model:
-        if self.advanced_logging and 'hyperparameters' in checkpoint_sfno.items():
+        if self.advanced_logging and 'hyperparameters' in checkpoint.items():
             print("loaded model with following hyperparameters:")
-            for k,v in pp['hyperparameters'].items():print("    ",k,":",v)
+            for k,v in checkpoint['hyperparameters'].items():print("    ",k,":",v)
 
         # Make sure the parameter names are the same as the checkpoint
         # need to use strict = False to avoid this error message when
@@ -269,14 +269,15 @@ class FourCastNetv2(Model):
 
         # Set model to eval mode and return
         model.eval()
+        model.zero_grad()
         model.to(self.device)
 
         # free VRAM
         # del checkpoint ?? still needed if weights are send to device in same line as load_state_dict?
 
         # don't need to update sfno
-        for name, param in model.named_parameters():
-                param.requires_grad = False 
+        # for name, param in model.named_parameters():
+        #         param.requires_grad = False 
 
         return model
 
@@ -380,15 +381,23 @@ class FourCastNetv2(Model):
                 )
 
                 stepper(i, step)
+
     def training(self,wandb_run=None,**kwargs):
+        print("Training SFNO")
         self.load_statistics()
+        self.set_seed(42) #torch.seed()
+        LOG.info("Save path: %s", self.save_path)
         
+        if self.enable_amp == True:
+            self.gscaler = amp.GradScaler()
+
         print("Trainig Data:")
         dataset = ERA5_galvani(
             self,
             path=kwargs["trainingdata_path"], 
             start_year=kwargs["trainingset_start_year"],
             end_year=kwargs["trainingset_end_year"],
+            auto_regressive_steps=kwargs["multi_step_training"],
             sst=False
         )
         print("Validation Data:")
@@ -400,17 +409,36 @@ class FourCastNetv2(Model):
             auto_regressive_steps=kwargs["multi_step_validation"],
             sst=False)
         
+        if kwargs["advanced_logging"] : 
+            mem_log_not_done = True
+            print(" ~~~ The GPU Memory will be logged for the first optimization run ~~~")
+            print("mem after initialising model : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+        
         model = self.load_model(self.checkpoint_path)
         model.train()
 
         # optimizer = torch.optim.SGD(model.parameters(), lr=kwargs["learning_rate"]), momentum=0.9)
-        optimizer = torch.optim.Adam(model.parameters(), lr=kwargs["learning_rate"])
-        scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,T_0=kwargs["scheduler_horizon"])
+        self.optimizer = torch.optim.Adam(model.parameters(), lr=kwargs["learning_rate"])# store the optimizer and scheduler in the model class
+        
+        # Scheduler
+        if kwargs["scheduler_type"] == 'ReduceLROnPlateau':
+            self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, factor=0.2, patience=5, mode='min')
+        elif kwargs["scheduler_type"] == 'CosineAnnealingLR':
+            self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=kwargs["scheduler_horizon"])
+        elif kwargs["scheduler_type"] == 'CosineAnnealingWarmRestarts':
+            self.scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer,T_0=kwargs["scheduler_horizon"])
+        else:
+            self.scheduler = None
+        
+
         # store the optimizer and scheduler in the model class
-        self.optimizer = optimizer
-        self.scheduler = scheduler
+        optimizer = self.optimizer 
+        scheduler = self.scheduler 
 
         loss_fn = torch.nn.MSELoss()
+
+        if kwargs["advanced_logging"] and mem_log_not_done : 
+            print("mem after init optimizer and scheduler and loading weights : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
 
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"],pin_memory=torch.cuda.is_available())
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"],pin_memory=torch.cuda.is_available())
@@ -423,10 +451,16 @@ class FourCastNetv2(Model):
         self.iter = 0
 
 
-        for i, (input, g_truth) in enumerate(training_loader):
+        # to debug training don't start with validation, actually never start training with validation, we do not have space on the cluster
+        if self.debug:
+            start_valid = 1
+        else:
+            start_valid = 1
+
+        for i, data in enumerate(training_loader):
 
             # Validation
-            if i % kwargs["validation_interval"] == 0:
+            if (i+start_valid) % kwargs["validation_interval"] == 0:
                 val_loss = {}
                 val_log  = {}
                 model.eval()
@@ -455,13 +489,21 @@ class FourCastNetv2(Model):
                                 val_log[k]          = round(val_loss_array.mean(),5)
                                 val_log["std " + k] = round(val_loss_array.std(),5)
                             break
-                    
-                    if scheduler: 
+                
+                   
+                        #scheduler
+                    valid_mean = list(val_log.values())[0]
+                    if kwargs["scheduler_type"] == 'ReduceLROnPlateau':
+                        self.scheduler.step(valid_mean)
+                    elif kwargs["scheduler_type"] == 'CosineAnnealingLR':
+                        self.scheduler.step()
+                        if self.epoch >= kwargs["scheduler_horizon"]:
+                            LOG.info("Terminating training after reaching params.max_epochs while LR scheduler is set to CosineAnnealingLR") 
+                    elif kwargs["scheduler_type"] == 'CosineAnnealingWarmRestarts':
+                        self.scheduler.step(i)
+                    if scheduler is not None and scheduler != "None": 
                         lr = scheduler.get_last_lr()[0]
                         val_log["learning rate"] = lr
-                        scheduler.step(i)
-                   
-                    # LOG.info("Validation loss: "+str(mean_val_loss)+" +/- "+str(std_val_loss)+" (n={})".format(kwargs["validation_epochs"]))
 
                     # little complicated console logging - looks nicer
                     print("-- validation after ",i*kwargs["batch_size"], "training examples")
@@ -470,31 +512,71 @@ class FourCastNetv2(Model):
                         # log to console
                         LOG.info(val_log_keys[log_idx] + " : " + str(val_log[val_log_keys[log_idx]]) 
                                  + " +/- " + str(val_log[val_log_keys[log_idx+1]]))
-                        # log to local file
-                        self.val_means[log_idx].append(val_log[val_log_keys[log_idx]])
-                        self.val_stds[log_idx].append(val_log[val_log_keys[log_idx+1]])
+                        # # log to local file
+                        # self.val_means[log_idx].append(val_log[val_log_keys[log_idx]])
+                        # self.val_stds[log_idx].append(val_log[val_log_keys[log_idx+1]])
                     if wandb_run :
                         wandb.log(val_log)
+
                 if i % (kwargs["validation_interval"]*kwargs["save_checkpoint_interval"]) == 0:
                     save_file ="checkpoint_"+kwargs["model_type"]+"_"+kwargs["model_version"]+"_epoch={}.pkl".format(i)
                     self.save_checkpoint(save_file)
                 model.train()
+
+            
             
             # Training  
-            input_era5 = self.normalise(input).to(self.device)
-            g_truth_era5 = self.normalise(g_truth).to(self.device)
             
-            optimizer.zero_grad()
+            loss = 0
+            discount_factor = 1
+            with amp.autocast(self.enable_amp):
+                for step in range(kwargs["multi_step_training"]+1):
+                    #print(" - step : ", step) ## Log multistep loss better
+                    if kwargs["advanced_logging"] and mem_log_not_done : 
+                        print("mem before loading data : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                    if step == 0 : input_era5 = self.normalise(data[step][0]).to(self.device)
+                    else: input_era5 = outputs# get gt sst from next step
+                    g_truth_era5 = self.normalise(data[step+1][0]).to(self.device)
+                    
+                    if kwargs["advanced_logging"] and mem_log_not_done : 
+                        print("mem before exec model : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                    outputs = model(input_era5)
+                    # outputs = outputs.detach()
+                    # loss.append(loss_fn(outputs, g_truth_era5))#*discount_factor**step
+                    if step % (kwargs["training_step_skip"]+1) == 0:
+                        if kwargs["advanced_logging"] and ultra_advanced_logging: print("calculating loss for step ",step)
+                        if kwargs["advanced_logging"] and mem_log_not_done : 
+                            print("mem before loss : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                        loss = loss + loss_fn(outputs, g_truth_era5) #*discount_factor**step
+                    else:
+                        if kwargs["advanced_logging"] and ultra_advanced_logging : print("skipping step",step)
+                loss = loss / (self.accumulation_steps+1)
+            if kwargs["advanced_logging"] and mem_log_not_done : 
+                print("mem before backward : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+            
 
-            # Make predictions for this batch
-            outputs = model(input_era5)
+            #backward
+            if self.enable_amp:
+                self.gscaler.scale(loss).backward()
+            else:
+                loss.backward()
 
-            # Compute the loss and its gradients
-            loss = loss_fn(outputs, g_truth_era5)
-            loss.backward()
+
 
             # Adjust learning weights
-            optimizer.step()
+            if ((i + 1) % (self.accumulation_steps + 1) == 0) or (i + 1 == len(training_loader)):
+                # Update Optimizer
+                if kwargs["advanced_logging"] and mem_log_not_done : 
+                    print("mem before optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                if self.enable_amp:
+                    self.gscaler.step(self.optimizer)
+                    self.gscaler.update()
+                else:
+                    optimizer.step()
+                if kwargs["advanced_logging"] and mem_log_not_done : 
+                    print("mem after optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                    mem_log_not_done = False
+                model.zero_grad()
 
             # logging
             self.iter += 1
@@ -569,6 +651,233 @@ class FourCastNetv2(Model):
             
             torch.save(validation_loss_curve,os.path.join(save_path,"validation_loss_curve_autoregressivesteps_{}.pkl".format(auto_regressive_steps)))
         
+    def auto_regressive_skillscore(self,checkpoint_list,auto_regressive_steps,save_path,sfno=False):
+        """
+        Method to calculate the skill score of the model for different auto-regressive steps.
+        Needs batch size 1
+        """
+        
+        self.load_statistics(self.film_gen_type)
+        self.set_seed()
+        plot = True
+        
+        dataset_validation = ERA5_galvani(
+            self,
+            path=self.trainingdata_path, 
+            start_year=self.validationset_start_year,
+            end_year=self.validationset_end_year,
+            auto_regressive_steps=auto_regressive_steps)
+        
+        validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=self.training_workers, batch_size=self.batch_size)
+        loss_fn = torch.nn.MSELoss()#reduction='none'
+        loss_fn_pervar = torch.nn.MSELoss(reduction='none')
+
+        # load climatology reference
+        basePath = "/mnt/qb/work2/goswami0/gkd965/"
+        variables = ["10m_u_component_of_wind","2m_temperature","mean_sea_level_pressure","surface_pressure"]
+        mean_files = {
+            '10m_u_component_of_wind':'hourofyear_mean_for_10m_u_component_of_wind_from_1979_to_2017created_20240123-0404.nc',
+            '10m_v_component_of_wind':'hourofyear_mean_for_10m_v_component_of_wind_from_1979_to_2019created_20231211-1339.nc',
+            '2m_temperature':'hourofyear_mean_for_2m_temperature_from_1979_to_2017created_20240123-0343.nc',
+            'total_column_water_vapour':'hourofyear_mean_for_total_column_water_vapour_from_1979_to_2017created_20240123-0415.nc',
+            'mean_sea_level_pressure':'hourofyear_mean_for_mean_sea_level_pressure_from_1979_to_2018created_20240417-0044.nc',
+            'surface_pressure':'hourofyear_mean_for_surface_pressure_from_1979_to_2018created_20240417-0047.nc'
+        
+        }
+        # mean_file = os.path.join(basePath,"climate",mean_files[variable])
+        ds_ref  = {}
+        for var in variables:
+            ds_ref[var] = xr.open_dataset(os.path.join(basePath,"climate",mean_files[var])) 
+
+        print("skillscores for ",variables,":")
+        for cp_idx, checkpoint in enumerate(checkpoint_list):
+           
+            cp_name = checkpoint.split("/")[-1].split(".")[0]
+            print(" --- checkpoint : ",checkpoint," --- ")
+            model = self.load_model(checkpoint)
+            model.eval()
+            with torch.no_grad():
+                val_log = {}
+                val_loss = {}
+                
+                # For loop over validation dataset, calculates the validation loss mean for number of kwargs["validation_epochs"]
+                skill_score_validation_list = []
+                loss_validation_list = []
+                loss_validation_list_normalised = []
+                for val_epoch, val_data in enumerate(validation_loader):
+                    # Calculates the validation loss for autoregressive model evaluation
+                    # if self.auto_regressive_steps = 0 the dataloader only outputs 2 datapoint 
+                    # and the for loop only runs once (calculating the ordinary validation loss with no auto regressive evaluation
+                    skill_score_steps = []
+                    loss_per_steps = []
+                    loss_per_steps_normalised = []
+                    for val_idx in range(len(val_data)-1):
+                        # skip leap year feb 29 and subtract leap day from index
+                        time = val_data[val_idx][2].item()
+                        if isleap(int(str(time)[:4])) and str(time)[4:8] == "02029" : break # skip leap days ?????????????????????????????????????????
+                        # calculates the days since the 1.1. of the same year
+                        yday = datetime.strptime(str(time), '%Y%m%d%H').timetuple().tm_yday
+                        ref_idx = ((yday-1)*24 + int(str(time)[-2:])) + 1 # + 1 since we want a reference to the prediction
+                        # if we are in a leap year we subtract the leap day 29.2. from reference index to get the correct idx for clim ref
+                        if isleap(int(str(time)[:4])) and int(str(time)[4:6]) > 2 : ref_idx = ref_idx - 24
+                            
+                        if val_idx == 0: val_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
+                        else: val_input_era5 = outputs
+                        #
+                        # loss sfno 
+                        #    all (normalised) 0.3
+                        #    all              6811386 ??
+                        #    u10 (normalised) 0.8
+                        #    u10              4460.  ??
+                        outputs = self.model(val_input_era5)
+
+                        # skip MSE/Skillscore calculation if we want to skip steps in autoregressive rollout
+                        if val_idx % (self.validation_step_skip+1) == 0:
+                            
+                            # MSE real space - used for skillscore
+                            val_g_truth_era5 = val_data[val_idx+1][0]#.squeeze()[self.ordering_reverse[variable]]
+                            output_real_space = self.normalise(outputs.to("cpu"),reverse=True)#.squeeze()[self.ordering_reverse[variable]]
+                            # val_loss_value = loss_fn(output_real_space_var, val_g_truth_era5) # loss for only one variable
+                            val_loss_value_pervar = loss_fn_pervar(output_real_space, val_g_truth_era5).mean(dim=(0,2,3)) /self.batch_size
+                            
+                            # MSE normalised space - used for MSE plot
+                            # val_g_truth_era5 = self.normalise(val_data[val_idx+1][0]).to(self.device).squeeze()[self.ordering_reverse[variable]]
+                            val_g_truth_era5_normalised = self.normalise(val_g_truth_era5)
+                            val_loss_value_pervar_norm = loss_fn_pervar(outputs.to("cpu"), val_g_truth_era5_normalised).mean(dim=(0,2,3)) /self.batch_size
+                            
+    
+                            # Doo we neeed to squeeze, what if batches
+                            skill_scores = []
+                            for variable in variables:
+                                ref_img = torch.tensor(ds_ref[variable].isel(time=ref_idx).to_array().squeeze().to_numpy())
+                                ref_loss_value = loss_fn(ref_img,val_g_truth_era5.squeeze()[self.ordering_reverse[variable]])
+                                val_loss_value_variable = val_loss_value_pervar.squeeze()[self.ordering_reverse[variable]]
+                                skill_score  = 1 - val_loss_value_variable/ref_loss_value
+                                skill_scores.append(skill_score.item())
+    
+                            # accumulate loss vor each autoreressive step in a list
+                            skill_score_steps.append(skill_scores)
+                            loss_per_steps.append(val_loss_value_pervar.squeeze().numpy())
+                            loss_per_steps_normalised.append(val_loss_value_pervar_norm.squeeze().numpy())
+                            
+                            # plot image of variables for each autoregressive step for first validation point
+                            if plot and val_epoch==0: 
+                                for variable in variables:
+                                    output_var = output_real_space.squeeze()[self.ordering_reverse[variable]]
+                                    g_truth_var= val_g_truth_era5.squeeze()[self.ordering_reverse[variable]]
+                                    self.plot_variable(output_var,g_truth_var,save_path,cp_name, variable,steps=val_idx)
+                            if self.advanced_logging and ultra_advanced_logging : print("step ",val_idx)
+                        else:
+                            if self.advanced_logging and ultra_advanced_logging: print("skipping step ",val_idx)
+                    # accumulate loss vor each validation point in a list
+                    skill_score_validation_list.append(skill_score_steps)
+                    loss_validation_list.append(loss_per_steps)
+                    loss_validation_list_normalised.append(loss_per_steps_normalised)
+                    
+                    # print skill scores for the validation point
+                    if self.advanced_logging:
+                        for var_idx, variable in enumerate(variables):
+                            print("skillscore ",variable," :")
+                            for i in range(len(skill_score_steps)):
+                                print("step ",i*(self.validation_step_skip+1),":",round(skill_score_steps[i][var_idx],4))
+
+                    # Do we need Checkpoints?
+
+                    # end of validation 
+                    if val_epoch > self.validation_epochs:
+                        print("save at ",save_path)
+                        savefile=os.path.join(save_path,"{}_{}_{}.npy")         
+                        np.save(savefile.format(cp_name,"skill_score","film"),skill_score_validation_list)
+                        np.save(savefile.format(cp_name,"MSE","sfno"),loss_validation_list)
+                        np.save(savefile.format(cp_name,"MSE_normalised","sfno"),loss_validation_list_normalised)
+                        print("done:")
+                        scml = np.array(skill_score_validation_list) #shape (validation iters, steps, variables)
+                        mean_scml = scml.mean(axis=0)
+                        std_scml  = scml.std(axis=0)
+                        mean_lvln = np.array(loss_validation_list_normalised).mean(axis=0)
+                        mean_lvl  = np.array(loss_validation_list).mean(axis=0)
+                        std_lvln  = np.array(loss_validation_list_normalised).std(axis=0)
+                        std_lvl   = np.array(loss_validation_list).std(axis=0)
+                        
+                        for var_idx, variable in enumerate(variables): 
+                            LOG.info("mean skillscore {} (n={}) :".format(variable,val_epoch+1))#
+                            for i in range(mean_scml.shape[0]):
+                                print("step ",i*(self.validation_step_skip+1),":",round(mean_scml[i][var_idx],4),"+/-",round(std_scml[i][var_idx],4))
+                        
+                        # loss for each variable
+                        if plot: #self.advanced_logging:
+                            self.plot_skillscores(mean_scml,std_scml,save_path,variables,cp_name,str(val_epoch+1))
+                            # self.plot_loss_allvariables(mean_lvl,std_lvl,save_path,cp_name,"MSE",str(val_idx+1))
+                            self.plot_loss_allvariables(mean_lvln,std_lvln,save_path,cp_name,"MSE Normalised",str(val_epoch+1))
+
+                        
+                        
+                        break
+    def plot_variable(self,output,groud_truth,save_path,checkpoint,variable,steps,sfno=True):
+        fig,ax = plt.subplots(1,2,figsize=(16,4))
+        hrs =  steps*6 + 6
+        if sfno: 
+            ax[0].set_title("SFNO")
+        else:
+            ax[0].set_title("FiLM")
+        im0 = ax[0].imshow(output)
+        fig.colorbar(im0, ax=ax[0],shrink=0.7)
+    
+        ax[1].set_title("Ground Truth")
+        im1 = ax[1].imshow(groud_truth)
+        fig.colorbar(im1, ax=ax[1],shrink=0.7)
+
+        fig.suptitle(variable + " " + str(hrs) + "hr forecast")
+        plt.savefig(os.path.join(save_path,'variable_plots',checkpoint+"_"+variable+"_hrs"+str(hrs)+".pdf"))
+        plt.close(fig)
+    
+    def plot_loss_allvariables(self,mean,std,save_path,checkpoint,title,val_epochs):
+        yerr_bottom = std.copy()
+        yerr_bottom_div = mean - yerr_bottom
+        yerr_bottom_div[yerr_bottom_div>0]=0
+        yerr_bottom = yerr_bottom + yerr_bottom_div
+        yerr = np.array([yerr_bottom,std])
+        cmap=plt.get_cmap('hot')
+        hrs = np.array(range(mean.shape[0]))*(self.validation_step_skip+1)*6 + 6
+        for f in range(2):
+            fig, ax = plt.subplots(figsize=(16,9))
+            plt.title(title)
+            ax.errorbar(range(mean.shape[1]),mean[0,:],yerr=yerr[:,0,:],fmt='o',c='black',ecolor='midnightblue',label=str(hrs[0])+" hrs")
+            for i in range(1,mean.shape[0]):
+                ax.scatter(range(mean.shape[1]),mean[i,:],marker='o',alpha=0.6,color=cmap(i/mean.shape[0]),label=str(hrs[i])+" hrs")
+            plt.xticks(np.arange(len(self.ordering)), self.ordering, rotation='vertical')
+            plt.grid()
+            handles, labels = plt.gca().get_legend_handles_labels()
+            order = list(range(len(handles)))
+            order = [order[-1]] + order[:-1]
+            plt.legend([handles[idx] for idx in order],[labels[idx] for idx in order])
+            if f == 0:
+                plt.ylim(0,5)
+                plt.savefig(os.path.join(save_path,checkpoint+"_"+title+"_validation_steps"+str(val_epochs)+"_steps"+str(mean.shape[0])+"_skips"+str(self.validation_step_skip)+"_ylimited.pdf"))
+            else:
+                plt.savefig(os.path.join(save_path,checkpoint+"_"+title+"_validation_steps"+str(val_epochs)+"_steps"+str(mean.shape[0])+"_skips"+str(self.validation_step_skip)+".pdf"))
+            plt.close(fig)
+
+    def plot_skillscores(self,mean,std,save_path,variables,checkpoint,val_epochs):
+        
+        hrs = np.array(range(mean.shape[0]))*(self.validation_step_skip+1)*6 + 6
+        for f in range(2):
+            fig, ax = plt.subplots(figsize=(16,9))
+            for v in range(mean.shape[1]):
+                ax.errorbar(hrs,mean[:,v],yerr=std[:,v],fmt='o--',label=variables[v])
+            plt.title("Skillscores")
+            ax.set_xlabel("forecast [hrs]")
+            ax.set_ylabel("skillscore")
+            plt.grid()
+            plt.legend()
+            if f == 0:
+                plt.ylim(-1,1)
+                plt.savefig(os.path.join(save_path,checkpoint+"_"+"Skillscores"+"_validation_steps"+str(val_epochs)+"_steps"+str(mean.shape[0])+"_skips"+str(self.validation_step_skip)+"_ylimited.pdf"))
+            else:
+                plt.savefig(os.path.join(save_path,checkpoint+"_"+"Skillscores"+"_validation_steps"+str(val_epochs)+"_steps"+str(mean.shape[0])+"_skips"+str(self.validation_step_skip)+".pdf"))
+            plt.close(fig)
+    
+
     # needed only for offline logging, commented out atm
     def save_checkpoint(self,save_file=None):
         if local_logging : 
@@ -686,6 +995,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
         self.load_statistics(kwargs["film_gen_type"])
         self.set_seed(42) #torch.seed()
         LOG.info("Save path: %s", self.save_path)
+
+        if self.enable_amp == True:
+            self.gscaler = amp.GradScaler()
         
         print("Trainig Data:")
         dataset = ERA5_galvani(
@@ -753,7 +1065,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         for i, data in enumerate(training_loader):
 
             # Validation
-            if (i+start_valid) % kwargs["validation_interval"] == 0: # +1 to skip sfno eval but then scale needs to be higher not 0 for sfno
+            if (i+start_valid) % (kwargs["validation_interval"]*(self.accumulation_steps + 1)) == 0: # +1 to skip sfno eval but then scale needs to be higher not 0 for sfno
                 if kwargs["advanced_logging"] and mem_log_not_done : 
                     print("mem before validation : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
                 val_loss = {}
@@ -812,7 +1124,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     # change scale value based on validation loss
                     if valid_mean < kwargs["val_loss_threshold"] and scale < 1.0:
                         val_log["scale"] = scale
-                        scale = scale + 0.05
+                        scale = scale + 0.02
 
                     # little complicated console logging - looks nicer than LOG.info(str(val_log))
                     print("-- validation after ",i*kwargs["batch_size"], "training examples")
@@ -844,42 +1156,54 @@ class FourCastNetv2_filmed(FourCastNetv2):
             # loss = []
             loss = 0
             discount_factor = 1
-            for step in range(kwargs["multi_step_training"]+1):
-                #print(" - step : ", step) ## Log multistep loss better
-                if kwargs["advanced_logging"] and mem_log_not_done : 
-                    print("mem before loading data : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-                if step == 0 : input_era5 = self.normalise(data[step][0]).to(self.device)
-                else: input_era5 = outputs
-                input_sst  = self.normalise_film(data[step+1][1]).to(self.device) # get gt sst from next step
-                g_truth_era5 = self.normalise(data[step+1][0]).to(self.device)
-                
-                if kwargs["advanced_logging"] and mem_log_not_done : 
-                    print("mem before exec model : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-                outputs = model(input_era5,input_sst,scale)
-                # outputs = outputs.detach()
-                # loss.append(loss_fn(outputs, g_truth_era5))#*discount_factor**step
-                if step % (kwargs["training_step_skip"]+1) == 0:
-                    if kwargs["advanced_logging"] and ultra_advanced_logging: print("calculating loss for step ",step)
+            with amp.autocast(self.enable_amp):
+                for step in range(kwargs["multi_step_training"]+1):
+                    #print(" - step : ", step) ## Log multistep loss better
                     if kwargs["advanced_logging"] and mem_log_not_done : 
-                        print("mem before loss : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-                    loss = loss + loss_fn(outputs, g_truth_era5) #*discount_factor**step
-                else:
-                    if kwargs["advanced_logging"] and ultra_advanced_logging : print("skipping step",step)
-            loss = loss / (self.accumulation_steps+1)
+                        print("mem before loading data : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                    if step == 0 : input_era5 = self.normalise(data[step][0]).to(self.device)
+                    else: input_era5 = outputs
+                    input_sst  = self.normalise_film(data[step+1][1]).to(self.device) # get gt sst from next step
+                    g_truth_era5 = self.normalise(data[step+1][0]).to(self.device)
+                    
+                    if kwargs["advanced_logging"] and mem_log_not_done : 
+                        print("mem before exec model : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                    outputs = model(input_era5,input_sst,scale)
+                    # outputs = outputs.detach()
+                    # loss.append(loss_fn(outputs, g_truth_era5))#*discount_factor**step
+                    if step % (kwargs["training_step_skip"]+1) == 0:
+                        if kwargs["advanced_logging"] and ultra_advanced_logging: print("calculating loss for step ",step)
+                        if kwargs["advanced_logging"] and mem_log_not_done : 
+                            print("mem before loss : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                        loss = loss + loss_fn(outputs, g_truth_era5) #*discount_factor**step
+                    else:
+                        if kwargs["advanced_logging"] and ultra_advanced_logging : print("skipping step",step)
+                loss = loss / (self.accumulation_steps+1)
             if kwargs["advanced_logging"] and mem_log_not_done : 
                 print("mem before backward : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-            loss.backward()
+            
+            #backward
+            if self.enable_amp:
+                self.gscaler.scale(loss).backward()
+            else:
+                loss.backward()
+
 
             # Adjust learning weights
             if ((i + 1) % (self.accumulation_steps + 1) == 0) or (i + 1 == len(training_loader)):
                 # Update Optimizer
                 if kwargs["advanced_logging"] and mem_log_not_done : 
                     print("mem before optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-                optimizer.step()
+                if self.enable_amp:
+                    self.gscaler.step(self.optimizer)
+                    self.gscaler.update()
+                else:
+                    optimizer.step()
                 if kwargs["advanced_logging"] and mem_log_not_done : 
                     print("mem after optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
                     mem_log_not_done = False
                 model.zero_grad()
+
 
                 # logging
                 self.iter += 1
@@ -976,10 +1300,10 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     for val_idx in range(len(val_data)-1):
                         # skip leap year feb 29 and subtract leap day from index
                         time = val_data[val_idx][2].item()
-                        if isleap(int(str(time)[:4])) and str(time)[4:8] == "02029" : break
+                        if isleap(int(str(time)[:4])) and str(time)[4:8] == "02029" : break # skip leap days ?????????????????????????????????????????
                         # calculates the days since the 1.1. of the same year
                         yday = datetime.strptime(str(time), '%Y%m%d%H').timetuple().tm_yday
-                        ref_idx = ((yday-1)*24 + int(str(time)[-2:]))#//6
+                        ref_idx = ((yday-1)*24 + int(str(time)[-2:])) + 1 # + 1 since we want a reference to the prediction
                         # if we are in a leap year we subtract the leap day 29.2. from reference index to get the correct idx for clim ref
                         if isleap(int(str(time)[:4])) and int(str(time)[4:6]) > 2 : ref_idx = ref_idx - 24
                             
@@ -1068,7 +1392,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         std_lvl   = np.array(loss_validation_list).std(axis=0)
                         
                         for var_idx, variable in enumerate(variables): 
-                            print("mean skillscore ",variable," :")
+                            LOG.info("mean skillscore {} (n={}) :".format(variable,val_epoch+1))#
                             for i in range(mean_scml.shape[0]):
                                 print("step ",i*(self.validation_step_skip+1),":",round(mean_scml[i][var_idx],4),"+/-",round(std_scml[i][var_idx],4))
                         

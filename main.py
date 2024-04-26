@@ -395,6 +395,13 @@ def _main():
         type=float
     )
     training.add_argument(
+        "--scaling-horizon",
+        help="how many steps should it take to reach scale=1",
+        action="store",
+        default=2000,
+        type=float
+    )
+    training.add_argument(
         "--trainingdata-path",
         help="path to training data zarr file",
         action="store",
@@ -410,7 +417,7 @@ def _main():
     training.add_argument(
         "--batch-size",
         action="store",
-        default=5,
+        default=1,
         type=int
     )
     # FourCastNet uses 0.0005
@@ -468,6 +475,11 @@ def _main():
         action="store",
         default=None,
         help="Load model from checkpoint and use its configuration to initialize the model"
+    )
+    training.add_argument(
+        "--enable-amp",
+        action="store_true",
+        help="Save RAM with AMP"
     )
 
     # Logging
@@ -635,11 +647,23 @@ def _main():
 
     resume_cp = args.resume_checkpoint
     if args.eval_models_autoregressive:
-        resume_cp = checkpoint_list = list(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len))[-1]
+        resume_cp = list(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len))[-1]
     if resume_cp:
         cp = torch.load(resume_cp)
-        if not 'hyperparameters' in cp.keys(): print("couldn't load model configuration from checkpoint")
-        model = load_model(cp["hyperparameters"]["model_type"], cp["hyperparameters"])
+        if not 'hyperparameters' in cp.keys(): 
+            print("couldn't load model configuration from checkpoint")
+            model = load_model(args.model_type, vars(args))
+        else:
+            model_args = cp["hyperparameters"]
+            model_args["trainingdata_path"] = args.trainingdata_path
+            model_args["validationset_start_year"] = args.validationset_start_year
+            model_args["validationset_end_year"] = args.validationset_end_year
+            model_args["training_workers"] = args.training_workers
+            model_args["batch_size"] = args.batch_size
+            model_args["validation_step_skip"] = args.validation_step_skip
+            model_args["validation_epochs"] = args.validation_epochs
+            model_args["advanced_logging"] = args.advanced_logging
+            model = load_model(cp["hyperparameters"]["model_type"], model_args)
     else:
         model = load_model(args.model_type, vars(args))
 
@@ -683,6 +707,9 @@ def _main():
             print("save path: ",args.save_path)
             LOG.info("Process ID: %s", os.getpid())
             kwargs = vars(args)
+            print("called training with following arguments:")
+            for k,v in kwargs.items():
+                print(f"    {k} : {v}")
             model.training(wandb_run=wandb_run,**kwargs)
         except :
             LOG.error(traceback.format_exc())
