@@ -647,7 +647,7 @@ def _main():
 
     resume_cp = args.resume_checkpoint
     if args.eval_models_autoregressive:
-        resume_cp = checkpoint_list = list(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len))[-1]
+        resume_cp = list(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len))[-1]
     if resume_cp:
         cp = torch.load(resume_cp)
         if not 'hyperparameters' in cp.keys(): 
