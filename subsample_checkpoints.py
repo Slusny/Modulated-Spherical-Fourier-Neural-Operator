@@ -18,13 +18,13 @@ args = parser.parse_args()
 path = args.path
 
 if path[-1] == "/":path = path[:-1]
-del_path = path+"_delete"
+del_path = path+"-delete"
 # os.rename(path,del_path)
 os.system(f"mv {path} {del_path}")
 os.makedirs(path)
 
 for file in ["losses.npy","val_means.npy","val_stds.npy"]:
-    shutil.copyfile(os.path.join(del_path,file), os.path.join(path,file))
+    shutil.move(os.path.join(del_path,file), os.path.join(path,file))
 
 cp_list = list(sorted(glob.glob(os.path.join(del_path,"checkpoint_*")),key=len))
 beta_list = list(sorted(glob.glob(os.path.join(del_path,"beta_*")),key=len))
@@ -65,10 +65,10 @@ else:
     print("missing keep or keep_num argument")
 
 for cp in checkpoint_list_shorten:
-    shutil.copy(cp, os.path.join(path,cp.split("/")[-1]))
+    shutil.move(cp, os.path.join(path,cp.split("/")[-1]))
 
 for beta in beta_list_shorten:
-    shutil.copy(cp, os.path.join(path,cp.split("/")[-1]))
+    shutil.move(cp, os.path.join(path,cp.split("/")[-1]))
 
 for cp in gamma_list_shorten:
-    shutil.copy(cp, os.path.join(path,cp.split("/")[-1]))
+    shutil.move(cp, os.path.join(path,cp.split("/")[-1]))
