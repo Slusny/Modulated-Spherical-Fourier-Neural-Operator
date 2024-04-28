@@ -25,7 +25,8 @@ os.system(f"mv {path} {del_path}")
 os.makedirs(path)
 
 for file in ["losses.npy","val_means.npy","val_stds.npy"]:
-    shutil.move(os.path.join(del_path,file), os.path.join(path,file))
+    if os.path.exists(os.path.join(del_path,file)):
+        shutil.move(os.path.join(del_path,file), os.path.join(path,file))
 
 cp_list = list(sorted(glob.glob(os.path.join(del_path,"checkpoint_*")),key=len))
 beta_list = list(sorted(glob.glob(os.path.join(del_path,"beta_*")),key=len))
