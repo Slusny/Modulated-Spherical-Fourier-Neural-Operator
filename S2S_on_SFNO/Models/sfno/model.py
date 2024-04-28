@@ -516,9 +516,9 @@ class FourCastNetv2(Model):
                         # self.val_means[log_idx].append(val_log[val_log_keys[log_idx]])
                         # self.val_stds[log_idx].append(val_log[val_log_keys[log_idx+1]])
                     if wandb_run :
-                        wandb.log(val_log)
+                        wandb.log(val_log, commit=False)
 
-                if i % (kwargs["validation_interval"]*kwargs["save_checkpoint_interval"]) == 0:
+                if (i+1) % (kwargs["validation_interval"]*kwargs["save_checkpoint_interval"]) == 0:
                     save_file ="checkpoint_"+kwargs["model_type"]+"_"+kwargs["model_version"]+"_epoch={}.pkl".format(i)
                     self.save_checkpoint(save_file)
                 model.train()
@@ -1136,9 +1136,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         # self.val_means[log_idx].append(val_log[val_log_keys[log_idx]]) ## error here
                         # self.val_stds[log_idx].append(val_log[val_log_keys[log_idx+1]]) 
                     if wandb_run :
-                        wandb.log(val_log)
+                        wandb.log(val_log,commit=False)
                 # save model and training statistics for checkpointing
-                if i % (kwargs["validation_interval"]*kwargs["save_checkpoint_interval"]) == 0:
+                if (i+1) % (kwargs["validation_interval"]*kwargs["save_checkpoint_interval"]) == 0:
                     save_file ="checkpoint_"+kwargs["model_type"]+"_"+kwargs["model_version"]+"_"+kwargs["film_gen_type"]+"_epoch={}.pkl".format(i)
                     self.save_checkpoint(save_file)
                     if self.params["advanced_logging"]:

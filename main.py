@@ -608,6 +608,8 @@ def _main():
     if args.model_version == "film" and args.film_gen_type is None: 
         print("using film generator: gcn_custom")
         args.film_gen_type = "gcn_custom"
+    # scheduler is updated in every validation interval. To arive at the total horizon in standard iters we divide by the validation interval
+    args.scheduler_horizon = args.scheduler_horizon//args.validation_interval
 
     
     # init wandb and create directory for saveing training results

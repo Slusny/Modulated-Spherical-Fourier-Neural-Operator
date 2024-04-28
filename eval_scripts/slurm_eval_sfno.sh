@@ -3,7 +3,7 @@
 #a) Define slurm job parameters
 ####
 
-#SBATCH --job-name=sfnodr
+#SBATCH --job-name=sfnovl
 
 #resources:
 
