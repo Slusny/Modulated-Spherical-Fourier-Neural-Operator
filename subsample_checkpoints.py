@@ -70,10 +70,13 @@ else:
     print("missing keep or keep_num argument")
 
 for cp in checkpoint_list_shorten:
+    if not os.path.exists(cp):print(f"checkpoint {cp} does not exist");continue
     shutil.move(cp, os.path.join(path,cp.split("/")[-1]))
 
 for beta in beta_list_shorten:
-    shutil.move(cp, os.path.join(path,cp.split("/")[-1]))
+    if not os.path.exists(cp):print(f"beta {beta} does not exist");continue
+    shutil.move(beta, os.path.join(path,beta.split("/")[-1]))
 
-for cp in gamma_list_shorten:
-    shutil.move(cp, os.path.join(path,cp.split("/")[-1]))
+for gamma in gamma_list_shorten:
+    if not os.path.exists(gamma):print(f"beta {gamma} does not exist");continue
+    shutil.move(gamma, os.path.join(path,gamma.split("/")[-1]))
