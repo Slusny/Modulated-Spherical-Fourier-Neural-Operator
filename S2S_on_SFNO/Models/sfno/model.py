@@ -1236,6 +1236,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
         Needs batch size 1
         """
         
+        wb_ref = True
+
         self.load_statistics(self.film_gen_type)
         self.set_seed()
         plot = True
@@ -1265,8 +1267,11 @@ class FourCastNetv2_filmed(FourCastNetv2):
         }
         # mean_file = os.path.join(basePath,"climate",mean_files[variable])
         ds_ref  = {}
-        for var in variables:
-            ds_ref[var] = xr.open_dataset(os.path.join(basePath,"climate",mean_files[var])) 
+        if wb_ref:
+            ds_ref = xr.open_dataset("/mnt/qb/goswami/data/era5/weatherbench2/1990-2019_6h_1440x721.zarr")
+        else:
+            for var in variables:
+                ds_ref[var] = xr.open_dataset(os.path.join(basePath,"climate",mean_files[var])) 
         # if sfno:
         #     sfno.load_statistics()
         #     sfno_model = sfno.load_model(sfno.checkpoint_path)
@@ -1311,7 +1316,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         if isleap(int(str(time)[:4])) and str(time)[4:8] == "02029" : break # skip leap days ?????????????????????????????????????????
                         # calculates the days since the 1.1. of the same year
                         yday = datetime.strptime(str(time), '%Y%m%d%H').timetuple().tm_yday
-                        ref_idx = ((yday-1)*24 + int(str(time)[-2:])) + 1 # + 1 since we want a reference to the prediction
+                        hour = int(str(time)[-2:])
+                        ref_idx = ((yday-1)*24 + hour) + 1 # + 1 since we want a reference to the prediction
                         # if we are in a leap year we subtract the leap day 29.2. from reference index to get the correct idx for clim ref
                         if isleap(int(str(time)[:4])) and int(str(time)[4:6]) > 2 : ref_idx = ref_idx - 24
                             
@@ -1344,7 +1350,10 @@ class FourCastNetv2_filmed(FourCastNetv2):
                             # Doo we neeed to squeeze, what if batches
                             skill_scores = []
                             for variable in variables:
-                                ref_img = torch.tensor(ds_ref[variable].isel(time=ref_idx).to_array().squeeze().to_numpy())
+                                if wb_ref:
+                                    ref_img = ds_ref[variable].isel(dayofyear=yday,hour=hour).to_array().squeeze().to_numpy()
+                                else:
+                                    ref_img = torch.tensor(ds_ref[variable].isel(time=ref_idx).to_array().squeeze().to_numpy())
                                 ref_loss_value = loss_fn(ref_img,val_g_truth_era5.squeeze()[self.ordering_reverse[variable]])
                                 val_loss_value_variable = val_loss_value_pervar.squeeze()[self.ordering_reverse[variable]]
                                 skill_score  = 1 - val_loss_value_variable/ref_loss_value
