@@ -435,7 +435,10 @@ class FourCastNetv2(Model):
         optimizer = self.optimizer 
         scheduler = self.scheduler 
 
-        loss_fn = torch.nn.MSELoss()
+        if kwargs["loss_fn"] == "CosineMSE":
+            loss_fn = CosineMSELoss()
+        else:
+            loss_fn = torch.nn.MSELoss()
 
         if kwargs["advanced_logging"] and mem_log_not_done : 
             print("mem after init optimizer and scheduler and loading weights : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
@@ -516,9 +519,9 @@ class FourCastNetv2(Model):
                         # self.val_means[log_idx].append(val_log[val_log_keys[log_idx]])
                         # self.val_stds[log_idx].append(val_log[val_log_keys[log_idx+1]])
                     if wandb_run :
-                        wandb.log(val_log)
+                        wandb.log(val_log, commit=False)
 
-                if i % (kwargs["validation_interval"]*kwargs["save_checkpoint_interval"]) == 0:
+                if (i+1) % (kwargs["validation_interval"]*kwargs["save_checkpoint_interval"]) == 0:
                     save_file ="checkpoint_"+kwargs["model_type"]+"_"+kwargs["model_version"]+"_epoch={}.pkl".format(i)
                     self.save_checkpoint(save_file)
                 model.train()
@@ -1039,7 +1042,12 @@ class FourCastNetv2_filmed(FourCastNetv2):
         optimizer = self.optimizer 
         scheduler = self.scheduler 
         
-        loss_fn = torch.nn.MSELoss()
+        #Loss
+        if kwargs["loss_fn"] == "CosineMSE":
+            loss_fn = CosineMSELoss()
+        else:
+            loss_fn = torch.nn.MSELoss()
+
         if kwargs["advanced_logging"]: loss_fn_pervar = torch.nn.MSELoss(reduction='none')
 
         if kwargs["advanced_logging"] and mem_log_not_done : 
@@ -1048,7 +1056,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
 
-        scale = 0.001
+        scale = 0.0001
         # for logging to local file (no wandb)
         self.val_means = [[]] * (kwargs["multi_step_validation"]+1)
         self.val_stds  = [[]] * (kwargs["multi_step_validation"]+1)
@@ -1124,7 +1132,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     # change scale value based on validation loss
                     if valid_mean < kwargs["val_loss_threshold"] and scale < 1.0:
                         val_log["scale"] = scale
-                        scale = scale + 0.02
+                        scale = scale + 0.002
 
                     # little complicated console logging - looks nicer than LOG.info(str(val_log))
                     print("-- validation after ",i*kwargs["batch_size"], "training examples")
@@ -1136,9 +1144,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         # self.val_means[log_idx].append(val_log[val_log_keys[log_idx]]) ## error here
                         # self.val_stds[log_idx].append(val_log[val_log_keys[log_idx+1]]) 
                     if wandb_run :
-                        wandb.log(val_log)
+                        wandb.log(val_log,commit=False)
                 # save model and training statistics for checkpointing
-                if i % (kwargs["validation_interval"]*kwargs["save_checkpoint_interval"]) == 0:
+                if (i+1) % (kwargs["validation_interval"]*kwargs["save_checkpoint_interval"]) == 0:
                     save_file ="checkpoint_"+kwargs["model_type"]+"_"+kwargs["model_version"]+"_"+kwargs["film_gen_type"]+"_epoch={}.pkl".format(i)
                     self.save_checkpoint(save_file)
                     if self.params["advanced_logging"]:
@@ -1502,7 +1510,21 @@ class FourCastNetv2_filmed(FourCastNetv2):
             print("allocated:",a)
             print("free:",f)    
 
+class CosineMSELoss(torch.nn.Module):
+    def __init__(self, reduction=None):
+        super().__init__()
+        self._mse = torch.nn.MSELoss(reduction='none')
 
+    def forward(self, x, y):
+        B, C, H, W = x.shape
+
+        weights = torch.cos(torch.linspace(-torch.pi / 2, torch.pi / 2, H, device=x.device, dtype=x.dtype))
+        weights /= weights.sum()
+        weights = weights[None, None, :, None]
+
+        loss = self._mse(x, y)
+        loss = (loss * weights).sum(dim=[2,3]) / W
+        return loss  # B, C
 
 
 def get_model(**kwargs):

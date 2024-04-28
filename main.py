@@ -481,6 +481,13 @@ def _main():
         action="store_true",
         help="Save RAM with AMP"
     )
+    training.add_argument(
+        "--loss-fn",
+        action="store",
+        help="Which loss function to use",
+        default="MSE",
+        choices=["MSE","CosineMSE"],
+    )
 
     # Logging
     logging_parser = parser.add_argument_group('Logging')
@@ -608,6 +615,8 @@ def _main():
     if args.model_version == "film" and args.film_gen_type is None: 
         print("using film generator: gcn_custom")
         args.film_gen_type = "gcn_custom"
+    # scheduler is updated in every validation interval. To arive at the total horizon in standard iters we divide by the validation interval
+    args.scheduler_horizon = args.scheduler_horizon//args.validation_interval
 
     
     # init wandb and create directory for saveing training results

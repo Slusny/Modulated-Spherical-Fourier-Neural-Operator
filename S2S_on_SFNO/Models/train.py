@@ -134,7 +134,7 @@ class ERA5_galvani(Dataset):
                     scf[2:],
                     pl)))
             else: 
-                data = torch.from_numpy(np.vstack((scf,pl)))
+                data = torch.from_numpy(np.vstack((scf,pl))) # transpose to have the same shape as expected by SFNO (lat,long)
             if self.sst:
                 sst = sample["sea_surface_temperature"]
                 if self.coarse_level > 1:
