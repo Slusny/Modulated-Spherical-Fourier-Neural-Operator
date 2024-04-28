@@ -10,6 +10,7 @@ import re
 # Argparser takes the path to the directory where checkpoints should be deleted
 parser = argparse.ArgumentParser()
 parser.add_argument("--path", type=str, required=True)
+parser.add_argument("--dest", type=str, default=None)
 parser.add_argument("--keep-num", type=int)
 parser.add_argument("--keep", type=str,nargs='+', default=[],)
    
@@ -19,10 +20,14 @@ args = parser.parse_args()
 path = args.path
 
 if path[-1] == "/":path = path[:-1]
-del_path = path+"-delete"
-# os.rename(path,del_path)
-os.system(f"mv {path} {del_path}")
-os.makedirs(path)
+if args.dest is not None:
+    del_path = path
+    path = args.dest
+else:
+    del_path = path+"-delete"
+    # os.rename(path,del_path)
+    os.system(f"mv {path} {del_path}")
+    os.makedirs(path)
 
 for file in ["losses.npy","val_means.npy","val_stds.npy"]:
     if os.path.exists(os.path.join(del_path,file)):
