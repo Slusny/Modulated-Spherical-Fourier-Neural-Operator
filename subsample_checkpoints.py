@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 import glob
 import argparse
@@ -36,6 +37,10 @@ if len(args.keep) > 0:
     beta_file = re.sub(r"\d+","{}",beta_list[-1].split("/")[-1])
     gamma_file = re.sub(r"\d+","{}",gamma_list[-1].split("/")[-1])
     checkpoint_list_shorten = [os.path.join(del_path,checkpoint_file.format(checkpoint)) for checkpoint in args.keep]
+    for cp in checkpoint_list_shorten:
+        if not os.path.exists(cp):
+            print(f"checkpoint {cp} does not exist")
+            sys.exit(1)
     beta_list_shorten = [os.path.join(del_path,beta_file.format(beta)) for beta in args.keep]
     gamma_list_shorten = [os.path.join(del_path,gamma_file.format(gamma)) for gamma in args.keep]
 elif args.keep_num > 1:
