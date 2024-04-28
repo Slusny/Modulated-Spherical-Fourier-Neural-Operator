@@ -5,7 +5,7 @@ import glob
 import argparse
 import shutil
 import re
-
+#
 
 # Argparser takes the path to the directory where checkpoints should be deleted
 parser = argparse.ArgumentParser()
