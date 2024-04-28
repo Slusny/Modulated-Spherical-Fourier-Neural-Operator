@@ -31,6 +31,7 @@ else:
 
 for file in ["losses.npy","val_means.npy","val_stds.npy"]:
     if os.path.exists(os.path.join(del_path,file)):
+        print(f"moving ",os.path.join(path,file))
         shutil.move(os.path.join(del_path,file), os.path.join(path,file))
 
 cp_list = list(sorted(glob.glob(os.path.join(del_path,"checkpoint_*")),key=len))
