@@ -15,12 +15,17 @@ parser.add_argument("--keep", type=str,nargs='+', default=[],)
 
 args = parser.parse_args()
 
-del_path = args.path+"_delete"
-os.rename(args.path,del_path)
-os.makedirs(args.path)
+path = args.path
+
+if path[-1] == "/":path = path[:-1]
+del_path = path+"_delete/"
+path =  path+"/"
+# os.rename(path,del_path)
+os.system(f"mv {path} {del_path}")
+os.makedirs(path)
 
 for file in ["losses.npy","val_means.npy","val_stds.npy"]:
-    shutil.copyfile(os.path.join(del_path,file), os.path.join(args.path,file))
+    shutil.copyfile(os.path.join(del_path,file), os.path.join(path,file))
 
 cp_list = list(sorted(glob.glob(os.path.join(del_path,"checkpoint_*")),key=len))
 beta_list = list(sorted(glob.glob(os.path.join(del_path,"beta_*")),key=len))
@@ -61,10 +66,10 @@ else:
     print("missing keep or keep_num argument")
 
 for cp in checkpoint_list_shorten:
-    shutil.copy(cp, os.path.join(args.path,cp.split("/")[-1]))
+    shutil.copy(cp, os.path.join(path,cp.split("/")[-1]))
 
 for beta in beta_list_shorten:
-    shutil.copy(cp, os.path.join(args.path,cp.split("/")[-1]))
+    shutil.copy(cp, os.path.join(path,cp.split("/")[-1]))
 
 for cp in gamma_list_shorten:
-    shutil.copy(cp, os.path.join(args.path,cp.split("/")[-1]))
+    shutil.copy(cp, os.path.join(path,cp.split("/")[-1]))
