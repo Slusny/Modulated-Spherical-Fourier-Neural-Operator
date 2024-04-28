@@ -37,6 +37,10 @@ cp_list = list(sorted(glob.glob(os.path.join(del_path,"checkpoint_*")),key=len))
 beta_list = list(sorted(glob.glob(os.path.join(del_path,"beta_*")),key=len))
 gamma_list = list(sorted(glob.glob(os.path.join(del_path,"gamma_*")),key=len))
 
+# move figures
+if os.path.exists(os.path.join(del_path,"figures")):
+    shutil.move(os.path.join(del_path,"figures"), os.path.join(path,"figures"))
+
 
 if len(args.keep) > 0:
     checkpoint_file = re.sub(r"\d+","{}",cp_list[-1].split("/")[-1])
