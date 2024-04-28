@@ -481,6 +481,13 @@ def _main():
         action="store_true",
         help="Save RAM with AMP"
     )
+    training.add_argument(
+        "--loss-fn",
+        action="store",
+        help="Which loss function to use",
+        default="MSE",
+        choices=["MSE","CosineMSE"],
+    )
 
     # Logging
     logging_parser = parser.add_argument_group('Logging')

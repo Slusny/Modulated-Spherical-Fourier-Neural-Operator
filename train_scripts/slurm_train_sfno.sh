@@ -3,7 +3,7 @@
 #a) Define slurm job parameters
 ####
 
-#SBATCH --job-name=sfno #21gcn
+#SBATCH --job-name=sfnoLoss #21gcn
 
 #resources:
 
@@ -27,10 +27,10 @@
 # the maximum time the scripts needs to run
 # "minutes:seconds", "hours:minutes:seconds", "days-hours","days-hours:minutes" and "days-hours:minutes:seconds"
 
-#SBATCH --error=/home/goswami/gkd965/jobs/job.sfno.%J.err
+#SBATCH --error=/home/goswami/gkd965/jobs/job.sfnoLoss.%J.err
 # write the error output to job.*jobID*.err
 
-#SBATCH --output=/home/goswami/gkd965/jobs/job.sfno.%J.out
+#SBATCH --output=/home/goswami/gkd965/jobs/job.sfnoLoss.%J.out
 # write the standard output to job.*jobID*.out
 
 #SBATCH --mail-type=ALL
@@ -39,7 +39,7 @@
 #SBATCH --mail-user=lennart.slusny@student.uni-tuebingen.de
 # your mail address
 
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version latest --train --validation-interval 10 --save-checkpoint-interval 1 --validation-epochs 4 --training-workers 6  --learning-rate 0.0003 --multi-step-training 2 --training-step-skip 1 --advanced-logging --checkpointing-block --scheduler CosineAnnealingLR --scheduler-horizon 3000 --accumulation-steps 100 --checkpointing-block --enable-amp --wandb 
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version latest --train --validation-interval 10 --save-checkpoint-interval 1 --validation-epochs 4 --training-workers 6  --learning-rate 0.0003 --multi-step-training 2 --training-step-skip 1 --advanced-logging --checkpointing-block --scheduler CosineAnnealingLR --scheduler-horizon 3000 --accumulation-steps 100 --checkpointing-block --enable-amp --wandb --loss-fn CosineMSE
 
 
 echo DONE!
