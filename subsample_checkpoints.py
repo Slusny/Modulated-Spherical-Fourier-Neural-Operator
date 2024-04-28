@@ -54,20 +54,26 @@ elif args.keep_num > 1:
     beta_list_shorten = beta_list[::(len(beta_list)//args.keep_num+1)]
     gamma_list_shorten = gamma_list[::(len(gamma_list)//args.keep_num+1)]
     # cp 
-    if len(checkpoint_list_shorten)>args.keep_num:
-        checkpoint_list_shorten[-1] = cp_list[-1]
-    else:
-        checkpoint_list_shorten.append(cp_list[-1])
+    if len(checkpoint_list_shorten)>0:
+        if len(checkpoint_list_shorten)>args.keep_num:
+            checkpoint_list_shorten[-1] = cp_list[-1]
+        else:
+            checkpoint_list_shorten.append(cp_list[-1])
+    else: print("no checkpoints")
     # beta
-    if len(beta_list_shorten)>args.keep_num:
-        beta_list_shorten[-1] = beta_list[-1]
-    else:
-        beta_list_shorten.append(beta_list[-1])
+    if len(beta_list_shorten)>0:
+        if len(beta_list_shorten)>args.keep_num:
+            beta_list_shorten[-1] = beta_list[-1]
+        else:
+            beta_list_shorten.append(beta_list[-1])
+    else: print("no betas")
     # gamma
-    if len(gamma_list_shorten)>args.keep_num:
-        gamma_list_shorten[-1] = gamma_list[-1]
-    else:
-        gamma_list_shorten.append(gamma_list[-1])  
+    if len(gamma_list_shorten)>0:
+        if len(gamma_list_shorten)>args.keep_num:
+            gamma_list_shorten[-1] = gamma_list[-1]
+        else:
+            gamma_list_shorten.append(gamma_list[-1])
+    else: print("no gammas")  
     
     checkpoint_list_shorten.pop(0)
     beta_list_shorten.pop(0)
