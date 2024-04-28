@@ -50,9 +50,9 @@ if len(args.keep) > 0:
     beta_list_shorten = [os.path.join(del_path,beta_file.format(beta)) for beta in args.keep]
     gamma_list_shorten = [os.path.join(del_path,gamma_file.format(gamma)) for gamma in args.keep]
 elif args.keep_num > 1:
-    checkpoint_list_shorten = cp_list[::(len(cp_list)+1)//args.keep_num]
-    beta_list_shorten = beta_list[::(len(beta_list)+1)//args.keep_num]
-    gamma_list_shorten = gamma_list[::(len(gamma_list)+1)//args.keep_num]
+    checkpoint_list_shorten = cp_list[::(len(cp_list)//args.keep_num+1)]
+    beta_list_shorten = beta_list[::(len(beta_list)//args.keep_num+1)]
+    gamma_list_shorten = gamma_list[::(len(gamma_list)//args.keep_num+1)]
     # cp 
     if len(checkpoint_list_shorten)>args.keep_num:
         checkpoint_list_shorten[-1] = cp_list[-1]
