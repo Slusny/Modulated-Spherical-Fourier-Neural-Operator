@@ -63,6 +63,7 @@ elif args.keep_num > 1:
             checkpoint_list_shorten[-1] = cp_list[-1]
         else:
             checkpoint_list_shorten.append(cp_list[-1])
+        checkpoint_list_shorten.pop(0)
     else: print("no checkpoints")
     # beta
     if len(beta_list_shorten)>0:
@@ -70,6 +71,7 @@ elif args.keep_num > 1:
             beta_list_shorten[-1] = beta_list[-1]
         else:
             beta_list_shorten.append(beta_list[-1])
+        beta_list_shorten.pop(0)
     else: print("no betas")
     # gamma
     if len(gamma_list_shorten)>0:
@@ -77,11 +79,9 @@ elif args.keep_num > 1:
             gamma_list_shorten[-1] = gamma_list[-1]
         else:
             gamma_list_shorten.append(gamma_list[-1])
+        gamma_list_shorten.pop(0)
     else: print("no gammas")  
     
-    checkpoint_list_shorten.pop(0)
-    beta_list_shorten.pop(0)
-    gamma_list_shorten.pop(0)
 else:
     print("missing keep or keep_num argument")
 
