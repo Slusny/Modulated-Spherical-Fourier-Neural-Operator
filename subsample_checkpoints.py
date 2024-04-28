@@ -80,7 +80,7 @@ for cp in checkpoint_list_shorten:
     shutil.move(cp, os.path.join(path,cp.split("/")[-1]))
 
 for beta in beta_list_shorten:
-    if not os.path.exists(cp):print(f"beta {beta} does not exist");continue
+    if not os.path.exists(beta):print(f"beta {beta} does not exist");continue
     shutil.move(beta, os.path.join(path,beta.split("/")[-1]))
 
 for gamma in gamma_list_shorten:
