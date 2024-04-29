@@ -39,7 +39,7 @@
 #SBATCH --mail-user=lennart.slusny@student.uni-tuebingen.de
 # your mail address
 
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version latest --train --validation-interval 10 --save-checkpoint-interval 1 --validation-epochs 4 --training-workers 6  --learning-rate 0.0003 --multi-step-training 1 --training-step-skip 0 --advanced-logging --scheduler CosineAnnealingLR --scheduler-horizon 3000 --accumulation-steps 100 --wandb --loss-fn CosineMSE
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version latest --train --validation-interval 10 --save-checkpoint-interval 1 --validation-epochs 4 --training-workers 6  --learning-rate 0.0003 --multi-step-training 1 --training-step-skip 0 --advanced-logging --scheduler CosineAnnealingLR --scheduler-horizon 3000 --accumulation-steps 100 --wandb --loss-fn CosineMSE --enable-amp
 
 
 echo DONE!

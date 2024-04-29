@@ -5,7 +5,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-ultra_advanced_logging=False
+ultra_advanced_logging=True
 
 import logging
 import os
@@ -439,6 +439,7 @@ class FourCastNetv2(Model):
             loss_fn = CosineMSELoss(reduction='mean')
         else:
             loss_fn = torch.nn.MSELoss()
+        if ultra_advanced_logging: loss_fn_pervar = torch.nn.MSELoss(reduction='none')
 
         if kwargs["advanced_logging"] and mem_log_not_done : 
             print("mem after init optimizer and scheduler and loading weights : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
@@ -485,7 +486,13 @@ class FourCastNetv2(Model):
                                 val_loss["validation loss step={}".format(val_idx)] = [val_loss_value.cpu()]
                             else:
                                 val_loss["validation loss step={}".format(val_idx)].append(val_loss_value.cpu())
-
+                            # ultra logging - loss for each variable
+                            if kwargs["advanced_logging"] and ultra_advanced_logging:
+                                val_loss_value_pervar = loss_fn_pervar(outputs, val_g_truth_era5).mean(dim=(0,2,3)) / kwargs["batch_size"]
+                                print("MSE for each variable:")
+                                for idx_var,var_name in enumerate(self.ordering):
+                                    print("    ",var_name," = ",round(val_loss_value_pervar[idx_var].item(),5))
+                                    
                         # end of validation 
                         if val_epoch > kwargs["validation_epochs"]:
                             for k in val_loss.keys():
