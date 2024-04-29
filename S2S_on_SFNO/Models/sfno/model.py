@@ -452,6 +452,7 @@ class FourCastNetv2(Model):
         self.losses    = []
         self.epoch = 0
         self.iter = 0
+        batch_loss = 0
 
 
         # to debug training don't start with validation, actually never start training with validation, we do not have space on the cluster
@@ -554,6 +555,7 @@ class FourCastNetv2(Model):
                     else:
                         if kwargs["advanced_logging"] and ultra_advanced_logging : print("skipping step",step)
                 loss = loss / (self.accumulation_steps+1)
+                batch_loss += loss.item()
             if kwargs["advanced_logging"] and mem_log_not_done : 
                 print("mem before backward : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
             
@@ -581,14 +583,14 @@ class FourCastNetv2(Model):
                     mem_log_not_done = False
                 model.zero_grad()
 
-            # logging
-            self.iter += 1
-            loss_value = round(loss.item(),5)
-            if local_logging : self.losses.append(loss_value)
-            if wandb_run is not None:
-                wandb.log({"loss": loss_value })
-            if kwargs["debug"]:
-                print("Epoch: ", i, " Loss: ", loss_value)
+                # logging
+                self.iter += 1
+                if local_logging : self.losses.append(round(batch_loss,5))
+                if wandb_run is not None:
+                    wandb.log({"loss": round(batch_loss,5) })
+                if kwargs["debug"]:
+                    print("Epoch: ", i, " Loss: ", round(batch_loss,5))
+                batch_loss = 0
         
         self.save_checkpoint()
 
