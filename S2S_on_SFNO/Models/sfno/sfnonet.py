@@ -947,6 +947,7 @@ class ViT(nn.Module):
         patch_height, patch_width = pair(patch_size)
         self.device = device
         self.dim = dim
+        self.num_layers = num_layers
 
         assert image_height % patch_height == 0 and image_width % patch_width == 0, 'Image dimensions must be divisible by the patch size.'
 
