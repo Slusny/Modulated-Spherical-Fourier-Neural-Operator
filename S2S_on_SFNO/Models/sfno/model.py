@@ -1225,7 +1225,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 if wandb_run is not None:
                     wandb.log({"loss": round(batch_loss,5) })
                 if kwargs["advanced_logging"]:
-                    print("Iteration: ", i, " Loss: ", round(batch_loss,5)," - scale: ",round(scale,2))
+                    print("Iteration: ", i, " Loss: ", round(batch_loss,5)," - scale: ",round(scale,5))
                 batch_loss = 0
             else:
                 if kwargs["advanced_logging"] and ultra_advanced_logging:
