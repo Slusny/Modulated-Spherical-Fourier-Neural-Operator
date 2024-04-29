@@ -6,6 +6,7 @@
 # nor does it submit to any jurisdiction.
 
 ultra_advanced_logging=False
+mse_all_vars = True
 
 import logging
 import os
@@ -439,7 +440,7 @@ class FourCastNetv2(Model):
             loss_fn = CosineMSELoss(reduction='mean')
         else:
             loss_fn = torch.nn.MSELoss()
-        if ultra_advanced_logging: loss_fn_pervar = torch.nn.MSELoss(reduction='none')
+        if mse_all_vars: loss_fn_pervar = torch.nn.MSELoss(reduction='none')
 
         if kwargs["advanced_logging"] and mem_log_not_done : 
             print("mem after init optimizer and scheduler and loading weights : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
@@ -471,7 +472,7 @@ class FourCastNetv2(Model):
                 model.eval()
                 with torch.no_grad():
                     # For loop over validation dataset, calculates the validation loss mean for number of kwargs["validation_epochs"]
-                    if kwargs["advanced_logging"] and ultra_advanced_logging:loss_pervar_list=[]
+                    if kwargs["advanced_logging"] and mse_all_vars: loss_pervar_list=[]
                     for val_epoch, val_data in enumerate(validation_loader):
                         # Calculates the validation loss for autoregressive model evaluation
                         # if self.auto_regressive_steps = 0 the dataloader only outputs 2 datapoint 
@@ -488,7 +489,7 @@ class FourCastNetv2(Model):
                             else:
                                 val_loss["validation loss step={}".format(val_idx)].append(val_loss_value.cpu())
                             # ultra logging - loss for each variable
-                            if kwargs["advanced_logging"] and ultra_advanced_logging:
+                            if kwargs["advanced_logging"] and mse_all_vars:
                                 loss_pervar_list.append(loss_fn_pervar(outputs, val_g_truth_era5).mean(dim=(0,2,3)) / kwargs["batch_size"])
 
                         # end of validation 
@@ -497,7 +498,7 @@ class FourCastNetv2(Model):
                                 val_loss_array      = np.array(val_loss[k])
                                 val_log[k]          = round(val_loss_array.mean(),5)
                                 val_log["std " + k] = round(val_loss_array.std(),5)
-                            if kwargs["advanced_logging"] and ultra_advanced_logging:
+                            if kwargs["advanced_logging"] and mse_all_vars:
                                 print("MSE for each variable:")
                                 val_loss_value_pervar = torch.stack(loss_pervar_list).mean(dim=0)
                                 for idx_var,var_name in enumerate(self.ordering):
@@ -1090,7 +1091,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 model.eval()
                 with torch.no_grad():
                     # For loop over validation dataset, calculates the validation loss mean for number of kwargs["validation_epochs"]
-                    if kwargs["advanced_logging"] and ultra_advanced_logging: loss_pervar_list = []
+                    if kwargs["advanced_logging"] and mse_all_vars: loss_pervar_list = []
                     for val_epoch, val_data in enumerate(validation_loader):
                         # Calculates the validation loss for autoregressive model evaluation
                         # if self.auto_regressive_steps = 0 the dataloader only outputs 2 datapoint 
@@ -1106,7 +1107,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                             val_loss_value = loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"]
 
                             # loss for each variable
-                            if kwargs["advanced_logging"] and ultra_advanced_logging:
+                            if kwargs["advanced_logging"] and mse_all_vars:
                                 loss_pervar_list.append(loss_fn_pervar(outputs, val_g_truth_era5).mean(dim=(0,2,3)) / kwargs["batch_size"])
                             
                             if val_epoch == 0: 
@@ -1120,7 +1121,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                                 val_loss_array      = np.array(val_loss[k])
                                 val_log[k]          = round(val_loss_array.mean(),5)
                                 val_log["std " + k] = round(val_loss_array.std(),5)
-                            if kwargs["advanced_logging"] and ultra_advanced_logging:
+                            if kwargs["advanced_logging"] and mse_all_vars:
                                 print("MSE for each variable:")
                                 val_loss_value_pervar = torch.stack(loss_pervar_list).mean(dim=0)
                                 for idx_var,var_name in enumerate(self.ordering):
