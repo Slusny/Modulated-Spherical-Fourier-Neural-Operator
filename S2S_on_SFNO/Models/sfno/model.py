@@ -1061,7 +1061,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
 
-        scale = 0.0001
+        scale = 0.0005#1e-5
         # for logging to local file (no wandb)
         self.val_means = [[]] * (kwargs["multi_step_validation"]+1)
         self.val_stds  = [[]] * (kwargs["multi_step_validation"]+1)
@@ -1139,7 +1139,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     # if valid_mean < kwargs["val_loss_threshold"] and scale < 1.0:
                     if scale < 1.0:
                         val_log["scale"] = scale
-                        scale = scale + 0.002
+                        scale = scale + 0.002 # 5e-5 #
 
                     # little complicated console logging - looks nicer than LOG.info(str(val_log))
                     print("-- validation after ",i*kwargs["batch_size"], "training examples")
