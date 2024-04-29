@@ -436,7 +436,7 @@ class FourCastNetv2(Model):
         scheduler = self.scheduler 
 
         if kwargs["loss_fn"] == "CosineMSE":
-            loss_fn = CosineMSELoss()
+            loss_fn = CosineMSELoss(reduction='mean')
         else:
             loss_fn = torch.nn.MSELoss()
 
@@ -1046,7 +1046,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         
         #Loss
         if kwargs["loss_fn"] == "CosineMSE":
-            loss_fn = CosineMSELoss()
+            loss_fn = CosineMSELoss(reduction='mean')
         else:
             loss_fn = torch.nn.MSELoss()
 
@@ -1526,6 +1526,7 @@ class CosineMSELoss(torch.nn.Module):
     def __init__(self, reduction=None):
         super().__init__()
         self._mse = torch.nn.MSELoss(reduction='none')
+        self.reduction = reduction  
 
     def forward(self, x, y):
         B, C, H, W = x.shape
@@ -1536,7 +1537,12 @@ class CosineMSELoss(torch.nn.Module):
 
         loss = self._mse(x, y)
         loss = (loss * weights).sum(dim=[2,3]) / W
-        return loss  # B, C
+        if self.reduction == "mean":
+            return loss.mean()
+        if self.reduction == "sum":
+            return loss.sum()
+        if self.reduction == "none":
+            return loss  # B, C
 
 
 def get_model(**kwargs):
