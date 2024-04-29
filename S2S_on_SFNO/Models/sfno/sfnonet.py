@@ -981,8 +981,8 @@ class ViT(nn.Module):
         self.pool = pool
         self.to_latent = nn.Identity()
 
-        self.heads_gamma = nn.ModuelList([nn.Linear(dim, num_classes) for _ in range(film_layers)])
-        self.heads_beta = nn.ModuelList([nn.Linear(dim, num_classes) for _ in range(film_layers)])
+        self.heads_gamma = nn.ModulelList([nn.Linear(dim, num_classes) for _ in range(film_layers)])
+        self.heads_beta = nn.ModulelList([nn.Linear(dim, num_classes) for _ in range(film_layers)])
 
     def rm_nan(self, x, batch):
         if not self.nan_mask: self.nan_mask = torch.isnan(x).logical_not()
