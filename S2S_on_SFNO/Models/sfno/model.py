@@ -5,7 +5,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-ultra_advanced_logging=True
+ultra_advanced_logging=False
 
 import logging
 import os
