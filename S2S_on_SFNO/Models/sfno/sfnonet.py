@@ -941,7 +941,7 @@ class Transformer_patch_embedding(nn.Module):
 
 class ViT(nn.Module):
     # simple vit doesn't have dropout, different pos emb and no cls token
-    def __init__(self, *, patch_size, num_classes, dim, depth, heads, mlp_dim, pool = 'mean', channels = 3, dim_head = 64, dropout = 0., emb_dropout = 0., coarse_level=4,device="cpu", film_layers=1):
+    def __init__(self, *, patch_size, num_classes, dim, depth, heads, mlp_dim, pool = 'mean', channels = 3, dim_head = 64, dropout = 0., emb_dropout = 0., coarse_level=4,device="cpu", num_layers=1):
         super().__init__()
         image_height, image_width = 721//coarse_level, 1440//coarse_level #pair(image_size)
         patch_height, patch_width = pair(patch_size)
@@ -981,8 +981,8 @@ class ViT(nn.Module):
         self.pool = pool
         self.to_latent = nn.Identity()
 
-        self.heads_gamma = nn.ModuleList([nn.Linear(dim, num_classes) for _ in range(film_layers)])
-        self.heads_beta = nn.ModuleList([nn.Linear(dim, num_classes) for _ in range(film_layers)])
+        self.heads_gamma = nn.ModuleList([nn.Linear(dim, num_classes) for _ in range(num_layers)])
+        self.heads_beta = nn.ModuleList([nn.Linear(dim, num_classes) for _ in range(num_layers)])
 
     def rm_nan(self, x, batch):
         if not self.nan_mask: self.nan_mask = torch.isnan(x).logical_not()
@@ -1103,7 +1103,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         if kwargs["film_gen_type"] == "gcn":
             self.film_gen = GCN(self.batch_size,device,depth=self.depth,out_features=self.embed_dim,num_layers=self.film_layers)# num layers is 1 for now
         elif kwargs["film_gen_type"] == "transformer":
-            self.film_gen = ViT(patch_size=4, num_classes=256, dim=1024, depth=self.depth, heads=16, mlp_dim = 2048, dropout = 0.1, channels =1, device=device,film_layers=self.film_layers)
+            self.film_gen = ViT(patch_size=4, num_classes=256, dim=1024, depth=self.depth, heads=16, mlp_dim = 2048, dropout = 0.1, channels =1, device=device, num_layers=self.film_layers)
         else:
             self.film_gen = GCN_custom(self.batch_size,device,depth=self.depth,out_features=self.embed_dim,num_layers=self.film_layers)# num layers is 1 for now
     
