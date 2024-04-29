@@ -463,7 +463,7 @@ class FourCastNetv2(Model):
         for i, data in enumerate(training_loader):
 
             # Validation
-            if (i+start_valid) % kwargs["validation_interval"] == 0:
+            if (i+start_valid) % (kwargs["validation_interval"]*(self.accumulation_steps + 1)) == 0:
                 val_loss = {}
                 val_log  = {}
                 model.eval()
