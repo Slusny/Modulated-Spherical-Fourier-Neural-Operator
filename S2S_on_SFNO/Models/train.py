@@ -56,8 +56,8 @@ class ERA5_galvani(Dataset):
         self.auto_regressive_steps = auto_regressive_steps
         self.coarse_level = coarse_level
         self.uv100 = uv100
-        if path.endswith(".zarr"):  self.dataset = xr.open_zarr(path)
-        else:                       self.dataset = xr.open_dataset(path)
+        if path.endswith(".zarr"):  self.dataset = xr.open_zarr(path,chunks=None)
+        else:                       self.dataset = xr.open_dataset(path,chunks=None)
         if self.uv100:
             #qb
             # self.dataset_u100 = xr.open_mfdataset(os.path.join(path_era5+"100m_u_component_of_wind/100m_u_component_of_wind_????.nc"))
@@ -66,11 +66,11 @@ class ERA5_galvani(Dataset):
             # self.dataset_uv100 = xr.open_mfdataset("/mnt/ceph/goswamicd/datasets/weatherbench2/era5/1959-2023_01_10-u100mv100m-6h-1440x721"))
             # qb zarr
             file_u100 = "/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/u100m_1959-2022_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr"
-            if file_u100.endswith(".zarr"): self.dataset_u100 = xr.open_zarr(file_u100)
-            else:                           self.dataset_u100 = xr.open_mfdataset(file_u100) # sd: 1959-01-01, end date : 2022-12-30T18
+            if file_u100.endswith(".zarr"): self.dataset_u100 = xr.open_zarr(file_u100,chunks=None)
+            else:                           self.dataset_u100 = xr.open_mfdataset(file_u100,chunks=None) # sd: 1959-01-01, end date : 2022-12-30T18
             file_v100 = "/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/v100m_1959-2023-10_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr"
-            if file_u100.endswith(".zarr"): self.dataset_v100 = xr.open_zarr(file_v100)
-            else:                           self.dataset_v100 = xr.open_mfdataset(file_v100) # sd: 1959-01-01 end date: 2023-10-31
+            if file_u100.endswith(".zarr"): self.dataset_v100 = xr.open_zarr(file_v100,chunks=None)
+            else:                           self.dataset_v100 = xr.open_mfdataset(file_v100,chunks=None) # sd: 1959-01-01 end date: 2023-10-31
 
         # check if the 100uv-datasets and era5 have same start and end date
         # Check if set Start date to be viable
@@ -144,6 +144,7 @@ class ERA5_galvani(Dataset):
                 return (data,torch.from_numpy(sst),time)
             else:
                 return (data,time)
+        
         if self.auto_regressive_steps > 0:
             data = []
             for i in range(self.auto_regressive_steps+2):

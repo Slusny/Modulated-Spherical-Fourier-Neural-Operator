@@ -558,7 +558,6 @@ class FourCastNetv2(Model):
                 batch_loss += loss.item()
             if kwargs["advanced_logging"] and mem_log_not_done : 
                 print("mem before backward : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-            
 
             #backward
             if self.enable_amp:
@@ -566,21 +565,18 @@ class FourCastNetv2(Model):
             else:
                 loss.backward()
 
-
+            if kwargs["advanced_logging"] and mem_log_not_done : 
+                print("mem after backward : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                mem_log_not_done = False
 
             # Adjust learning weights
             if ((i + 1) % (self.accumulation_steps + 1) == 0) or (i + 1 == len(training_loader)):
                 # Update Optimizer
-                if kwargs["advanced_logging"] and mem_log_not_done : 
-                    print("mem before optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
                 if self.enable_amp:
                     self.gscaler.step(self.optimizer)
                     self.gscaler.update()
                 else:
                     optimizer.step()
-                if kwargs["advanced_logging"] and mem_log_not_done : 
-                    print("mem after optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-                    mem_log_not_done = False
                 model.zero_grad()
 
                 # logging
@@ -588,8 +584,8 @@ class FourCastNetv2(Model):
                 if local_logging : self.losses.append(round(batch_loss,5))
                 if wandb_run is not None:
                     wandb.log({"loss": round(batch_loss,5) })
-                if kwargs["debug"]:
-                    print("Epoch: ", i, " Loss: ", round(batch_loss,5))
+                if kwargs["advanced_logging"]:
+                    print("Iteration: ", i, " Loss: ", round(batch_loss,5))
                 batch_loss = 0
         
         self.save_checkpoint()
@@ -1065,6 +1061,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         self.losses    = []
         self.epoch = 0
         self.iter = 0
+        batch_loss = 0
 
         # to debug training don't start with validation, actually never start training with validation, we do not have space on the cluster
         if self.debug:
@@ -1190,6 +1187,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     else:
                         if kwargs["advanced_logging"] and ultra_advanced_logging : print("skipping step",step)
                 loss = loss / (self.accumulation_steps+1)
+                batch_loss += loss.item()
             if kwargs["advanced_logging"] and mem_log_not_done : 
                 print("mem before backward : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
             
@@ -1199,12 +1197,14 @@ class FourCastNetv2_filmed(FourCastNetv2):
             else:
                 loss.backward()
 
+            # turn of memory logging
+            if kwargs["advanced_logging"] and mem_log_not_done : 
+                print("mem after backward : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                mem_log_not_done = False
 
             # Adjust learning weights
             if ((i + 1) % (self.accumulation_steps + 1) == 0) or (i + 1 == len(training_loader)):
                 # Update Optimizer
-                if kwargs["advanced_logging"] and mem_log_not_done : 
-                    print("mem before optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
                 if self.enable_amp:
                     self.gscaler.step(self.optimizer)
                     self.gscaler.update()
@@ -1214,20 +1214,16 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
                 # logging
                 self.iter += 1
-                loss_value = round(loss.item(),5)
-                if local_logging : self.losses.append(loss_value)
+                if local_logging : self.losses.append(round(batch_loss,5))
                 if wandb_run is not None:
-                    wandb.log({"loss": loss_value })
+                    wandb.log({"loss": round(batch_loss,5) })
                 if kwargs["advanced_logging"]:
-                    print("Iteration: ", i, " Loss: ", loss_value," - scale: ",round(scale,2))
+                    print("Iteration: ", i, " Loss: ", round(batch_loss,5)," - scale: ",round(scale,2))
+                batch_loss = 0
             else:
                 if kwargs["advanced_logging"] and ultra_advanced_logging:
                     print("skipping optimizer step, accumulate gradients")
             
-            # turn of memory logging
-            if kwargs["advanced_logging"] and mem_log_not_done : 
-                    print("mem after optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-                    mem_log_not_done = False
         # end of epoch
         self.epoch += 1
         print("End of epoch ",self.epoch)
