@@ -488,8 +488,8 @@ class FourCastNetv2(Model):
                                 val_loss["validation loss step={}".format(val_idx)] = [val_loss_value.cpu()]
                             else:
                                 val_loss["validation loss step={}".format(val_idx)].append(val_loss_value.cpu())
-                            # ultra logging - loss for each variable
-                            if kwargs["advanced_logging"] and mse_all_vars:
+                            # ultra logging - loss for each variable !! only for first multi step validation
+                            if kwargs["advanced_logging"] and mse_all_vars and val_idx == 0:
                                 loss_pervar_list.append(loss_fn_pervar(outputs, val_g_truth_era5).mean(dim=(0,2,3)) / kwargs["batch_size"])
 
                         # end of validation 
@@ -498,11 +498,6 @@ class FourCastNetv2(Model):
                                 val_loss_array      = np.array(val_loss[k])
                                 val_log[k]          = round(val_loss_array.mean(),5)
                                 val_log["std " + k] = round(val_loss_array.std(),5)
-                            if kwargs["advanced_logging"] and mse_all_vars:
-                                print("MSE for each variable:")
-                                val_loss_value_pervar = torch.stack(loss_pervar_list).mean(dim=0)
-                                for idx_var,var_name in enumerate(self.ordering):
-                                    print("    ",var_name," = ",round(val_loss_value_pervar[idx_var].item(),5))
                             break
                 
                    
@@ -530,6 +525,11 @@ class FourCastNetv2(Model):
                         # # log to local file
                         # self.val_means[log_idx].append(val_log[val_log_keys[log_idx]])
                         # self.val_stds[log_idx].append(val_log[val_log_keys[log_idx+1]])
+                    if kwargs["advanced_logging"] and mse_all_vars:
+                        print("MSE for each variable:")
+                        val_loss_value_pervar = torch.stack(loss_pervar_list).mean(dim=0)
+                        for idx_var,var_name in enumerate(self.ordering):
+                            print("    ",var_name," = ",round(val_loss_value_pervar[idx_var].item(),5))
                     if wandb_run :
                         wandb.log(val_log, commit=False)
 
@@ -1107,7 +1107,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                             val_loss_value = loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"]
 
                             # loss for each variable
-                            if kwargs["advanced_logging"] and mse_all_vars:
+                            if kwargs["advanced_logging"] and mse_all_vars  and val_idx == 0: # only for first multi validation step
                                 loss_pervar_list.append(loss_fn_pervar(outputs, val_g_truth_era5).mean(dim=(0,2,3)) / kwargs["batch_size"])
                             
                             if val_epoch == 0: 
@@ -1121,11 +1121,6 @@ class FourCastNetv2_filmed(FourCastNetv2):
                                 val_loss_array      = np.array(val_loss[k])
                                 val_log[k]          = round(val_loss_array.mean(),5)
                                 val_log["std " + k] = round(val_loss_array.std(),5)
-                            if kwargs["advanced_logging"] and mse_all_vars:
-                                print("MSE for each variable:")
-                                val_loss_value_pervar = torch.stack(loss_pervar_list).mean(dim=0)
-                                for idx_var,var_name in enumerate(self.ordering):
-                                    print("    ",var_name," = ",round(val_loss_value_pervar[idx_var].item(),5))
                             break
                     
                     #scheduler
@@ -1157,6 +1152,11 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         # log to local file
                         # self.val_means[log_idx].append(val_log[val_log_keys[log_idx]]) ## error here
                         # self.val_stds[log_idx].append(val_log[val_log_keys[log_idx+1]]) 
+                    if kwargs["advanced_logging"] and mse_all_vars:
+                        print("MSE for each variable:")
+                        val_loss_value_pervar = torch.stack(loss_pervar_list).mean(dim=0)
+                        for idx_var,var_name in enumerate(self.ordering):
+                            print("    ",var_name," = ",round(val_loss_value_pervar[idx_var].item(),5))
                     if wandb_run :
                         wandb.log(val_log,commit=False)
                 # save model and training statistics for checkpointing
