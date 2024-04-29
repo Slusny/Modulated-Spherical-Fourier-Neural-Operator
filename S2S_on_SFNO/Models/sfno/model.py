@@ -1130,7 +1130,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         val_log["learning rate"] = lr
 
                     # change scale value based on validation loss
-                    if valid_mean < kwargs["val_loss_threshold"] and scale < 1.0:
+                    # if valid_mean < kwargs["val_loss_threshold"] and scale < 1.0:
+                    if scale < 1.0:
                         val_log["scale"] = scale
                         scale = scale + 0.002
 
@@ -1207,11 +1208,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     self.gscaler.update()
                 else:
                     optimizer.step()
-                if kwargs["advanced_logging"] and mem_log_not_done : 
-                    print("mem after optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-                    mem_log_not_done = False
                 model.zero_grad()
-
 
                 # logging
                 self.iter += 1
@@ -1224,7 +1221,11 @@ class FourCastNetv2_filmed(FourCastNetv2):
             else:
                 if kwargs["advanced_logging"] and ultra_advanced_logging:
                     print("skipping optimizer step, accumulate gradients")
-
+            
+            # turn of memory logging
+            if kwargs["advanced_logging"] and mem_log_not_done : 
+                    print("mem after optimizer step : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+                    mem_log_not_done = False
         # end of epoch
         self.epoch += 1
         print("End of epoch ",self.epoch)
