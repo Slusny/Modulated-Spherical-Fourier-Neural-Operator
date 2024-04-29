@@ -1107,7 +1107,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                             val_loss_value = loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"]
 
                             # loss for each variable
-                            if kwargs["advanced_logging"] and mse_all_vars  and val_idx == 0: # only for first multi validation step
+                            if kwargs["advanced_logging"] and mse_all_vars  and val_idx == 0: # !! only for first multi validation step, could include next step with -> ... -> ... in print statement on same line
                                 loss_pervar_list.append(loss_fn_pervar(outputs, val_g_truth_era5).mean(dim=(0,2,3)) / kwargs["batch_size"])
                             
                             if val_epoch == 0: 
@@ -1157,6 +1157,10 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         val_loss_value_pervar = torch.stack(loss_pervar_list).mean(dim=0)
                         for idx_var,var_name in enumerate(self.ordering):
                             print("    ",var_name," = ",round(val_loss_value_pervar[idx_var].item(),5))
+                            gamma_np = model.gamma.cpu().numpy()
+                            beta_np  = model.beta.cpu().numpy()
+                            print("gamma values mean : ",round(gamma_np.mean(),5),"+/-",round(gamma_np.std(),5))
+                            print("beta values mean  : ",round(beta_np.mean(),5),"+/-",round(beta_np.std(),5))
                     if wandb_run :
                         wandb.log(val_log,commit=False)
                 # save model and training statistics for checkpointing
@@ -1168,8 +1172,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         beta_np  = model.beta.cpu().numpy()
                         np.save(os.path.join( self.save_path,"gamma_{}.npy".format(i)),gamma_np)
                         np.save(os.path.join( self.save_path,"beta_{}.npy".format(i)),beta_np)
-                        print("gamma values mean : ",round(gamma_np.mean(),3),"+/-",round(gamma_np.std(),3))
-                        print("beta values mean  : ",round(beta_np.mean(),3),"+/-",round(beta_np.std(),3))
+                        print("gamma values mean : ",round(gamma_np.mean(),5),"+/-",round(gamma_np.std(),5))
+                        print("beta values mean  : ",round(beta_np.mean(),5),"+/-",round(beta_np.std(),5))
                 model.film_gen.train()
                 if kwargs["advanced_logging"] and mem_log_not_done : 
                     print("mem after validation : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
