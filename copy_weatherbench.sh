@@ -105,7 +105,7 @@ done
 # Copy WB2
 mkdir -p $TARGET_DIR
 cd $TARGET_DIR
-mkdir -p "${VARIABLES[@]}" "${COORDS[@]}"
+mkdir -p "${VARIABLESSCF[@]}" "${VARIABLESPL[@]}" "${COORDS[@]}"
 cp $DATASET_DIR/.z* ./
 # gsutil -q -m cp -r  "${COORDS[@]/#/$DATASET_DIR/}" "${VARIABLES[@]/#/$DATASET_DIR/}" ./
 
