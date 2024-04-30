@@ -3,7 +3,7 @@
 # This copies the weatherbench2 data to the $SCRATCH directory
 
 DATASET_DIR='/mnt/qb/goswami/data/era5/weatherbench2/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr'
-TARGET_DIR="/mnt/qb/work2/goswami0/gkd965/inputs/wb2.zarr"
+TARGET_DIR="/mnt/qb/work2/goswami0/gkd965/inputs/wb2_2001-2003.zarr"
 
 CLIMATOLOGY_DIR='/mnt/qb/goswami/data/WeatherBench2/1990-2017-daily_clim_daily_mean_61_dw_240x121_equiangular_with_poles_conservative.zarr'
 CLIM_TARGET_DIR="$SCRATCH/wb2_clim.zarr"
@@ -69,9 +69,11 @@ copy_zarr() {
 
 set -x
 
-start_time=59947
+# start_time=59900 # 2000-01-01 00:00:00 - 2000 is a leap year
+start_time=61364 # 2001-01-01 00:00:00 - 2000 is a leap year
+# end_time=62823 # 2001-12-31 18:00:00
 # end_time=61408
-end_time=59949
+end_time=64283 # 2002-12-31 18:00:00
 TIMES=($(seq $start_time 1 $end_time))
 
 PL_TIMES=( "${TIMES[@]/%/.0.0.0}" )
