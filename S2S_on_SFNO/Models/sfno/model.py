@@ -22,6 +22,7 @@ from torch.utils.data import DataLoader
 import torch.cuda.amp as amp
 from ..models import Model
 from datetime import datetime
+import torch_harmonics as harmonics
 # import xskillscore as xs
 
 import climetlab as cml
@@ -438,6 +439,8 @@ class FourCastNetv2(Model):
 
         if kwargs["loss_fn"] == "CosineMSE":
             loss_fn = CosineMSELoss(reduction='mean')
+        elif kwargs["loss_fn"] == "L2Sphere":
+            loss_fn = L2Sphere(relative=True, squared=True)
         else:
             loss_fn = torch.nn.MSELoss()
         if mse_all_vars: loss_fn_pervar = torch.nn.MSELoss(reduction='none')
@@ -562,7 +565,7 @@ class FourCastNetv2(Model):
                         if kwargs["advanced_logging"] and ultra_advanced_logging: print("calculating loss for step ",step)
                         if kwargs["advanced_logging"] and mem_log_not_done : 
                             print("mem before loss : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-                        loss = loss + loss_fn(outputs, g_truth_era5) #*discount_factor**step
+                        loss = loss + loss_fn(outputs, g_truth_era5)/(kwargs["multi_step_training"]+1) #*discount_factor**step
                     else:
                         if kwargs["advanced_logging"] and ultra_advanced_logging : print("skipping step",step)
                 loss = loss / (self.accumulation_steps+1)
@@ -1054,6 +1057,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
         #Loss
         if kwargs["loss_fn"] == "CosineMSE":
             loss_fn = CosineMSELoss(reduction='mean')
+        elif kwargs["loss_fn"] == "L2Sphere":
+            loss_fn = L2Sphere(relative=True, squared=True)
         else:
             loss_fn = torch.nn.MSELoss()
 
@@ -1201,7 +1206,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         if kwargs["advanced_logging"] and ultra_advanced_logging: print("calculating loss for step ",step)
                         if kwargs["advanced_logging"] and mem_log_not_done : 
                             print("mem before loss : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-                        loss = loss + loss_fn(outputs, g_truth_era5) #*discount_factor**step
+                        loss = loss + loss_fn(outputs, g_truth_era5)/(kwargs["multi_step_training"]+1) #*discount_factor**step
                     else:
                         if kwargs["advanced_logging"] and ultra_advanced_logging : print("skipping step",step)
                 loss = loss / (self.accumulation_steps+1)
@@ -1536,7 +1541,19 @@ class FourCastNetv2_filmed(FourCastNetv2):
             print("allocated:",a)
             print("free:",f)    
 
-class CosineMSELoss(torch.nn.Module):
+def get_model(**kwargs):
+    models = {
+        "0": FourCastNetv2,
+        "small": FourCastNetv2,
+        "release": FourCastNetv2,
+        "latest": FourCastNetv2,
+        "film": FourCastNetv2_filmed,
+    }
+    return models[kwargs["model_version"]](**kwargs)
+
+
+
+class CosineMSELoss():
     def __init__(self, reduction=None):
         super().__init__()
         self._mse = torch.nn.MSELoss(reduction='none')
@@ -1558,13 +1575,115 @@ class CosineMSELoss(torch.nn.Module):
         if self.reduction == "none":
             return loss  # B, C
 
+class L2Sphere(torch.nn.Module):
+    def __init__(self, relative=True, squared=True):
+        super(L2Sphere, self).__init__()
+        
+        self.relative = relative
+        self.squared = squared
 
-def get_model(**kwargs):
-    models = {
-        "0": FourCastNetv2,
-        "small": FourCastNetv2,
-        "release": FourCastNetv2,
-        "latest": FourCastNetv2,
-        "film": FourCastNetv2_filmed,
-    }
-    return models[kwargs["model_version"]](**kwargs)
+    def forward(self, prd, tar):
+        B, C, H, W = prd.shape
+        w_quad = harmonics.quadrature.legendre_gauss_weights(H, -1, 1)
+        w_jacobian = torch.cos(torch.linspace(-torch.pi / 2, torch.pi / 2, H, device=prd.device, dtype=prd.dtype))
+        w_jacobian = w_jacobian[None, None, :, None]
+        w = w_quad * w_jacobian
+        loss = (w*(prd - tar)**2).sum(dim=-1)
+        if self.relative:
+            loss = loss / (w*tar**2).sum(dim=-1)
+        
+        if not self.squared:
+            loss = torch.sqrt(loss)
+        loss = loss.mean()
+
+        return loss
+
+def spectral_l2loss_sphere(solver, prd, tar, relative=False, squared=True):
+    # compute coefficients
+    coeffs = torch.view_as_real(solver.sht(prd - tar))
+    coeffs = coeffs[..., 0]**2 + coeffs[..., 1]**2
+    norm2 = coeffs[..., :, 0] + 2 * torch.sum(coeffs[..., :, 1:], dim=-1)
+    loss = torch.sum(norm2, dim=(-1,-2))
+
+    if relative:
+        tar_coeffs = torch.view_as_real(solver.sht(tar))
+        tar_coeffs = tar_coeffs[..., 0]**2 + tar_coeffs[..., 1]**2
+        tar_norm2 = tar_coeffs[..., :, 0] + 2 * torch.sum(tar_coeffs[..., :, 1:], dim=-1)
+        tar_norm2 = torch.sum(tar_norm2, dim=(-1,-2))
+        loss = loss / tar_norm2
+
+    if not squared:
+        loss = torch.sqrt(loss)
+    loss = loss.mean()
+
+    return loss
+
+def spectral_loss_sphere(solver, prd, tar, relative=False, squared=True):
+    # gradient weighting factors
+    lmax = solver.sht.lmax
+    ls = torch.arange(lmax).float()
+    spectral_weights = (ls*(ls + 1)).reshape(1, 1, -1, 1).to(prd.device)
+
+    # compute coefficients
+    coeffs = torch.view_as_real(solver.sht(prd - tar))
+    coeffs = coeffs[..., 0]**2 + coeffs[..., 1]**2
+    coeffs = spectral_weights * coeffs
+    norm2 = coeffs[..., :, 0] + 2 * torch.sum(coeffs[..., :, 1:], dim=-1)
+    loss = torch.sum(norm2, dim=(-1,-2))
+
+    if relative:
+        tar_coeffs = torch.view_as_real(solver.sht(tar))
+        tar_coeffs = tar_coeffs[..., 0]**2 + tar_coeffs[..., 1]**2
+        tar_coeffs = spectral_weights * tar_coeffs
+        tar_norm2 = tar_coeffs[..., :, 0] + 2 * torch.sum(tar_coeffs[..., :, 1:], dim=-1)
+        tar_norm2 = torch.sum(tar_norm2, dim=(-1,-2))
+        loss = loss / tar_norm2
+
+    if not squared:
+        loss = torch.sqrt(loss)
+    loss = loss.mean()
+
+    return loss
+
+def h1loss_sphere(solver, prd, tar, relative=False, squared=True):
+    # gradient weighting factors
+    lmax = solver.sht.lmax
+    ls = torch.arange(lmax).float()
+    spectral_weights = (ls*(ls + 1)).reshape(1, 1, -1, 1).to(prd.device)
+
+    # compute coefficients
+    coeffs = torch.view_as_real(solver.sht(prd - tar))
+    coeffs = coeffs[..., 0]**2 + coeffs[..., 1]**2
+    h1_coeffs = spectral_weights * coeffs
+    h1_norm2 = h1_coeffs[..., :, 0] + 2 * torch.sum(h1_coeffs[..., :, 1:], dim=-1)
+    l2_norm2 = coeffs[..., :, 0] + 2 * torch.sum(coeffs[..., :, 1:], dim=-1)
+    h1_loss = torch.sum(h1_norm2, dim=(-1,-2))
+    l2_loss = torch.sum(l2_norm2, dim=(-1,-2))
+
+     # strictly speaking this is not exactly h1 loss 
+    if not squared:
+        loss = torch.sqrt(h1_loss) + torch.sqrt(l2_loss)
+    else:
+        loss = h1_loss + l2_loss
+
+    if relative:
+        raise NotImplementedError("Relative H1 loss not implemented")
+
+    loss = loss.mean()
+
+
+    return loss
+
+def fluct_l2loss_sphere(solver, prd, tar, inp, relative=False, polar_opt=0):
+    # compute the weighting factor first
+    fluct = solver.integrate_grid((tar - inp)**2, dimensionless=True, polar_opt=polar_opt)
+    weight = fluct / torch.sum(fluct, dim=-1, keepdim=True)
+    # weight = weight.reshape(*weight.shape, 1, 1)
+    
+    loss = weight * solver.integrate_grid((prd - tar)**2, dimensionless=True, polar_opt=polar_opt)
+    if relative:
+        loss = loss / (weight * solver.integrate_grid(tar**2, dimensionless=True, polar_opt=polar_opt))
+    loss = torch.mean(loss)
+    return loss
+
+
