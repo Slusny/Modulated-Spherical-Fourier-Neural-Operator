@@ -79,12 +79,12 @@ SCF_TIMES=( "${TIMES[@]/%/.0.0}" )
 
 
 # for each time in PL_TIMES append the time to each variable in VARIABLESPL
-VARIABLES_PLT=()
-for time in "${PL_TIMES[@]}"; do
-    for var in "${VARIABLESPL[@]}"; do
-        VARIABLES_PLT+=("$var/$time")
-    done
-done
+# VARIABLES_PLT=()
+# for time in "${PL_TIMES[@]}"; do
+#     for var in "${VARIABLESPL[@]}"; do
+#         VARIABLES_PLT+=("$var/$time")
+#     done
+# done
 
 # VARIABLES_SCFT=()
 # for time in "${SCF_TIMES[@]}"; do
@@ -108,7 +108,9 @@ mkdir -p $TARGET_DIR
 cd $TARGET_DIR
 mkdir -p "${VARIABLESSCF[@]}" "${VARIABLESPL[@]}" "${COORDS[@]}"
 cp $DATASET_DIR/.z* ./
+gsutil -q -m cp -r  "${COORDS[@]/#/$DATASET_DIR/}" ./
 # gsutil -q -m cp -r  "${COORDS[@]/#/$DATASET_DIR/}" "${VARIABLES[@]/#/$DATASET_DIR/}" ./
+
 
 # gsutil -q -m cp -r  "${COORDS[@]/#/$DATASET_DIR/}" "${VARIABLES_PLT[@]/#/$DATASET_DIR/}" "${VARIABLES_SCFT[@]/#/$DATASET_DIR/}" ./
 # gsutil -q -m cp -r  "${VARIABLES_PLT[@]/#/$DATASET_DIR/}" "${VARIABLES_PLT[@]/#/$TARGET_DIR/}" 
@@ -119,4 +121,12 @@ for var in "${VARIABLESSCF[@]}"; do
         VARIABLES_SCFT+=("$var/$time")
     done
     gsutil -q -m cp -r  "${VARIABLES_SCFT[@]/#/$DATASET_DIR/}" $TARGET_DIR/$var/
+done
+
+for var in "${VARIABLESPL[@]}"; do
+    VARIABLES_PLT=()
+    for time in "${PL_TIMES[@]}"; do
+        VARIABLES_PLT+=("$var/$time")
+    done
+    gsutil -q -m cp -r  "${VARIABLES_PLT[@]/#/$DATASET_DIR/}" $TARGET_DIR/$var/
 done
