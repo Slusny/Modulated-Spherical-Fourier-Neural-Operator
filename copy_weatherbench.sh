@@ -118,5 +118,5 @@ for var in "${VARIABLESSCF[@]}"; do
     for time in "${SCF_TIMES[@]}"; do
         VARIABLES_SCFT+=("$var/$time")
     done
-    gsutil -q -m cp -r  "${VARIABLES_SCFT[@]/#/$DATASET_DIR/}" "$TARGET_DIR/$var}" 
+    gsutil -q -m cp -r  "${VARIABLES_SCFT[@]/#/$DATASET_DIR/}" "$TARGET_DIR/$var/}" 
 done
