@@ -109,4 +109,5 @@ mkdir -p "${VARIABLESSCF[@]}" "${VARIABLESPL[@]}" "${COORDS[@]}"
 cp $DATASET_DIR/.z* ./
 # gsutil -q -m cp -r  "${COORDS[@]/#/$DATASET_DIR/}" "${VARIABLES[@]/#/$DATASET_DIR/}" ./
 
-gsutil -q -m cp -r  "${COORDS[@]/#/$DATASET_DIR/}" "${VARIABLES_PLT[@]/#/$DATASET_DIR/}" "${VARIABLES_SCFT[@]/#/$DATASET_DIR/}" ./
+# gsutil -q -m cp -r  "${COORDS[@]/#/$DATASET_DIR/}" "${VARIABLES_PLT[@]/#/$DATASET_DIR/}" "${VARIABLES_SCFT[@]/#/$DATASET_DIR/}" ./
+gsutil -q -m cp -r  "${VARIABLES_PLT[@]/#/$DATASET_DIR/}" "${VARIABLES_PLT[@]/#/$TARGET_DIR/}" 
