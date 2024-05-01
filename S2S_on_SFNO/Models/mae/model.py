@@ -5,7 +5,6 @@ from .maenet import ContextCast
 
 class MAE(Model):
     def __init__(self, **kwargs):
-        super()
         # init model
         self.model = ContextCast()
     
