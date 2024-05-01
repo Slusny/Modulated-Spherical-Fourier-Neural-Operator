@@ -1584,10 +1584,11 @@ class L2Sphere(torch.nn.Module):
 
     def forward(self, prd, tar):
         B, C, H, W = prd.shape
-        w_quad = harmonics.quadrature.legendre_gauss_weights(H, -1, 1)
+        w_quad = torch.tensor(harmonics.quadrature.legendre_gauss_weights(H, -1, 1)[1], device=prd.device, dtype=prd.dtype)
         w_jacobian = torch.cos(torch.linspace(-torch.pi / 2, torch.pi / 2, H, device=prd.device, dtype=prd.dtype))
-        w_jacobian = w_jacobian[None, None, :, None]
+        # w_jacobian = w_jacobian[None, None, :, None]
         w = w_quad * w_jacobian
+        w = w[None, None, :, None]   
         loss = (w*(prd - tar)**2).sum(dim=-1)
         if self.relative:
             loss = loss / (w*tar**2).sum(dim=-1)

@@ -47,3 +47,12 @@
 // Eval
 // python main.py --model sfno --model-version film --validation-epochs 30 --training-workers 4 --batch-size 1 --multi-step-validation 5 --validation-step-skip 5 --eval-models-autoregressive --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/devoted-bush-34 --film-gen gcn_custom
 // python main.py --model sfno --model-version film --validation-epochs 3 --training-workers 4 --batch-size 1 --multi-step-validation 5 --validation-step-skip 5 --eval-models-autoregressive --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/efficient-paper-37 --film-gen gcn
+
+
+//GCN
+
+// SFNO
+// python main.py --model sfno --model-version latest --train --validation-interval 5 --validation-epochs 5 --training-workers 6 --batch-size 1  --learning-rate 0.0005 --multi-step-training 1 --training-step-skip 0 --accumulation-steps 2 --save-checkpoint-interval 30 --advanced-logging --enable-amp --loss-fn L2Sphere --debug
+
+
+echo DONE!
