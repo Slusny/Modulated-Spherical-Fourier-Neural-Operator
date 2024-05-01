@@ -3,7 +3,7 @@
 #a) Define slurm job parameters
 ####
 
-#SBATCH --job-name=sfno
+#SBATCH --job-name=kp
 
 #resources:
 
