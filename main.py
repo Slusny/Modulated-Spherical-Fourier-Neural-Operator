@@ -486,7 +486,7 @@ def _main():
         action="store",
         help="Which loss function to use",
         default="MSE",
-        choices=["MSE","CosineMSE"],
+        choices=["MSE","CosineMSE","L2Sphere"],
     )
 
     # Logging
