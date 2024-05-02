@@ -1275,7 +1275,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         loss_fn = torch.nn.MSELoss()#reduction='none'
         loss_fn_pervar = torch.nn.MSELoss(reduction='none')
 
-        loss_sphere = L2Sphere(relative=True, squared=True, reduction='none')
+        loss_sphere = L2Sphere(relative=False, squared=False, reduction='none')
 
         # load climatology reference
         basePath = "/mnt/qb/work2/goswami0/gkd965/"
@@ -1579,7 +1579,7 @@ class CosineMSELoss():
             return loss  # B, C
 
 class L2Sphere(torch.nn.Module):
-    def __init__(self, relative=True, squared=True,reduction="sum"):
+    def __init__(self, relative=True, squared=False,reduction="sum"):
         super(L2Sphere, self).__init__()
         
         self.relative = relative
@@ -1597,7 +1597,7 @@ class L2Sphere(torch.nn.Module):
         if self.reduction == "none":
             loss = (sphere_weights*(prd - tar)**2)
             if self.relative:
-                loss = loss / (sphere_weights*tar**2)
+                loss = loss / (sphere_weights*tar**2).sum(dim=(-1,-2))
             return loss
         
         loss = (sphere_weights*(prd - tar)**2).sum(dim=(-1,-2))
