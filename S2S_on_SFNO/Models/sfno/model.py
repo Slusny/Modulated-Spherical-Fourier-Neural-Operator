@@ -22,7 +22,6 @@ from torch.utils.data import DataLoader
 import torch.cuda.amp as amp
 from ..models import Model
 from datetime import datetime
-import torch_harmonics as harmonics
 # import xskillscore as xs
 
 import climetlab as cml
@@ -33,6 +32,7 @@ import matplotlib.pyplot as plt
 from .sfnonet import FourierNeuralOperatorNet
 from .sfnonet import FourierNeuralOperatorNet_Filmed
 from ..train import ERA5_galvani
+from ..losses import CosineMSELoss, L2Sphere
 
 # LOG = logging.getLogger(__name__)
 LOG = logging.getLogger('S2S_on_SFNO')
@@ -1553,153 +1553,4 @@ def get_model(**kwargs):
         "film": FourCastNetv2_filmed,
     }
     return models[kwargs["model_version"]](**kwargs)
-
-
-
-class CosineMSELoss():
-    def __init__(self, reduction=None):
-        super().__init__()
-        self._mse = torch.nn.MSELoss(reduction='none')
-        self.reduction = reduction  
-
-    def forward(self, x, y):
-        B, C, H, W = x.shape
-
-        weights = torch.cos(torch.linspace(-torch.pi / 2, torch.pi / 2, H, device=x.device, dtype=x.dtype))
-        weights /= weights.sum()
-        weights = weights[None, None, :, None]
-
-        loss = self._mse(x, y)
-        loss = (loss * weights).sum(dim=[2,3]) / W
-        if self.reduction == "mean":
-            return loss.mean()
-        if self.reduction == "sum":
-            return loss.sum()
-        if self.reduction == "none":
-            return loss  # B, C
-
-class L2Sphere(torch.nn.Module):
-    def __init__(self, relative=True, squared=False,reduction="sum"):
-        super(L2Sphere, self).__init__()
-        
-        self.relative = relative
-        self.squared = squared
-        self.reduction = reduction
-
-    def forward(self, prd, tar):
-        B, C, H, W = prd.shape
-        w_quad = torch.tensor(harmonics.quadrature.legendre_gauss_weights(H, -1, 1)[1], device=prd.device, dtype=prd.dtype)
-        w_jacobian = torch.cos(torch.linspace(-torch.pi / 2, torch.pi / 2, H, device=prd.device, dtype=prd.dtype))
-        # w_jacobian = w_jacobian[None, None, :, None]
-        sphere_weights = w_quad * w_jacobian
-        sphere_weights = sphere_weights[None, None, :, None]   
-
-        if self.reduction == "none":
-            loss = (sphere_weights*(prd - tar)**2)
-            if self.relative:
-                loss = loss / (sphere_weights*tar**2).sum(dim=(-1,-2))
-            return loss
-        
-        loss = (sphere_weights*(prd - tar)**2).sum(dim=(-1,-2))
-        if self.relative:
-            loss = loss / (sphere_weights*tar**2).sum(dim=(-1,-2))
-        
-        if not self.squared:
-            loss = torch.sqrt(loss)
-
-        if self.reduction == "mean":
-            return loss.mean()
-        elif self.reduction == "sum":
-            return loss.sum()
-        else:
-            return loss
-
-def spectral_l2loss_sphere(solver, prd, tar, relative=False, squared=True):
-    # compute coefficients
-    coeffs = torch.view_as_real(solver.sht(prd - tar))
-    coeffs = coeffs[..., 0]**2 + coeffs[..., 1]**2
-    norm2 = coeffs[..., :, 0] + 2 * torch.sum(coeffs[..., :, 1:], dim=-1)
-    loss = torch.sum(norm2, dim=(-1,-2))
-
-    if relative:
-        tar_coeffs = torch.view_as_real(solver.sht(tar))
-        tar_coeffs = tar_coeffs[..., 0]**2 + tar_coeffs[..., 1]**2
-        tar_norm2 = tar_coeffs[..., :, 0] + 2 * torch.sum(tar_coeffs[..., :, 1:], dim=-1)
-        tar_norm2 = torch.sum(tar_norm2, dim=(-1,-2))
-        loss = loss / tar_norm2
-
-    if not squared:
-        loss = torch.sqrt(loss)
-    loss = loss.mean()
-
-    return loss
-
-def spectral_loss_sphere(solver, prd, tar, relative=False, squared=True):
-    # gradient weighting factors
-    lmax = solver.sht.lmax
-    ls = torch.arange(lmax).float()
-    spectral_weights = (ls*(ls + 1)).reshape(1, 1, -1, 1).to(prd.device)
-
-    # compute coefficients
-    coeffs = torch.view_as_real(solver.sht(prd - tar))
-    coeffs = coeffs[..., 0]**2 + coeffs[..., 1]**2
-    coeffs = spectral_weights * coeffs
-    norm2 = coeffs[..., :, 0] + 2 * torch.sum(coeffs[..., :, 1:], dim=-1)
-    loss = torch.sum(norm2, dim=(-1,-2))
-
-    if relative:
-        tar_coeffs = torch.view_as_real(solver.sht(tar))
-        tar_coeffs = tar_coeffs[..., 0]**2 + tar_coeffs[..., 1]**2
-        tar_coeffs = spectral_weights * tar_coeffs
-        tar_norm2 = tar_coeffs[..., :, 0] + 2 * torch.sum(tar_coeffs[..., :, 1:], dim=-1)
-        tar_norm2 = torch.sum(tar_norm2, dim=(-1,-2))
-        loss = loss / tar_norm2
-
-    if not squared:
-        loss = torch.sqrt(loss)
-    loss = loss.mean()
-
-    return loss
-
-def h1loss_sphere(solver, prd, tar, relative=False, squared=True):
-    # gradient weighting factors
-    lmax = solver.sht.lmax
-    ls = torch.arange(lmax).float()
-    spectral_weights = (ls*(ls + 1)).reshape(1, 1, -1, 1).to(prd.device)
-
-    # compute coefficients
-    coeffs = torch.view_as_real(solver.sht(prd - tar))
-    coeffs = coeffs[..., 0]**2 + coeffs[..., 1]**2
-    h1_coeffs = spectral_weights * coeffs
-    h1_norm2 = h1_coeffs[..., :, 0] + 2 * torch.sum(h1_coeffs[..., :, 1:], dim=-1)
-    l2_norm2 = coeffs[..., :, 0] + 2 * torch.sum(coeffs[..., :, 1:], dim=-1)
-    h1_loss = torch.sum(h1_norm2, dim=(-1,-2))
-    l2_loss = torch.sum(l2_norm2, dim=(-1,-2))
-
-     # strictly speaking this is not exactly h1 loss 
-    if not squared:
-        loss = torch.sqrt(h1_loss) + torch.sqrt(l2_loss)
-    else:
-        loss = h1_loss + l2_loss
-
-    if relative:
-        raise NotImplementedError("Relative H1 loss not implemented")
-
-    loss = loss.mean()
-
-
-    return loss
-
-def fluct_l2loss_sphere(solver, prd, tar, inp, relative=False, polar_opt=0):
-    # compute the weighting factor first
-    fluct = solver.integrate_grid((tar - inp)**2, dimensionless=True, polar_opt=polar_opt)
-    weight = fluct / torch.sum(fluct, dim=-1, keepdim=True)
-    # weight = weight.reshape(*weight.shape, 1, 1)
-    
-    loss = weight * solver.integrate_grid((prd - tar)**2, dimensionless=True, polar_opt=polar_opt)
-    if relative:
-        loss = loss / (weight * solver.integrate_grid(tar**2, dimensionless=True, polar_opt=polar_opt))
-    loss = torch.mean(loss)
-    return loss
-
 

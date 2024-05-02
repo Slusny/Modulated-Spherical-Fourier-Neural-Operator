@@ -8,7 +8,11 @@ import logging
 import os
 import sys
 
+import torch
+
 from ..train import SST_galvani
+from ..losses import CosineMSELoss, L2Sphere, NormalCRPS
+
 LOG = logging.getLogger('S2S_on_SFNO')
 
 class MAE(Model):
@@ -18,7 +22,7 @@ class MAE(Model):
     
     def load_model(self, checkpoint_file):
         
-        # model = self.model
+        model = self.model
         # model.zero_grad()
 
         # # Load SFNO weights
@@ -111,20 +115,20 @@ class MAE(Model):
             self.gscaler = amp.GradScaler()
         
         print("Trainig Data:")
-        dataset = ERA5_galvani(
+        dataset = SST_galvani(
             self,
             path=kwargs["trainingdata_path"], 
             start_year=kwargs["trainingset_start_year"],
             end_year=kwargs["trainingset_end_year"],
-            auto_regressive_steps=kwargs["multi_step_training"]
+            temporal_step=kwargs["multi_step_training"]
         )
         print("Validation Data:")
-        dataset_validation = ERA5_galvani(
+        dataset_validation = SST_galvani(
             self,
             path=kwargs["trainingdata_path"], 
             start_year=kwargs["validationset_start_year"],
             end_year=kwargs["validationset_end_year"],
-            auto_regressive_steps=kwargs["multi_step_validation"])
+            temporal_step=kwargs["multi_step_validation"])
 
         if kwargs["advanced_logging"] : 
             mem_log_not_done = True
@@ -155,6 +159,8 @@ class MAE(Model):
             loss_fn = CosineMSELoss(reduction='mean')
         elif kwargs["loss_fn"] == "L2Sphere":
             loss_fn = L2Sphere(relative=True, squared=True)
+        elif kwargs["loss_fn"] == "CRPS":
+            loss_fn = NormalCRPS(relative=True, squared=True)
         else:
             loss_fn = torch.nn.MSELoss()
 
@@ -192,24 +198,16 @@ class MAE(Model):
                 model.eval()
                 with torch.no_grad():
                     # For loop over validation dataset, calculates the validation loss mean for number of kwargs["validation_epochs"]
-                    if kwargs["advanced_logging"] and mse_all_vars: loss_pervar_list = []
                     for val_epoch, val_data in enumerate(validation_loader):
                         # Calculates the validation loss for autoregressive model evaluation
                         # if self.auto_regressive_steps = 0 the dataloader only outputs 2 datapoint 
                         # and the for loop only runs once (calculating the ordinary validation loss with no auto regressive evaluation
-                        val_input_era5 = None
-                        for val_idx in range(kwargs["multi_step_validation"]+1):
-                            if val_input_era5 is None: val_input_era5 = self.normalise(val_data[val_idx][0]).to(self.device)
-                            else: val_input_era5 = outputs
-                            val_input_sst  = self.normalise_film(val_data[val_idx+1][1]).to(self.device) # get gt sst from next step
+                        
+                        val_input_sst  = self.normalise_film(val_data).to(self.device) # get gt sst from next step
                             
                             val_g_truth_era5 = self.normalise(val_data[val_idx+1][0]).to(self.device)
                             outputs = model(val_input_era5,val_input_sst,scale)
                             val_loss_value = loss_fn(outputs, val_g_truth_era5) / kwargs["batch_size"]
-
-                            # loss for each variable
-                            if kwargs["advanced_logging"] and mse_all_vars  and val_idx == 0: # !! only for first multi validation step, could include next step with -> ... -> ... in print statement on same line
-                                loss_pervar_list.append(loss_fn_pervar(outputs, val_g_truth_era5).mean(dim=(0,2,3)) / kwargs["batch_size"])
                             
                             if val_epoch == 0: 
                                 val_loss["validation loss step={}".format(val_idx)] = [val_loss_value.cpu()] #kwargs["validation_epochs"]

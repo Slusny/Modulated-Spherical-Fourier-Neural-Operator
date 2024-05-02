@@ -175,10 +175,12 @@ class SST_galvani(Dataset):
             end_year=2022,
             steps_per_day=4,
             coarse_level=4,
-            temporal_step=6
+            temporal_step=6,
+            ground_truth=False
         ):
         self.model = model
         self.temporal_step = temporal_step
+        self.gt = ground_truth
         self.coarse_level = coarse_level
         if path.endswith(".zarr"):  self.dataset = xr.open_zarr(path,chunks=None)
         else:                       self.dataset = xr.open_dataset(path,chunks=None)
@@ -220,8 +222,11 @@ class SST_galvani(Dataset):
     
     def __getitem__(self):
         input = self.dataset.isel(time=slice(self.start_idx, self.start_idx + self.temporal_step))["sea_surface_temperature"].mean(dim="time")
-        g_truth = self.dataset.isel(time=slice(self.start_idx+1, self.start_idx+1 + self.temporal_step))["sea_surface_temperature"].mean(dim="time")
-        return input, g_truth
+        if self.gt:
+            g_truth = self.dataset.isel(time=slice(self.start_idx+1, self.start_idx+1 + self.temporal_step))["sea_surface_temperature"].mean(dim="time")
+            return input, g_truth
+        else:
+            return input
 
 # class ERA5_galvani_coarsen(Dataset):
 #     """
