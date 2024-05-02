@@ -1275,6 +1275,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
         loss_fn = torch.nn.MSELoss()#reduction='none'
         loss_fn_pervar = torch.nn.MSELoss(reduction='none')
 
+        loss_sphere = L2Sphere(relative=True, squared=True, reduction='none')
+
         # load climatology reference
         basePath = "/mnt/qb/work2/goswami0/gkd965/"
         variables = ["10m_u_component_of_wind","2m_temperature","mean_sea_level_pressure","surface_pressure"]
@@ -1368,7 +1370,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
                             val_g_truth_era5_normalised = self.normalise(val_g_truth_era5)
                             val_loss_value_pervar_norm = loss_fn_pervar(outputs.to("cpu"), val_g_truth_era5_normalised).mean(dim=(0,2,3)) /self.batch_size
                             
-    
+                            loss_sphere_value = loss_sphere(outputs.to("cpu"), val_g_truth_era5_normalised) #.mean(dim=(0,2,3)) /self.batch_size
+
                             # Doo we neeed to squeeze, what if batches
                             skill_scores = []
                             for variable in variables:
@@ -1576,11 +1579,12 @@ class CosineMSELoss():
             return loss  # B, C
 
 class L2Sphere(torch.nn.Module):
-    def __init__(self, relative=True, squared=True):
+    def __init__(self, relative=True, squared=True,reduction="mean"):
         super(L2Sphere, self).__init__()
         
         self.relative = relative
         self.squared = squared
+        self.reduction = reduction
 
     def forward(self, prd, tar):
         B, C, H, W = prd.shape
@@ -1595,9 +1599,13 @@ class L2Sphere(torch.nn.Module):
         
         if not self.squared:
             loss = torch.sqrt(loss)
-        loss = loss.mean()
 
-        return loss
+        if self.reduction == "mean":
+            return loss.mean()
+        elif self.reduction == "sum":
+            return loss.sum()
+        else:
+            return loss
 
 def spectral_l2loss_sphere(solver, prd, tar, relative=False, squared=True):
     # compute coefficients
