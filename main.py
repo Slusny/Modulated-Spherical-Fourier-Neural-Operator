@@ -672,6 +672,10 @@ def _main():
             model_args["validation_step_skip"] = args.validation_step_skip
             model_args["validation_epochs"] = args.validation_epochs
             model_args["advanced_logging"] = args.advanced_logging
+            # if a new argument is added to the model in main, but the checkpoint doesn't have it (old version of a model), add it default value
+            for k in vars(args).keys():
+                if k not in model_args.keys():
+                    model_args[k] = vars(args)[k]
             model = load_model(cp["hyperparameters"]["model_type"], model_args)
     else:
         model = load_model(args.model_type, vars(args))
