@@ -53,7 +53,7 @@ def _main():
         action="store",
         required=True,
         #choices=available_models(),
-        choices=["sfno","fcn"],
+        choices=["sfno","fcn","mae"],
         dest="model_type",
         help="Specify the model to run",
     )

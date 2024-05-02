@@ -2,6 +2,14 @@
 
 from ..models import Model
 from .maenet import ContextCast
+from torch.utils.data import DataLoader
+import torch.cuda.amp as amp
+import logging
+import os
+import sys
+
+from ..train import SST_galvani
+LOG = logging.getLogger('S2S_on_SFNO')
 
 class MAE(Model):
     def __init__(self, **kwargs):
