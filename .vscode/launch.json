@@ -46,7 +46,7 @@
 
 // Eval
 // python main.py --model sfno --model-version film --validation-epochs 30 --training-workers 4 --batch-size 1 --multi-step-validation 5 --validation-step-skip 5 --eval-models-autoregressive --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/devoted-bush-34 --film-gen gcn_custom
-// python main.py --model sfno --model-version film --validation-epochs 3 --training-workers 4 --batch-size 1 --multi-step-validation 5 --validation-step-skip 5 --eval-models-autoregressive --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/efficient-paper-37 --film-gen gcn
+// python main.py --model sfno --model-version film --validation-epochs 3 --training-workers 4 --batch-size 1 --multi-step-validation 5 --validation-step-skip 5 --eval-models-autoregressive --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/efficient-paper-37 --film-gen gcn --eval-sfno --debug
 
 
 //GCN

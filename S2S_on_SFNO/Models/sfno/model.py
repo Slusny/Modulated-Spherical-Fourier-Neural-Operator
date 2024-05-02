@@ -1579,7 +1579,7 @@ class CosineMSELoss():
             return loss  # B, C
 
 class L2Sphere(torch.nn.Module):
-    def __init__(self, relative=True, squared=True,reduction="mean"):
+    def __init__(self, relative=True, squared=True,reduction="sum"):
         super(L2Sphere, self).__init__()
         
         self.relative = relative
@@ -1593,9 +1593,16 @@ class L2Sphere(torch.nn.Module):
         # w_jacobian = w_jacobian[None, None, :, None]
         sphere_weights = w_quad * w_jacobian
         sphere_weights = sphere_weights[None, None, :, None]   
-        loss = (sphere_weights*(prd - tar)**2).sum(dim=-1)
+
+        if self.reduction == "none":
+            loss = (sphere_weights*(prd - tar)**2)
+            if self.relative:
+                loss = loss / (sphere_weights*tar**2)
+            return loss
+        
+        loss = (sphere_weights*(prd - tar)**2).sum(dim=(-1,-2))
         if self.relative:
-            loss = loss / (sphere_weights*tar**2).sum(dim=-1)
+            loss = loss / (sphere_weights*tar**2).sum(dim=(-1,-2))
         
         if not self.squared:
             loss = torch.sqrt(loss)
