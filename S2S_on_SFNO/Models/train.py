@@ -166,6 +166,63 @@ class ERA5_galvani(Dataset):
             ssts.append(torch.from_numpy(sst))
         return ssts
 
+class SST_galvani(Dataset):
+    def __init__(
+            self, 
+            model,
+            path = "/mnt/qb/goswami/data/era5/weatherbench2/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr", # start date: 1959-01-01 end date : 2023-01-10T18:00
+            start_year=2000,
+            end_year=2022,
+            steps_per_day=4,
+            coarse_level=4,
+            temporal_step=6
+        ):
+        self.model = model
+        self.temporal_step = temporal_step
+        self.coarse_level = coarse_level
+        if path.endswith(".zarr"):  self.dataset = xr.open_zarr(path,chunks=None)
+        else:                       self.dataset = xr.open_dataset(path,chunks=None)
+        
+        startdate = np.array([self.dataset.time[0].to_numpy() ,self.dataset_v100.time[0].to_numpy() ,self.dataset_u100.time[0].to_numpy()])
+        possible_startdate = startdate.max()
+        if not (startdate == startdate[0]).all(): 
+            print("Start dates of all arrays need to be the same! Otherwise changes to the Dataset class are needed!")
+            print("For ERA5, 100v, 100u the end dates are",startdate)
+            sys.exit(0)
+        # if int(np.datetime_as_string(possible_startdate,"M")) != 1 and int(np.datetime_as_string(possible_startdate,"D")) != 1 :
+        #     print("Start dates need to be the 1/1 of a year! Otherwise changes to the Dataset class are needed!")
+        #     print("For ERA5, 100v, 100u the end dates are",startdate)
+        #     sys.exit(0)
+        dataset_start = int(np.datetime_as_string(possible_startdate,"Y"))
+        if start_year < int(np.datetime_as_string(possible_startdate,"Y")):
+            print("chosen start year is earlier than the earliest common start date to all of the datasets")
+            print("Start year is set to ",int(np.datetime_as_string(possible_startdate,"Y")))
+            print("For ERA5, 100v, 100u the end dates are",startdate)
+            start_year = dataset_start
+        
+        # Check if set Start date to be viable
+        enddate = np.array([self.dataset.time[-1].to_numpy() ,self.dataset_v100.time[-1].to_numpy() ,self.dataset_u100.time[-1].to_numpy()])
+        possible_enddate = enddate.min()
+        if end_year > int(np.datetime_as_string(possible_enddate,"Y")):
+            print("chosen end year is later than the latest common end date to all of the datasets")
+            print("End year is set to ",int(np.datetime_as_string(possible_enddate,"Y")))
+            print("For ERA5, 100v, 100u the end dates are",enddate)
+            end_year = int(np.datetime_as_string(possible_enddate,"Y"))
+
+        self.start_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(dataset_start, start_year))])
+        self.end_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(dataset_start, end_year))]) -1
+
+        print("Using years: ",start_year," - ", end_year," (total length: ",self.end_idx - self.start_idx,") (availabe date range: ",np.datetime_as_string(possible_startdate,"Y"),"-",np.datetime_as_string(possible_enddate,"Y"),")")
+        print("")
+        
+    def __len__(self):
+        return self.end_idx - self.start_idx
+    
+    def __getitem__(self):
+        input = self.dataset.isel(time=slice(self.start_idx, self.start_idx + self.temporal_step))["sea_surface_temperature"].mean(dim="time")
+        g_truth = self.dataset.isel(time=slice(self.start_idx+1, self.start_idx+1 + self.temporal_step))["sea_surface_temperature"].mean(dim="time")
+        return input, g_truth
+
 # class ERA5_galvani_coarsen(Dataset):
 #     """
 #         Dataset for the ERA5 data on Galvani cluster at university of tuebingen.
