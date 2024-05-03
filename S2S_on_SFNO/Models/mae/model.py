@@ -22,7 +22,7 @@ LOG = logging.getLogger('S2S_on_SFNO')
 class MAE(Model):
     def __init__(self, **kwargs):
         # init model
-        self.model = ContextCast()
+        self.model = ContextCast(data_dim=1)
     
     def load_model(self, checkpoint_file):
         
