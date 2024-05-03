@@ -55,6 +55,9 @@
 // python main.py --model sfno --model-version latest --train --validation-interval 5 --validation-epochs 5 --training-workers 6 --batch-size 1  --learning-rate 0.0005 --multi-step-training 1 --training-step-skip 0 --accumulation-steps 2 --save-checkpoint-interval 30 --advanced-logging --enable-amp --loss-fn L2Sphere --debug
 
 
+//MAE
+// python main.py --model mae --train
+
 //plot
 // self.plot_variable(loss_sphere_value[0][id],loss_fn_pervar(outputs.to("cpu"), val_g_truth_era5_normalised)[0,id],save_path,"SphericalLoss_SFNO",self.ordering[id],ids,sfno=True)
 

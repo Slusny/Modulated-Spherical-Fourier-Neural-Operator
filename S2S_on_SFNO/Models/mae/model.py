@@ -26,6 +26,7 @@ class MAE(Model):
         self.model = ContextCast(data_dim=1)
         self.params = kwargs
         self.timestr = kwargs["timestr"]
+        self.assets = kwargs["assets"]
     
     def load_model(self, checkpoint_file):
         
@@ -109,6 +110,23 @@ class MAE(Model):
         #     # param.requires_grad = False 
 
         return model
+
+    ## common
+
+    def load_statistics(self, film_gen_type=None):
+            
+        self.means_film = np.load(os.path.join(self.assets, "global_means_sst.npy"))
+        self.means_film = self.means_film.astype(np.float32)
+        self.stds_film = np.load(os.path.join(self.assets, "global_stds_sst.npy"))
+        self.stds_film = self.stds_film.astype(np.float32)
+    
+    def normalise_film(self, data, reverse=False):
+        """Normalise data using pre-saved global statistics"""
+        if reverse:
+            new_data = data * self.stds_film + self.means_film
+        else:
+            new_data = (data - self.means_film) / self.stds_film
+        return new_data
 
     def run(self):
         raise NotImplementedError("Filmed model run not implemented yet. Needs to considder sst input.")
