@@ -432,7 +432,7 @@ def load_model(name, kwargs):
     if name == 'sfno':
         from .sfno.model import get_model
     if name == 'mae':
-        from .mae.maenet import get_model
+        from .mae.model import get_model
     
     return get_model(**kwargs)
     # return available_models()[name].load()(**kwargs)
