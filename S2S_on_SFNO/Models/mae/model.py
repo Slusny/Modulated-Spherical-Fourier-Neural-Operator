@@ -27,6 +27,7 @@ class MAE(Model):
         self.params = kwargs
         self.timestr = kwargs["timestr"]
         self.assets = kwargs["assets"]
+        self.save_path = kwargs["save_path"]
     
     def load_model(self, checkpoint_file):
         
