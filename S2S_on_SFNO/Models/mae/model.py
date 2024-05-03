@@ -25,6 +25,7 @@ class MAE(Model):
         # init model
         self.model = ContextCast(data_dim=1)
         self.params = kwargs
+        self.timestr = kwargs["timestr"]
     
     def load_model(self, checkpoint_file):
         
