@@ -11,6 +11,7 @@ import numpy as np
 import sys
 
 ultra_advanced_logging=False
+local_logging = False
 
 import torch
 
@@ -23,6 +24,7 @@ class MAE(Model):
     def __init__(self, **kwargs):
         # init model
         self.model = ContextCast(data_dim=1)
+        self.params = kwargs
     
     def load_model(self, checkpoint_file):
         
@@ -301,6 +303,23 @@ class MAE(Model):
         if kwargs["advanced_logging"] and mem_log_not_done : 
             print("mem after validation : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
     
+    def save_checkpoint(self,save_file=None):
+        if local_logging : 
+            print(" -> saving to : ",self.save_path)
+            np.save(os.path.join( self.save_path,"val_means.npy"),self.val_means)
+            np.save(os.path.join( self.save_path,"val_stds.npy"),self.val_stds)
+            np.save(os.path.join( self.save_path,"losses.npy"),self.losses)
+
+        if save_file is None: save_file ="checkpoint_"+self.timestr+"_final.pkl"
+        save_dict = {
+            "model_state":self.model.state_dict(),
+            "epoch":self.epoch,
+            "iter":self.iter,
+            "optimizer_state_dict":self.optimizer.state_dict(),
+            "hyperparameters": self.params
+            }
+        if self.scheduler: save_dict["scheduler_state_dict"]= self.scheduler.state_dict()
+        torch.save(save_dict,os.path.join( self.save_path,save_file))
 
 def get_model(**kwargs):
     models = {

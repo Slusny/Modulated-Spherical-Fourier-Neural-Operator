@@ -176,7 +176,8 @@ class SST_galvani(Dataset):
             steps_per_day=4,
             coarse_level=4,
             temporal_step=6,
-            ground_truth=False
+            ground_truth=False,
+            precompute_temporal_average=False
         ):
         self.model = model
         self.temporal_step = temporal_step
@@ -221,12 +222,13 @@ class SST_galvani(Dataset):
         return self.end_idx - self.start_idx
     
     def __getitem__(self):
-        input = self.dataset.isel(time=slice(self.start_idx, self.start_idx + self.temporal_step))["sea_surface_temperature"].mean(dim="time")
+        input = self.dataset.isel(time=slice(self.start_idx, self.start_idx + self.temporal_step))["sea_surface_temperature"]
         if self.gt:
-            g_truth = self.dataset.isel(time=slice(self.start_idx+1, self.start_idx+1 + self.temporal_step))["sea_surface_temperature"].mean(dim="time")
+            g_truth = self.dataset.isel(time=slice(self.start_idx+1, self.start_idx+1 + self.temporal_step))["sea_surface_temperature"]
             return input, g_truth
         else:
             return input
+        # precompute_temporal_average not implemented
 
 # class ERA5_galvani_coarsen(Dataset):
 #     """
