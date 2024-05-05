@@ -1,9 +1,7 @@
-# (C) Copyright 2023 European Centre for Medium-Range Weather Forecasts.
-# This software is licensed under the terms of the Apache Licence Version 2.0
-# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
-# In applying this licence, ECMWF does not waive the privileges and immunities
-# granted to it by virtue of its status as an intergovernmental organisation
-# nor does it submit to any jurisdiction.
+'''
+This module contains the base class for all models in the S2S_on_SFNO package,
+mainly utility methods.
+'''
 
 import datetime
 import json
@@ -33,6 +31,10 @@ LOG = logging.getLogger(__name__)
 
 
 class Timer:
+    '''
+    A utility class to measure runtime.
+    Envelop code in a with Timer('some title') statement to measure the time it takes to execute.
+    '''
     def __init__(self, title):
         self.title = title
         self.start = time.time()
@@ -46,6 +48,9 @@ class Timer:
 
 
 class ArchiveCollector:
+    '''
+    ECMWF's MARS archive collector.
+    '''
     def __init__(self) -> None:
         self.expect = 0
         self.request = defaultdict(set)
@@ -56,7 +61,43 @@ class ArchiveCollector:
             self.request[k].add(str(v))
 
 
-class Model:
+
+class Model():
+
+    def __init__(self, **kwargs):
+        self.params = kwargs
+
+        LOG.debug("Asset directory is %s", self.assets)
+
+    def training(self,**kwargs):
+        """
+        Fallback method for training models.
+        Should be overriden in subclasses with actual training regime.
+        """
+        print("Training method not implemented for this model.")
+        print("Make sure you specified also the --verison of the model you want to train.")
+        sys.exit(1)
+
+    def set_seed(self,seed: int = 42) -> None:
+        np.random.seed(seed)
+        random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        self.params["seed"] = seed
+        print(f"Random seed set as {seed}")
+
+    def provenance(self):
+        from .provenance import gather_provenance_info
+        return gather_provenance_info(self.asset_files)
+
+    def peek_into_checkpoint(self, path):
+        return peek(path)
+
+class ATMModel(Model):
+    '''
+    Base class for atmosphere models (sfno, fcn)
+    '''
+
     lagged = False
     assets_extra_dir = None
     retrieve = {}  # Extra parameters for retrieve
@@ -81,8 +122,6 @@ class Model:
         if self.assets_sub_directory:
             if self.assets_extra_dir is not None:
                 self.assets += self.assets_extra_dir
-
-        LOG.debug("Asset directory is %s", self.assets)
 
         try:
             # For CliMetLab, when date=-1
@@ -378,38 +417,8 @@ class Model:
         # Overriden in subclasses if needed
         pass
 
-    def peek_into_checkpoint(self, path):
-        return peek(path)
-
-    def parse_model_args(self, args):
-        if args:
-            raise NotImplementedError(f"This model does not accept arguments {args}")
-
-    def provenance(self):
-        from .provenance import gather_provenance_info
-
-        return gather_provenance_info(self.asset_files)
     
-    def training(self,**kwargs):
-        """
-        Fallback method for training models.
-        Should be overriden in subclasses with actual training regime.
-        """
-        print("Training method not implemented for this model.")
-        print("Make sure you specified also the --verison of the model you want to train.")
-        sys.exit(1)
-    def set_seed(self,seed: int = 42) -> None:
-        np.random.seed(seed)
-        random.seed(seed)
-        torch.manual_seed(seed)
-        torch.cuda.manual_seed(seed)
-        self.params["seed"] = seed
-        print(f"Random seed set as {seed}")
-
-
-
-
-
+   
 
     
 
