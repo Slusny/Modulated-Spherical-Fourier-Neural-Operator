@@ -1,5 +1,6 @@
 import torch
 from torch.utils.data import BatchSampler, DataLoader, Dataset#, IterableDataset
+import torch.cuda.amp as amp
 from calendar import isleap
 import xarray as xr
 import numpy as np
@@ -13,6 +14,9 @@ from time import time
 # BatchSampler(drop_last=True)
 
 from S2S_on_SFNO.Models.provenance import system_monitor
+from .losses import CosineMSELoss, L2Sphere
+
+LOG = logging.getLogger('S2S_on_SFNO')
 
 class ERA5_galvani(Dataset):
     """
@@ -169,7 +173,6 @@ class ERA5_galvani(Dataset):
 class SST_galvani(Dataset):
     def __init__(
             self, 
-            model,
             path = "/mnt/qb/goswami/data/era5/weatherbench2/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr", # start date: 1959-01-01 end date : 2023-01-10T18:00
             start_year=2000,
             end_year=2022,
@@ -179,7 +182,6 @@ class SST_galvani(Dataset):
             ground_truth=False,
             precompute_temporal_average=False
         ):
-        self.model = model
         self.temporal_step = temporal_step
         self.gt = ground_truth
         self.coarse_level = coarse_level
@@ -223,11 +225,13 @@ class SST_galvani(Dataset):
     
     def __getitem__(self):
         input = self.dataset.isel(time=slice(self.start_idx, self.start_idx + self.temporal_step))["sea_surface_temperature"]
+        time = str(input.time.to_numpy()[0])
+        time = torch.tensor(int(time[0:4]+time[5:7]+time[8:10]+time[11:13])) # time in format YYYYMMDDHH  
         if self.gt:
             g_truth = self.dataset.isel(time=slice(self.start_idx+1, self.start_idx+1 + self.temporal_step))["sea_surface_temperature"]
-            return input, g_truth
+            return input, g_truth, time
         else:
-            return input
+            return input, time
         # precompute_temporal_average not implemented
 
 class Attributes():
@@ -236,8 +240,27 @@ class Attributes():
             setattr(self, k, v)
 
 class Trainer():
-    def __init__(self, **kwargs):
+    '''
+    Trainer class for the models
+    takes a initialized model class as first parameter and a dictionary of configuration
+    '''
+    def __init__(self, model, **kwargs):
         self.cfg = Attributes(**kwargs)
+        self.util = model
+        self.model = model.model
+        self.mem_log_not_done = True
+        self.scale = 0.00001
+        self.local_log = {"loss":[],"valid_loss":[]}
+        self.mse_all_vars = False
+
+    def train(self):
+        self.setup()
+        while self.epoch <= self.cfg.training_epochs:
+            # self.pre_epoch()
+            self.train_epoch() 
+            # self.evaluate_epoch() 
+            # self.post_epoch() 
+        self.post_training() 
 
     def set_wandb(self):
         if self.cfg.wandb   : 
@@ -271,13 +294,294 @@ class Trainer():
             print("no wandb")
 
     def train_epoch(self):
-        pass
+        training_loader, validation_loader = self.get_dataloader()
+        self.iter = 0
+        self.mem_log("loading data")
+        for i, data in enumerate(training_loader):
+            if (i+1) % (self.cfg.validation_interval*(self.cfg.accumulation_steps + 1)) == 0:
+                self.validation()
+            loss = 0
+            discount_factor = 1
+            with amp.autocast(self.cfg.enable_amp):
+                for step in range(self.cfg.multi_step_training+1):
+                    if step == 0 : input = self.util.normalise(data[step][0]).to(self.util.device)
+                    else: input = output
+                    output, gt = self.model_forward(input,data)
+                    
+                    if step % (self.cfg.training_step_skip+1) == 0:
+                        loss = loss + self.loss_fn(output, gt)/(self.cfg.multi_step_training+1) #*discount_factor**step
+                    
+                loss = loss / (self.cfg.accumulation_steps+1)
+                # only for logging the loss for the batch
+                batch_loss += loss.item()
+            
+            #backward
+            self.mem_log("backward pass")
+            if self.cfg.enable_amp:
+                self.gscaler.scale(loss).backward()
+            else:
+                loss.backward()
+
+            # Adjust learning weights
+            if ((i + 1) % (self.accumulation_steps + 1) == 0) or (i + 1 == len(training_loader)):
+                # Update Optimizer
+                self.mem_log("optimizer step",fin=True)
+                if self.cfg.enable_amp:
+                    self.gscaler.step(self.optimizer)
+                    self.gscaler.update()
+                else:
+                    self.optimizer.step()
+                self.model.zero_grad()
+
+                # logging
+                self.iter += 1
+                self.iter_log(batch_loss,scale=None)
+                batch_loss = 0
+                
+                
+        # end of epoch
+        self.epoch += 1
+        print("End of epoch ",self.epoch)
+        self.save_checkpoint()
+        
+    def model_forward(self,input,data,step):
+        if self.cfg.model_version == "film" :
+            input_sst  = self.util.normalise_film(data[step+1][1]).to(self.util.device)
+            gt = self.util.normalise(data[step+1][0]).to(self.util.device)
+            
+            self.mem_log("forward pass")
+            outputs = self.model(input,input_sst,self.scale)
+        elif self.cfg.model == "mae":
+            gt = input
+            self.mem_log("forward pass")
+            outputs = self.model(input)
+        else:
+            gt = self.util.normalise(data[step+1][0]).to(self.util.device)
+            self.mem_log("forward pass")
+            outputs = self.model(input)
+        return outputs, gt
 
     def training_iteration(self):
         pass
 
     def setup(self):
-        self.
+        LOG.info("Save path: %s", self.cfg.save_path)
+        self.set_wandb()
+        if self.cfg.enable_amp == True:
+            self.gscaler = amp.GradScaler()
+
+    def ready_model(self):
+        if self.cfg.checkpoint_path: self.util.load_model(self.util.checkpoint_path)
+        self.model.train()
+        self.util.load_statistics()
+        self.util.set_seed(42)    
+
+    def create_sheduler(self):
+        # Scheduler
+        if self.cfg.scheduler_type == 'ReduceLROnPlateau':
+            self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, factor=0.2, patience=5, mode='min')
+        elif self.cfg.scheduler_type == 'CosineAnnealingLR':
+            self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=self.cfg.scheduler_horizon)
+        elif self.cfg.scheduler_type == 'CosineAnnealingWarmRestarts':
+            self.scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer,T_0=self.cfg.scheduler_horizon)
+        else:
+            self.scheduler = None
+    
+    def step_scheduler(self,valid_mean):
+        if self.cfg.scheduler_type == 'ReduceLROnPlateau':
+            self.scheduler.step(valid_mean)
+        elif self.cfg.scheduler_type == 'CosineAnnealingLR':
+            self.scheduler.step()
+            if self.epoch >= kwargs["scheduler_horizon"]:
+                LOG.info("Terminating training after reaching params.max_epochs while LR scheduler is set to CosineAnnealingLR") 
+        elif self.cfg.scheduler_type == 'CosineAnnealingWarmRestarts':
+            self.scheduler.step(i)
+        
+    def create_optimizer(self):
+        self.optimizer = torch.optim.Adam(self.util.get_parameters(), lr=self.cfg.learning_rate)# store the optimizer and scheduler in the model class
+        
+    def create_loss(self):
+        if self.cfg.loss_fn == "CosineMSE":
+            self.loss_fn = CosineMSELoss(reduction='mean')
+        elif self.cfg.loss_fn == "L2Sphere":
+            self.loss_fn = L2Sphere(relative=True, squared=True)
+        else:
+            self.loss_fn = torch.nn.MSELoss()
+
+    def get_dataloader(self):
+        if self.cfg.model == "mae":
+            print("Trainig Data:")
+            dataset = SST_galvani(
+                self.model,
+                path=self.cfg.trainingdata_path, 
+                start_year=self.cfg.trainingset_start_year,
+                end_year=self.cfg.trainingset_end_year,
+                temporal_step=self.cfg.multi_step_training
+            )
+            print("Validation Data:")
+            dataset_validation = SST_galvani(
+                self.model,
+                path=self.cfg.trainingdata_path, 
+                start_year=self.cfg.validationset_start_year,
+                end_year=self.cfg.validationset_end_year,
+                temporal_step=self.cfg.multi_step_validation)
+            return dataset, dataset_validation
+        else:
+            if self.cfg.model_version == 'film':
+                sst = True
+            else:
+                sst = False
+
+            print("Trainig Data:")
+            dataset = ERA5_galvani(
+                path=self.cfg.trainingdata_path, 
+                start_year=self.cfg.trainingset_start_year,
+                end_year=self.cfg.trainingset_end_year,
+                auto_regressive_steps=self.cfg.multi_step_training,
+                sst=sst
+            )
+            print("Validation Data:")
+            dataset_validation = ERA5_galvani(
+                path=self.cfg.trainingdata_path, 
+                start_year=self.cfg.validationset_start_year,
+                end_year=self.cfg.validationset_end_year,
+                auto_regressive_steps=self.cfg.multi_step_validation,
+                sst=sst
+            )
+        training_loader = DataLoader(dataset,shuffle=True,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
+        validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
+
+        return training_loader, validation_loader
+    
+    # train loop
+    
+    def validation(self,validation_loader):
+        val_loss = {}
+        val_log  = {}
+        loss_fn_pervar = torch.nn.MSELoss(reduction='none')
+        self.model.eval()
+        with torch.no_grad():
+            # For loop over validation dataset, calculates the validation loss mean for number of kwargs["validation_epochs"]
+            loss_pervar_list = []
+            for val_epoch, val_data in enumerate(validation_loader):
+                # Calculates the validation loss for autoregressive model evaluation
+                # if self.auto_regressive_steps = 0 the dataloader only outputs 2 datapoint 
+                # and the for loop only runs once (calculating the ordinary validation loss with no auto regressive evaluation
+                val_input_era5 = None
+                for val_idx, data in range(self.cfg.multi_step_validation+1):
+                    
+                    if val_idx == 0 : input = self.util.normalise(val_data[val_idx][0]).to(self.util.device)
+                    else: input = output
+                    output, gt = self.model_forward(input,data)
+                    
+                    val_loss_value = self.loss_fn(output, gt) / self.cfg.batch_size
+
+                    # loss for each variable
+                    if self.cfg.advanced_logging and self.mse_all_vars  and val_idx == 0: # !! only for first multi validation step, could include next step with -> ... -> ... in print statement on same line
+                        val_g_truth_era5 = self.normalise(val_data[val_idx+1][0]).to(self.util.device)
+                        loss_pervar_list.append(loss_fn_pervar(output, val_g_truth_era5).mean(dim=(0,2,3)) / self.cfg.batch_size)
+                    
+                    if val_epoch == 0: 
+                        val_loss["validation loss step={}".format(val_idx)] = [val_loss_value.cpu()] #kwargs["validation_epochs"]
+                    else:
+                        val_loss["validation loss step={}".format(val_idx)].append(val_loss_value.cpu())
+
+                # end of validation 
+                if val_epoch > self.cfg.validation_epochs:
+                    for k in val_loss.keys():
+                        val_loss_array      = np.array(val_loss[k])
+                        val_log[k]          = round(val_loss_array.mean(),5)
+                        val_log["std " + k] = round(val_loss_array.std(),5)
+                    break
+            
+            #scheduler
+            valid_mean = list(val_log.values())[0]
+            self.step_scheduler(valid_mean)
+
+            # change scale value based on validation loss
+            # if valid_mean < kwargs["val_loss_threshold"] and scale < 1.0:
+            if scale < 1.0 and self.cfg.model_version == "film":
+                val_log["scale"] = scale
+                scale = scale + 0.002 # 5e-5 #
+
+            self.valid_log(val_log,loss_pervar_list)
+
+        # save model and training statistics for checkpointing
+        if (self.iter+1) % (self.cfg.validation_interval*self.cfg.save_checkpoint_interval) == 0:
+            save_file ="checkpoint_"+self.cfg.model_type+"_"+self.cfg.model_version+"_"+self.cfg.film_gen_type+"_epoch={}.pkl".format(self.iter)
+            self.save_checkpoint(save_file)
+            if self.cfg.advanced_logging and self.cfg.model_version == "film":
+                gamma_np = self.model.gamma.cpu().numpy()
+                beta_np  = self.model.beta.cpu().numpy()
+                np.save(os.path.join( self.save_path,"gamma_{}.npy".format(i)),gamma_np)
+                np.save(os.path.join( self.save_path,"beta_{}.npy".format(i)),beta_np)
+                print("gamma values mean : ",round(gamma_np.mean(),5),"+/-",round(gamma_np.std(),5))
+                print("beta values mean  : ",round(beta_np.mean(),5),"+/-",round(beta_np.std(),5))
+        if self.cfg.model_version == "film" :
+            self.model.film_gen.train()
+        else:
+            self.model.train()
+                
+    def valid_log(self,val_log,loss_pervar_list):
+        # little complicated console logging - looks nicer than LOG.info(str(val_log))
+        print("-- validation after ",self.iteri*self.cfg.batch_size, "training examples")
+        val_log_keys = list(val_log.keys())
+        for log_idx in range(0,self.cfg.multi_step_validation*2+1,2): 
+            LOG.info(val_log_keys[log_idx] + " : " + str(val_log[val_log_keys[log_idx]]) 
+                        + " +/- " + str(val_log[val_log_keys[log_idx+1]]))
+            # log to local file
+            # self.val_means[log_idx].append(val_log[val_log_keys[log_idx]]) ## error here
+            # self.val_stds[log_idx].append(val_log[val_log_keys[log_idx+1]]) 
+        if self.cfg.advanced_logging and self.mse_all_vars:
+            print("MSE for each variable:")
+            val_loss_value_pervar = torch.stack(loss_pervar_list).mean(dim=0)
+            for idx_var,var_name in enumerate(self.ordering):
+                print("    ",var_name," = ",round(val_loss_value_pervar[idx_var].item(),5))
+            gamma_np = self.model.gamma.cpu().numpy()
+            beta_np  = self.model.beta.cpu().numpy()
+            print("gamma values mean : ",round(gamma_np.mean(),5),"+/-",round(gamma_np.std(),5))
+            print("beta values mean  : ",round(beta_np.mean(),5),"+/-",round(beta_np.std(),5))
+        if self.cfg.wandb :
+            wandb.log(val_log,commit=False)
+
+    def mem_log(self,str,fin=False):
+        if self.cfg.advanced_logging:
+            print("VRAM used before "+str+" : ",round(torch.cuda.memory_allocated(self.util.device)/10**9,2)," GB")
+        if fin:
+            self.mem_log_not_done = False 
+            
+    def iter_log(self,batch_loss,scale=None):
+        if self.cfg.advanced_logging:
+            if self.local_logging : self.local_log["losses"].append(round(batch_loss,5))
+            if self.cfg.wandb:
+                wandb.log({"loss": round(batch_loss,5) })
+            if self.cfg.advanced_logging:
+                if scale is not None:
+                    print("Iteration: ", self.iter, " Loss: ", round(batch_loss,5)," - scale: ",round(scale,5))
+                else :
+                    print("Iteration: ", self.iter, " Loss: ", round(batch_loss,5))
+    
+    def save_checkpoint(self,save_file=None):
+        local_logging=False
+        if local_logging : 
+            print(" -> saving to : ",self.save_path)
+            np.save(os.path.join( self.save_path,"val_means.npy"),self.val_means)
+            np.save(os.path.join( self.save_path,"val_stds.npy"),self.val_stds)
+            np.save(os.path.join( self.save_path,"losses.npy"),self.losses)
+
+        if save_file is None: save_file ="checkpoint_"+self.cfg.timestr+"_final.pkl"
+        save_dict = {
+            "model_state":self.model.state_dict(),
+            "epoch":self.epoch,
+            "iter":self.iter,
+            "optimizer_state_dict":self.optimizer.state_dict(),
+            "hyperparameters": self.cfg.__dict__
+            }
+        if self.scheduler: save_dict["scheduler_state_dict"]= self.scheduler.state_dict()
+        torch.save(save_dict,os.path.join( self.save_path,save_file))
+
+                
+            
         
 
 
