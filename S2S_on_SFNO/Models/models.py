@@ -97,6 +97,25 @@ class Model():
     def peek_into_checkpoint(self, path):
         return peek(path)
 
+    @cached_property
+    def device(self):
+        import torch
+        device = "cpu"
+        if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+            device = "mps"
+        if torch.cuda.is_available() and torch.backends.cuda.is_built():
+            device = "cuda"
+        if self.only_gpu:
+            if device == "cpu":
+                raise RuntimeError("GPU is not available")
+        if self.cpu:
+            device = "cpu"
+        LOG.info(
+            "Using device '%s'. The speed of inference depends greatly on the device.",
+            device.upper(),
+        )  
+        return device
+
 class ATMModel(Model):
     '''
     Base class for atmosphere models (sfno, fcn)
@@ -186,32 +205,6 @@ class ATMModel(Model):
         for file in self.download_files:
             result.append(os.path.realpath(os.path.join(self.assets, file)))
         return result
-
-    @cached_property
-    def device(self):
-        import torch
-
-        device = "cpu"
-        
-        if torch.backends.mps.is_available() and torch.backends.mps.is_built():
-            device = "mps"
-
-        if torch.cuda.is_available() and torch.backends.cuda.is_built():
-            device = "cuda"
-
-        if self.only_gpu:
-            if device == "cpu":
-                raise RuntimeError("GPU is not available")
-
-        if self.cpu:
-            device = "cpu"
-
-        LOG.info(
-            "Using device '%s'. The speed of inference depends greatly on the device.",
-            device.upper(),
-        )
-            
-        return device
 
     @cached_property
     def providers(self):

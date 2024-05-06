@@ -557,6 +557,13 @@ def _main():
         default=8,
         help='Number of layers for film generator',
     )
+    architecture_parser.add_argument(
+        '--temporal-step', 
+        action='store',
+        type=int,
+        default=28,
+        help='How many 6 hr steps should be included in the temporal dimension',
+    )
     
 
     # !! args from parser become model properties (whatch that no conflicting model properties/methods exist)
@@ -642,36 +649,36 @@ def _main():
 
     
     # init wandb and create directory for saveing training results
-    if args.train:
-        if args.wandb   : 
-            # config_wandb = vars(args).copy()
-            # for key in ['notes','tags','wandb']:del config_wandb[key]
-            # del config_wandb
-            if args.wandb_resume is not None :
-                wandb_run = wandb.init(project=args.model_type + " - " +args.model_version, 
-                    config=args,
-                    notes=args.notes,
-                    tags=args.tags,
-                    resume="must",
-                    id=args.wandb_resume)
-            else:
-                wandb_run = wandb.init(project=args.model_type + " - " +args.model_version, 
-                    config=args,
-                    notes=args.notes,
-                    tags=args.tags)
-            # create checkpoint folder for run name
-            new_save_path = os.path.join(args.save_path,wandb_run.name)
-            os.mkdir(new_save_path)
-            args.save_path = new_save_path
-        else : 
-            wandb_run = None
-            if args.film_gen_type: film_gen_str = "_"+args.film_gen_type
-            else:                  film_gen_str = ""
-            new_save_path = os.path.join(args.save_path,args.model_type+"_"+args.model_version+film_gen_str+"_"+timestr)
-            os.mkdir(new_save_path)
-            args.save_path = new_save_path
-            print("")
-            print("no wandb")
+    # if args.train:
+    #     if args.wandb   : 
+    #         # config_wandb = vars(args).copy()
+    #         # for key in ['notes','tags','wandb']:del config_wandb[key]
+    #         # del config_wandb
+    #         if args.wandb_resume is not None :
+    #             wandb_run = wandb.init(project=args.model_type + " - " +args.model_version, 
+    #                 config=args,
+    #                 notes=args.notes,
+    #                 tags=args.tags,
+    #                 resume="must",
+    #                 id=args.wandb_resume)
+    #         else:
+    #             wandb_run = wandb.init(project=args.model_type + " - " +args.model_version, 
+    #                 config=args,
+    #                 notes=args.notes,
+    #                 tags=args.tags)
+    #         # create checkpoint folder for run name
+    #         new_save_path = os.path.join(args.save_path,wandb_run.name)
+    #         os.mkdir(new_save_path)
+    #         args.save_path = new_save_path
+    #     else : 
+    #         wandb_run = None
+    #         if args.film_gen_type: film_gen_str = "_"+args.film_gen_type
+    #         else:                  film_gen_str = ""
+    #         new_save_path = os.path.join(args.save_path,args.model_type+"_"+args.model_version+film_gen_str+"_"+timestr)
+    #         os.mkdir(new_save_path)
+    #         args.save_path = new_save_path
+    #         print("")
+    #         print("no wandb")
 
     # Manipulation on args
     args.metadata = dict(kv.split("=") for kv in args.metadata)
