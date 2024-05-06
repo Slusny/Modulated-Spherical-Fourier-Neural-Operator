@@ -15,6 +15,7 @@ from time import time
 
 from S2S_on_SFNO.Models.provenance import system_monitor
 from .losses import CosineMSELoss, L2Sphere
+from .models import Timer
 
 import logging
 LOG = logging.getLogger('S2S_on_SFNO')
@@ -578,9 +579,18 @@ class Trainer():
         torch.save(save_dict,os.path.join( self.cfg.save_path,save_file))
 
                 
-    def test_model_speed():
-        for i in range(100):
-            self.model_foreward(
+    def test_model_speed(self):
+        with Timer("Model speed test"):
+            for i in range(100):
+                # data_era5 = torch.randn(1,2,721,1440)
+                data_sst = torch.randn(1,2,721,1440)
+                self.model_forward(input,data_sst,0)
+    
+    def test_dataloader_speed(self):
+        self.set_dataloader()
+        with Timer("Dataloader speed test"):
+            for i, data in enumerate(self.training_loader):
+                pass
     
 class Attributes():
     def __init__(self, **kwargs):

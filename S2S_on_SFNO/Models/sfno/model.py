@@ -195,8 +195,8 @@ class FourCastNetv2(ATMModel):
 
         # create model
         self.model = FourierNeuralOperatorNet(**kwargs)
-
-    def load_statistics(self, film_gen_type=None):
+    
+    def load_statistics(self):
         path = os.path.join(self.assets, "global_means.npy")
         LOG.info("Loading %s", path)
         self.means = np.load(path)
@@ -670,7 +670,7 @@ class FourCastNetv2(ATMModel):
         Needs batch size 1
         """
         
-        self.load_statistics(self.film_gen_type)
+        self.load_statistics()
         self.set_seed()
         plot = True
         
@@ -1007,12 +1007,20 @@ class FourCastNetv2_filmed(FourCastNetv2):
             # param.requires_grad = False 
 
         return model
+    
+
+    def load_statistics(self):
+        super().load_statistics()
+        self.means_film = np.load(os.path.join(self.assets, "global_means_sst.npy"))
+        self.means_film = self.means_film.astype(np.float32)
+        self.stds_film = np.load(os.path.join(self.assets, "global_stds_sst.npy"))
+        self.stds_film = self.stds_film.astype(np.float32)
 
     def run(self):
         raise NotImplementedError("Filmed model run not implemented yet. Needs to considder sst input.")
 
     def training(self,wandb_run=None,**kwargs):
-        self.load_statistics(kwargs["film_gen_type"])
+        self.load_statistics()
         self.set_seed(42) #torch.seed()
         LOG.info("Save path: %s", self.save_path)
 
@@ -1265,7 +1273,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         
         wb_ref = True
 
-        self.load_statistics(self.film_gen_type)
+        self.load_statistics()
         self.set_seed()
         plot = True
         
