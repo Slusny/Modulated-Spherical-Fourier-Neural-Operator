@@ -28,6 +28,14 @@ class MAE(Model):
         self.timestr = kwargs["timestr"]
         self.assets = kwargs["assets"]
         self.save_path = kwargs["save_path"]
+        self.enable_amp = kwargs["enable_amp"]
+        self.accumulation_steps = kwargs["accumulation_steps"]
+        self.only_gpu = kwargs["only_gpu"]
+
+        if False: #"film_weights" in kwargs.keys() and kwargs["film_weights"]:
+            self.checkpoint_path = self.film_weights
+        else:
+            self.checkpoint_path = None
     
     def load_model(self, checkpoint_file):
         
@@ -114,7 +122,7 @@ class MAE(Model):
 
     ## common
 
-    def load_statistics(self, film_gen_type=None):
+    def load_statistics(self):
             
         self.means_film = np.load(os.path.join(self.assets, "global_means_sst.npy"))
         self.means_film = self.means_film.astype(np.float32)
@@ -133,7 +141,7 @@ class MAE(Model):
         raise NotImplementedError("Filmed model run not implemented yet. Needs to considder sst input.")
 
     def training(self,wandb_run=None,**kwargs):
-        self.load_statistics(kwargs["film_gen_type"])
+        self.load_statistics()
         self.set_seed(42) #torch.seed()
         LOG.info("Save path: %s", self.save_path)
 
@@ -161,10 +169,10 @@ class MAE(Model):
             print(" ~~~ The GPU Memory will be logged for the first optimization run ~~~")
             print("mem after initialising model : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
         model = self.load_model(self.checkpoint_path)
-        model.film_gen.train()
+        model.train()
 
         # optimizer = torch.optim.SGD(model.get_film_params(), lr=kwargs["learning_rate"], momentum=0.9)
-        self.optimizer = torch.optim.Adam(model.get_film_params(), lr=kwargs["learning_rate"])
+        self.optimizer = torch.optim.Adam(model.parameters(), lr=kwargs["learning_rate"])
 
         # Scheduler
         if kwargs["scheduler_type"] == 'ReduceLROnPlateau':
@@ -206,7 +214,7 @@ class MAE(Model):
         batch_loss = 0
 
         # to debug training don't start with validation, actually never start training with validation, we do not have space on the cluster
-        if self.debug:
+        if True: #self.debug:
             start_valid = 1
         else:
             start_valid = 1
@@ -317,7 +325,7 @@ class MAE(Model):
                 wandb.log(val_log,commit=False)
         # save model and training statistics for checkpointing
         if (self.iter+1) % (kwargs["validation_interval"]*kwargs["save_checkpoint_interval"]) == 0:
-            save_file ="checkpoint_"+kwargs["model_type"]+"_"+kwargs["model_version"]+"_"+kwargs["film_gen_type"]+"_epoch={}.pkl".format(i)
+            save_file ="checkpoint_"+kwargs["model_type"]+"_"+kwargs["model_version"]+"_"+"_epoch={}.pkl".format(i)
             self.save_checkpoint(save_file)
         model.train()
         if kwargs["advanced_logging"] and mem_log_not_done : 

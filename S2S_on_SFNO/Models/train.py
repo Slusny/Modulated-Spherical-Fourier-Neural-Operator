@@ -186,11 +186,10 @@ class SST_galvani(Dataset):
         if path.endswith(".zarr"):  self.dataset = xr.open_zarr(path,chunks=None)
         else:                       self.dataset = xr.open_dataset(path,chunks=None)
         
-        startdate = np.array([self.dataset.time[0].to_numpy() ,self.dataset_v100.time[0].to_numpy() ,self.dataset_u100.time[0].to_numpy()])
+        startdate = np.array([self.dataset.time[0].to_numpy()])
         possible_startdate = startdate.max()
         if not (startdate == startdate[0]).all(): 
             print("Start dates of all arrays need to be the same! Otherwise changes to the Dataset class are needed!")
-            print("For ERA5, 100v, 100u the end dates are",startdate)
             sys.exit(0)
         # if int(np.datetime_as_string(possible_startdate,"M")) != 1 and int(np.datetime_as_string(possible_startdate,"D")) != 1 :
         #     print("Start dates need to be the 1/1 of a year! Otherwise changes to the Dataset class are needed!")
@@ -200,16 +199,14 @@ class SST_galvani(Dataset):
         if start_year < int(np.datetime_as_string(possible_startdate,"Y")):
             print("chosen start year is earlier than the earliest common start date to all of the datasets")
             print("Start year is set to ",int(np.datetime_as_string(possible_startdate,"Y")))
-            print("For ERA5, 100v, 100u the end dates are",startdate)
             start_year = dataset_start
         
         # Check if set Start date to be viable
-        enddate = np.array([self.dataset.time[-1].to_numpy() ,self.dataset_v100.time[-1].to_numpy() ,self.dataset_u100.time[-1].to_numpy()])
+        enddate = np.array([self.dataset.time[-1].to_numpy() ])
         possible_enddate = enddate.min()
         if end_year > int(np.datetime_as_string(possible_enddate,"Y")):
             print("chosen end year is later than the latest common end date to all of the datasets")
             print("End year is set to ",int(np.datetime_as_string(possible_enddate,"Y")))
-            print("For ERA5, 100v, 100u the end dates are",enddate)
             end_year = int(np.datetime_as_string(possible_enddate,"Y"))
 
         self.start_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(dataset_start, start_year))])
@@ -221,13 +218,13 @@ class SST_galvani(Dataset):
     def __len__(self):
         return self.end_idx - self.start_idx
     
-    def __getitem__(self):
-        input = self.dataset.isel(time=slice(self.start_idx, self.start_idx + self.temporal_step))["sea_surface_temperature"]
+    def __getitem__(self,idx):
+        input = self.dataset.isel(time=slice(self.start_idx + idx, self.start_idx + idx + self.temporal_step))["sea_surface_temperature"]
         if self.gt:
-            g_truth = self.dataset.isel(time=slice(self.start_idx+1, self.start_idx+1 + self.temporal_step))["sea_surface_temperature"]
+            g_truth = self.dataset.isel(time=slice(self.start_idx+idx+1, self.start_idx+idx+1 + self.temporal_step))["sea_surface_temperature"]
             return input, g_truth
         else:
-            return input
+            return torch.from_numpy(input.to_numpy())
         # precompute_temporal_average not implemented
 
 # class ERA5_galvani_coarsen(Dataset):
