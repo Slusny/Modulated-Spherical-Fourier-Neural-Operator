@@ -82,6 +82,9 @@ class MAE(Model):
     def run(self):
         raise NotImplementedError("Filmed model run not implemented yet. Needs to considder sst input.")
 
+    def get_parameters(self):
+        return self.model.parameters()
+    
     def training(self,wandb_run=None,**kwargs):
         self.load_statistics()
         self.set_seed(42) #torch.seed()
