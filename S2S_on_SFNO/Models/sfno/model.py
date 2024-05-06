@@ -980,7 +980,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
         #  Load Filmed weights
         if self.checkpoint_path_film:
-            checkpoint_film = torch.load(self.checkpoint_file_film)
+            checkpoint_film = torch.load(self.checkpoint_path_film)
             print("not yet implemented")
             sys.exit()
             # needs to extract only film_gen weights if the whole model was saved

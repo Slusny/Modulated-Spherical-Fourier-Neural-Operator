@@ -45,8 +45,8 @@ class MAE(Model):
     
     def load_model(self, checkpoint_file):
         
-        if self.checkpoint_file is not None:
-            checkpoint = torch.load(self.checkpoint_file)
+        if checkpoint_file is not None:
+            checkpoint = torch.load(checkpoint_file)
             if "model_state" in checkpoint.keys(): weights = checkpoint["model_state"]
             else: weights = checkpoint
             try:
