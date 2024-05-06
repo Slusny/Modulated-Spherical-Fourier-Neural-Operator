@@ -670,15 +670,12 @@ class GCN(torch.nn.Module):
         self.batch_size = batch_size
         self.num_layers = num_layers
         self.hidden_size = out_features*2
+        self.out_features = out_features
         self.activation = nn.LeakyReLU()
         self.conv1 = GCNConv(1, self.hidden_size,cached=True)
         self.perceptive_field = depth
         self.conv_layers = nn.ModuleList([GCNConv(self.hidden_size, self.hidden_size,cached=True) for _ in range(self.perceptive_field)])
-        self.heads_gamma = nn.ModuleList([])
-        self.heads_beta = nn.ModuleList([])
-        for i in range(self.num_layers):
-            self.heads_gamma.append(nn.Linear(self.hidden_size, out_features))
-            self.heads_beta.append(nn.Linear(self.hidden_size, out_features))
+        self.head_film = nn.Linear(self.hidden_size, 2*out_features*self.num_layers)
         
         # prepare the graph 
 
@@ -741,12 +738,8 @@ class GCN(torch.nn.Module):
         # # x = x + self.conv2(x, self.edge_index_batch)
         # x =  self.conv2(x, self.edge_index_batch)
         # x = global_mean_pool(x, self.batch)
-        heads_gamma = []
-        heads_beta = []
-        for i in range(self.num_layers):
-            heads_gamma.append(self.heads_gamma[i](x))
-            heads_beta.append(self.heads_beta[i](x))
-        return torch.stack([torch.stack(heads_gamma),torch.stack(heads_beta)]).squeeze() # shape: (2,num_layers,batch_size,embed_dim)
+        return self.head_film(x).reshape(2,self.num_layers,self.batch_size,self.out_features)#.squeeze()
+        
 
 
 # Blowes up STD (7 layers -> std=8.3)
@@ -776,15 +769,12 @@ class GCN_custom(nn.Module):
         self.device = device
         self.num_layers = num_layers
         self.hidden_size = out_features*2
+        self.out_features = out_features
         self.conv1 = GraphConvolution(1, self.hidden_size)
         self.perceptive_field = depth # 3
         self.conv_layers = nn.ModuleList([GraphConvolution(self.hidden_size, self.hidden_size) for _ in range(self.perceptive_field)])
         self.activation = nn.LeakyReLU() # change parameter for leaky relu also in initalization of GraphConvolution layer
-        self.heads_gamma = nn.ModuleList([])
-        self.heads_beta = nn.ModuleList([])
-        for i in range(self.num_layers):
-            self.heads_gamma.append(nn.Linear(self.hidden_size, out_features))
-            self.heads_beta.append(nn.Linear(self.hidden_size, out_features))
+        self.head_film = nn.Linear(self.hidden_size, 2*out_features*self.num_layers)
 
         ## Prepare Graph
         # load sparse adjacentcy matrix from file ( shape: num_node x num_nodes )
@@ -817,12 +807,8 @@ class GCN_custom(nn.Module):
         x = x.mean(dim=-2)
     
         # Film Heads
-        heads_gamma = []
-        heads_beta = []
-        for i in range(self.num_layers):
-            heads_gamma.append(self.heads_gamma[i](x))
-            heads_beta.append(self.heads_beta[i](x))
-        return torch.stack([torch.stack(heads_gamma),torch.stack(heads_beta)]).squeeze() # shape: (2,num_layers,batch_size,embed_dim)
+        return self.head_film(x).reshape(2,self.num_layers,self.batch_size,self.out_features)#.squeeze()
+    
 
 
 def pair(t):
@@ -856,7 +842,7 @@ class Attention(nn.Module):
 
         self.norm = nn.LayerNorm(dim)
 
-        self.attend = nn.Softmax(dim = -1)
+        self.attend = nn.Softmax(dim = -1) 
         self.dropout = nn.Dropout(dropout)
 
         self.to_qkv = nn.Linear(dim, inner_dim * 3, bias = False)
@@ -982,8 +968,7 @@ class ViT(nn.Module):
         self.pool = pool
         self.to_latent = nn.Identity()
 
-        self.heads_gamma = nn.ModuleList([nn.Linear(dim, num_classes) for _ in range(num_layers)])
-        self.heads_beta = nn.ModuleList([nn.Linear(dim, num_classes) for _ in range(num_layers)])
+        self.head_film = nn.Linear(dim, num_classes*num_layers*2) 
 
     def rm_nan(self, x, batch):
         if not self.nan_mask: self.nan_mask = torch.isnan(x).logical_not()
@@ -1020,12 +1005,8 @@ class ViT(nn.Module):
         x = self.to_latent(x)
         
         # heads for gamma and beta (curretly only 1 gamma/beta used across blocks)
-        heads_gamma = []
-        heads_beta = []
-        for i in range(self.num_layers):
-            heads_gamma.append(self.heads_gamma[i](x))
-            heads_beta.append(self.heads_beta[i](x))
-        return torch.stack([torch.stack(heads_gamma),torch.stack(heads_beta)]).squeeze() 
+        x = self.head_film(x)
+        return x
         # return self.mlp_head(x),self.mlp_head(x)
     
 class FiLM(nn.Module):
@@ -1123,6 +1104,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
             self.gamma = gamma
             self.beta = beta
         
+        # repeat for each block
         if gamma.shape[0] != self.num_layers:
             gamma = gamma.repeat(self.num_layers,1)
             beta = beta.repeat(self.num_layers,1)

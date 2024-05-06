@@ -248,6 +248,11 @@ def _main():
         action="store_true",
         help=("Dump the requests in JSON format."),
     )
+    data.add_argument(
+        "--coarse-level",
+        action="store",
+        help=("factor by which the sst data gets reduced in lat, long dimensions"),
+    )
 
     # Running
     running = parser.add_argument_group('Inference Parameters')

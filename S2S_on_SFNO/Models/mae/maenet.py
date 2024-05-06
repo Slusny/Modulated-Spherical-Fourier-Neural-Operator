@@ -82,7 +82,6 @@ class ContextCast(nn.Module):
     def __init__(self, data_dim: int, 
                  encoder_dim: int = 512, 
                  decoder_dim: int = 512,
-                 grid_size: tuple = (1, 180, 360), 
                  num_latents = 1, 
                  patch_size: tuple = (1, 9, 9), 
                  encoder_depth: int = 4, 
@@ -107,6 +106,9 @@ class ContextCast(nn.Module):
             layer_scale: initial per-layer scale factor
         """
         super().__init__()
+
+
+        grid_size = (self.temporal_step, 720//self.coarse_level, 1440//self.coarse_level), 
         #set helper parameters
         self.patch_size = patch_size if len(patch_size) == 3 else (1, *patch_size) #add time dimension if not present
         self.grid_size = (grid_size[0] // self.patch_size[0], grid_size[1] // self.patch_size[1], grid_size[2] // self.patch_size[2]) #grid size in latent space
