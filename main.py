@@ -31,6 +31,7 @@ import cfgrib
 from S2S_on_SFNO.inputs import available_inputs
 from S2S_on_SFNO.Models.models import Timer, available_models, load_model #########
 from S2S_on_SFNO.outputs import available_outputs
+from S2S_on_SFNO.Models.train import Trainer
 
 # LOG = logging.getLogger(__name__)
 LOG = logging.getLogger('S2S_on_SFNO')
@@ -353,6 +354,13 @@ def _main():
         type=int
     )
     training.add_argument(
+        "--training-epochs",
+        help="over how many epochs should be trained",
+        action="store",
+        default=20,
+        type=int
+    )
+    training.add_argument(
         "--multi-step-validation",
         help="how many consecutive datapoints should be loaded to used to calculate an autoregressive validation loss ",
         action="store",
@@ -475,6 +483,12 @@ def _main():
         action="store",
         default=None,
         help="Load model from checkpoint and use its configuration to initialize the model"
+    )
+    training.add_argument(
+        "--pre-trained-sfno",
+        action="store_true",
+        default=True,
+        help="Use pretrained sfno model from ecmwf"
     )
     training.add_argument(
         "--enable-amp",
@@ -729,6 +743,26 @@ def _main():
             print("shutting down training")
             model.save_checkpoint()
             sys.exit(0)
+
+        try:
+            print("")
+            print("Started training ")
+            print("save path: ",args.save_path)
+            LOG.info("Process ID: %s", os.getpid())
+            kwargs = vars(args)
+            print("called training with following arguments:")
+            for k,v in kwargs.items():
+                print(f"    {k} : {v}")
+
+            trainer = Trainer(model, **kwargs)
+            trainer.train()
+            model.training(wandb_run=wandb_run,**kwargs)
+        except :
+            LOG.error(traceback.format_exc())
+            print("shutting down training")
+            model.save_checkpoint()
+            sys.exit(0)
+
     elif args.eval_models_autoregressive:
         print("evaluating models")
         checkpoint_list = list(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len)) 

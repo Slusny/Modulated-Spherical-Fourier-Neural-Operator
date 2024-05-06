@@ -22,6 +22,11 @@ LOG = logging.getLogger('S2S_on_SFNO')
 
 class MAE(Model):
     def __init__(self, **kwargs):
+
+
+        if self.resume_checkpoint:
+            self.checkpoint_path = self.resume_checkpoint
+            
         # init model
         self.model = ContextCast(data_dim=1)
         self.params = kwargs
@@ -39,86 +44,22 @@ class MAE(Model):
     
     def load_model(self, checkpoint_file):
         
-        model = self.model
-        # model.zero_grad()
-
-        # # Load SFNO weights
-        # checkpoint_sfno = torch.load(checkpoint_file)
-        # if "model_state" in checkpoint_sfno.keys(): weights = checkpoint_sfno["model_state"]
-        # else: weights = checkpoint_sfno
-        # drop_vars = ["module.norm.weight", "module.norm.bias"] # no checkpoint has that layer, probably lecacy from ai-model dev
-        # weights = {k: v for k, v in weights.items() if k not in drop_vars}
-
-        # # print state of loaded model:
-        # if self.advanced_logging and 'hyperparameters' in checkpoint_sfno.keys():
-        #     print("loaded model with following hyperparameters:")
-        #     print("    iter:",checkpoint_sfno["iter"])
-        #     for k,v in checkpoint_sfno['hyperparameters'].items():print("    ",k,":",v)
-
-        # # Make sure the parameter names are the same as the checkpoint
-        # # need to use strict = False to avoid this error message when
-        # # using sfno_76ch::
-        # # RuntimeError: Error(s) in loading state_dict for Wrapper:
-        # # Missing key(s) in state_dict: "module.trans_down.weights",
-        # # "module.itrans_up.pct",
-
-        # # Load SFNO weights
-        # if list(weights.keys())[0][0:7] == 'module.':
-        #     # Try adding model weights as dictionary
-        #     new_state_dict = dict()
-        #     # for k, v in checkpoint_sfno["model_state"].items():
-        #     for k, v in weights.items():
-        #         name = k[7:]
-        #         if name != "ged":
-        #             new_state_dict[name] = v
-        #     try:
-        #         model.load_state_dict(new_state_dict)
-        #     except RuntimeError as e:
-        #         LOG.error(e)
-        #         print("--- !! ---")
-        #         print("loading state dict with strict=False, please verify if the right model is loaded and strict=False is desired")
-        #         print("--- !! ---")
-        #         model.load_state_dict(new_state_dict,strict=False)
-
-        # else:
-        #     try:
-        #         model.load_state_dict(weights)
-        #     except RuntimeError as e:
-        #         LOG.error(e)
-        #         print("--- !! ---")
-        #         print("loading state dict with strict=False, please verify if the right model is loaded and strict=False is desired")
-        #         print("--- !! ---")
-        #         model.load_state_dict(weights,strict=False)
-
-        # #  Load Filmed weights
-        # if self.checkpoint_path_film:
-        #     checkpoint_film = torch.load(self.checkpoint_file_film)
-        #     print("not yet implemented")
-        #     sys.exit()
-        #     # needs to extract only film_gen weights if the whole model was saved
-        #     # model.film_gen.load_state_dict(checkpoint_film["model_state"])
-        #     model.film_gen.load_state_dict(checkpoint_film)
-        #     del checkpoint_film
-        # else:
-        #     pass
-
-        # # Set model to eval mode and return
-        # model.eval()
-        # model.to(self.device)
-
-        # free VRAM
-        # del checkpoint_sfno
-
-        # # disable grad for sfno
-        # #model.requires_grad = False
-        # for name, param in model.named_parameters():
-        #     if not "film_gen" in name:
-        #         param.requires_grad = False 
-        #     # if "film_gen" in name:
-        #         # param.requires_grad = True
-        #     # param.requires_grad = False 
-
-        return model
+        if self.checkpoint_file is not None:
+            checkpoint = torch.load(self.checkpoint_file)
+            if "model_state" in checkpoint.keys(): weights = checkpoint["model_state"]
+            else: weights = checkpoint
+            try:
+                self.model.load_state_dict(weights)
+            except RuntimeError as e:
+                LOG.error(e)
+                print("--- !! ---")
+                print("loading state dict with strict=False, please verify if the right model is loaded and strict=False is desired")
+                print("--- !! ---")
+                self.model.load_state_dict(weights,strict=False)
+        self.model.eval()
+        self.model.zero_grad()
+        self.model.to(self.device)
+        return self.model
 
     ## common
 
@@ -129,7 +70,7 @@ class MAE(Model):
         self.stds_film = np.load(os.path.join(self.assets, "global_stds_sst.npy"))
         self.stds_film = self.stds_film.astype(np.float32)
     
-    def normalise_film(self, data, reverse=False):
+    def normalise(self, data, reverse=False):
         """Normalise data using pre-saved global statistics"""
         if reverse:
             new_data = data * self.stds_film + self.means_film
@@ -331,24 +272,6 @@ class MAE(Model):
         if kwargs["advanced_logging"] and mem_log_not_done : 
             print("mem after validation : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
     
-    def save_checkpoint(self,save_file=None):
-        if local_logging : 
-            print(" -> saving to : ",self.save_path)
-            np.save(os.path.join( self.save_path,"val_means.npy"),self.val_means)
-            np.save(os.path.join( self.save_path,"val_stds.npy"),self.val_stds)
-            np.save(os.path.join( self.save_path,"losses.npy"),self.losses)
-
-        if save_file is None: save_file ="checkpoint_"+self.timestr+"_final.pkl"
-        save_dict = {
-            "model_state":self.model.state_dict(),
-            "epoch":self.epoch,
-            "iter":self.iter,
-            "optimizer_state_dict":self.optimizer.state_dict(),
-            "hyperparameters": self.params
-            }
-        if self.scheduler: save_dict["scheduler_state_dict"]= self.scheduler.state_dict()
-        torch.save(save_dict,os.path.join( self.save_path,save_file))
-
 def get_model(**kwargs):
     models = {
         "latest": MAE,

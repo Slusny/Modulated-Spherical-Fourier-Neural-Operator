@@ -1165,7 +1165,4 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
 
         return x
     
-    # get only the parameters of the film generator
-    def get_film_params(self):
-        return self.film_gen.parameters()
 

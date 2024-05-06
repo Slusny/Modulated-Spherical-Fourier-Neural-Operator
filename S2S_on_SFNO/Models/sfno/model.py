@@ -185,15 +185,13 @@ class FourCastNetv2(Model):
 
         self.backbone_channels = len(self.ordering)
 
-        if self.sfno_weights:
-            self.checkpoint_path = self.sfno_weights
-        else:
+        if self.resume_checkpoint:
+            self.checkpoint_path = self.resume_checkpoint
+        elif self.pre_trained_sfno:
             self.checkpoint_path = os.path.join(self.assets, "weights.tar")
-
-        if "film_weights" in kwargs.keys() and kwargs["film_weights"]:
-            self.checkpoint_path_film =self.film_weights
         else:
-            self.checkpoint_path_film = None
+            self.checkpoint_path = None
+
 
         # create model
         self.model = FourierNeuralOperatorNet(**kwargs)
@@ -912,11 +910,18 @@ class FourCastNetv2(Model):
         if self.scheduler: save_dict["scheduler_state_dict"]= self.scheduler.state_dict()
         torch.save(save_dict,os.path.join( self.save_path,save_file))
 
+    def get_parameters(self):
+        return self.model.parameters()
 
 class FourCastNetv2_filmed(FourCastNetv2):
     def __init__(self, precip_flag=False, **kwargs):
         super().__init__(precip_flag, **kwargs)
 
+        if "film_weights" in kwargs.keys() and kwargs["film_weights"]:
+            self.checkpoint_path_film =self.film_weights
+        else:
+            self.checkpoint_path_film = None
+            
         # init model
         self.model = FourierNeuralOperatorNet_Filmed(self.device,**kwargs)
     
@@ -1491,6 +1496,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
             else:
                 plt.savefig(os.path.join(save_path,checkpoint+"_"+title+"_validation_steps"+str(val_epochs)+"_steps"+str(mean.shape[0])+"_skips"+str(self.validation_step_skip)+".pdf"))
             plt.close(fig)
+
+    def get_parameters(self):
+        return self.model.film_gen.parameters()
 
     def plot_skillscores(self,mean,std,save_path,variables,checkpoint,val_epochs):
         
