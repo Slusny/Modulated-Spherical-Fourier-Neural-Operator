@@ -1,4 +1,9 @@
 
+import time
+import logging
+import os
+from climetlab.utils.humanize import seconds
+LOG = logging.getLogger(__name__)
 
 def test_autoregressive_forecast(checkpoint_list,hyperparams):
     for checkpoint in checkpoint_list:
