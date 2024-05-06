@@ -166,10 +166,10 @@ class ERA5_galvani(Dataset):
         for step in range(1,self.auto_regressive_steps):
             sst = self.dataset.isel(time=self.start_idx + idx + step)["sea_surface_temperature"]
             if self.coarse_level > 1:
-                sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean().to_numpy()
+                sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean()
                 # if self.coarse_level > 1:
                 #     sst = sst.to_numpy()[:-1:self.coarse_level,::self.coarse_level] # or numpy at the end
-            ssts.append(torch.from_numpy(sst))
+            ssts.append(torch.from_numpy(sst.to_numpy()))
         return ssts
 
 class SST_galvani(Dataset):
@@ -223,13 +223,15 @@ class SST_galvani(Dataset):
         return self.end_idx - self.start_idx
 
     def __getitem__(self,idx):
-        input = self.dataset.isel(time=slice(self.start_idx+idx, self.start_idx+idx + self.temporal_step))["sea_surface_temperature"]
+        input = self.dataset.isel(time=slice(self.start_idx+idx, self.start_idx+idx + self.temporal_step))[["sea_surface_temperature"]].to_array()
         def format(input):
             time = str(input.time.to_numpy()[0])
             time = torch.tensor(int(time[0:4]+time[5:7]+time[8:10]+time[11:13])) # time in format YYYYMMDDHH  
-            return torch.from_numpy(input.to_numpy()), time
+            if self.coarse_level > 1:
+                sst = input.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean()
+            return torch.from_numpy(sst.to_numpy()), time
         if self.gt:
-            g_truth = self.dataset.isel(time=slice(self.start_idx+idx+1, self.start_idx+idx+1 + self.temporal_step))["sea_surface_temperature"]
+            g_truth = self.dataset.isel(time=slice(self.start_idx+idx+1, self.start_idx+idx+1 + self.temporal_step))[["sea_surface_temperature"]].to_array()
             return format(input), format(g_truth)
         else:
             return [format(input)]
@@ -432,6 +434,7 @@ class Trainer():
 
             print("Trainig Data:")
             dataset = ERA5_galvani(
+                self.util,
                 path=self.cfg.trainingdata_path, 
                 start_year=self.cfg.trainingset_start_year,
                 end_year=self.cfg.trainingset_end_year,
@@ -440,6 +443,7 @@ class Trainer():
             )
             print("Validation Data:")
             dataset_validation = ERA5_galvani(
+                self.util,
                 path=self.cfg.trainingdata_path, 
                 start_year=self.cfg.validationset_start_year,
                 end_year=self.cfg.validationset_end_year,

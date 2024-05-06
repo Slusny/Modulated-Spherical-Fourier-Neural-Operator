@@ -127,6 +127,7 @@ class ATMModel(Model):
     version = 1  # To be overriden in subclasses
 
     def __init__(self, input="cds", output="grib", download_assets=False, **kwargs):
+        super().__init__(**kwargs)
         self.input = get_input(input, self, **kwargs)
         if kwargs['run']: self.output = get_output(output, self, **kwargs)                        
         # self.output2 = get_output("grib", self, **kwargs) #! redundant, test
