@@ -20,7 +20,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 import torch.cuda.amp as amp
-from ..models import Model
+from ..models import ATMModel
 from datetime import datetime
 # import xskillscore as xs
 
@@ -38,7 +38,7 @@ from ..losses import CosineMSELoss, L2Sphere
 LOG = logging.getLogger('S2S_on_SFNO')
 local_logging = True
 
-class FourCastNetv2(Model):
+class FourCastNetv2(ATMModel):
     # Download
     download_url = "https://get.ecmwf.int/repository/test-data/ai-models/fourcastnetv2/small/{file}"
     download_files = ["weights.tar", "global_means.npy", "global_stds.npy"]
@@ -221,50 +221,50 @@ class FourCastNetv2(Model):
         model = self.model # since self.model is a class this is passed by reference and modified in place
 
         # Load weights
+        if checkpoint_file is None:
+            checkpoint = torch.load(checkpoint_file)
 
-        checkpoint = torch.load(checkpoint_file)
+            if "model_state" in checkpoint.keys(): weights = checkpoint["model_state"]
+            else: weights = checkpoint
+            drop_vars = ["module.norm.weight", "module.norm.bias"]
+            weights = {k: v for k, v in weights.items() if k not in drop_vars}
 
-        if "model_state" in checkpoint.keys(): weights = checkpoint["model_state"]
-        else: weights = checkpoint
-        drop_vars = ["module.norm.weight", "module.norm.bias"]
-        weights = {k: v for k, v in weights.items() if k not in drop_vars}
+            # print state of loaded model:
+            if self.advanced_logging and 'hyperparameters' in checkpoint.items():
+                print("loaded model with following hyperparameters:")
+                for k,v in checkpoint['hyperparameters'].items():print("    ",k,":",v)
 
-        # print state of loaded model:
-        if self.advanced_logging and 'hyperparameters' in checkpoint.items():
-            print("loaded model with following hyperparameters:")
-            for k,v in checkpoint['hyperparameters'].items():print("    ",k,":",v)
-
-        # Make sure the parameter names are the same as the checkpoint
-        # need to use strict = False to avoid this error message when
-        # using sfno_76ch::
-        # RuntimeError: Error(s) in loading state_dict for Wrapper:
-        # Missing key(s) in state_dict: "module.trans_down.weights",
-        # "module.itrans_up.pct",
-        if list(weights.keys())[0][0:7] == 'module.':
-            # Try adding model weights as dictionary
-            new_state_dict = dict()
-            # for k, v in checkpoint["model_state"].items():
-            for k, v in weights.items():
-                name = k[7:]
-                if name != "ged":
-                    new_state_dict[name] = v
-            try:
-                model.load_state_dict(new_state_dict)
-            except RuntimeError as e:
-                LOG.error(e)
-                print("--- !! ---")
-                print("loading state dict with strict=False, please verify if the right model is loaded and strict=False is desired")
-                print("--- !! ---")
-                model.load_state_dict(new_state_dict,strict=False)
-        else:
-            try:
-                model.load_state_dict(weights)
-            except RuntimeError as e:
-                LOG.error(e)
-                print("--- !! ---")
-                print("loading state dict with strict=False, please verify if the right model is loaded and strict=False is desired")
-                print("--- !! ---")
-                model.load_state_dict(weights,strict=False)
+            # Make sure the parameter names are the same as the checkpoint
+            # need to use strict = False to avoid this error message when
+            # using sfno_76ch::
+            # RuntimeError: Error(s) in loading state_dict for Wrapper:
+            # Missing key(s) in state_dict: "module.trans_down.weights",
+            # "module.itrans_up.pct",
+            if list(weights.keys())[0][0:7] == 'module.':
+                # Try adding model weights as dictionary
+                new_state_dict = dict()
+                # for k, v in checkpoint["model_state"].items():
+                for k, v in weights.items():
+                    name = k[7:]
+                    if name != "ged":
+                        new_state_dict[name] = v
+                try:
+                    model.load_state_dict(new_state_dict)
+                except RuntimeError as e:
+                    LOG.error(e)
+                    print("--- !! ---")
+                    print("loading state dict with strict=False, please verify if the right model is loaded and strict=False is desired")
+                    print("--- !! ---")
+                    model.load_state_dict(new_state_dict,strict=False)
+            else:
+                try:
+                    model.load_state_dict(weights)
+                except RuntimeError as e:
+                    LOG.error(e)
+                    print("--- !! ---")
+                    print("loading state dict with strict=False, please verify if the right model is loaded and strict=False is desired")
+                    print("--- !! ---")
+                    model.load_state_dict(weights,strict=False)
 
 
         # Set model to eval mode and return

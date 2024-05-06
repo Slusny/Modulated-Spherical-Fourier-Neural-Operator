@@ -22,17 +22,21 @@ LOG = logging.getLogger('S2S_on_SFNO')
 
 class MAE(Model):
     def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
 
+        # if self.cfg.resume_checkpoint:
+        #     self.checkpoint_path = self.resume_checkpoint
+        
         if self.resume_checkpoint:
             self.checkpoint_path = self.resume_checkpoint
             
         # init model
         self.model = ContextCast(data_dim=1)
-        self.params = kwargs
-        self.timestr = kwargs["timestr"]
-        self.assets = kwargs["assets"]
-        self.save_path = kwargs["save_path"]
+        # self.params = kwargs
+        # self.timestr = kwargs["timestr"]
+        # self.assets = kwargs["assets"]
+        # self.save_path = kwargs["save_path"]
     
     def load_model(self, checkpoint_file):
         

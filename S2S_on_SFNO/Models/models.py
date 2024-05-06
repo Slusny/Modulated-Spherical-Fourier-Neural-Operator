@@ -65,7 +65,11 @@ class ArchiveCollector:
 class Model():
 
     def __init__(self, **kwargs):
-        self.params = kwargs
+        # self.cfg = Attributes(**kwargs)
+        # here the kwargs of the parser become model properties (legacy from ai-models)
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+        self.params = kwargs # like this more to save hyperparameters
 
         LOG.debug("Asset directory is %s", self.assets)
 
@@ -108,16 +112,11 @@ class ATMModel(Model):
         if kwargs['run']: self.output = get_output(output, self, **kwargs)                        
         # self.output2 = get_output("grib", self, **kwargs) #! redundant, test
 
-        # here the kwargs of the parser become model properties (legacy from ai-models)
-        for k, v in kwargs.items():
-            setattr(self, k, v)
-        self.params = kwargs # like this more to save hyperparameters
-
         # We need to call it to initialise the default args
-        args = self.parse_model_args(self.model_args)
-        if args:
-            for k, v in vars(args).items():
-                setattr(self, k, v)
+        # args = self.parse_model_args(self.model_args)
+        # if args:
+        #     for k, v in vars(args).items():
+        #         setattr(self, k, v)
 
         if self.assets_sub_directory:
             if self.assets_extra_dir is not None:
@@ -418,7 +417,11 @@ class ATMModel(Model):
         pass
 
     
-   
+
+class Attributes():
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)  
 
     
 

@@ -16,6 +16,7 @@ from time import time
 from S2S_on_SFNO.Models.provenance import system_monitor
 from .losses import CosineMSELoss, L2Sphere
 
+import logging
 LOG = logging.getLogger('S2S_on_SFNO')
 
 class ERA5_galvani(Dataset):
@@ -234,17 +235,12 @@ class SST_galvani(Dataset):
             return input, time
         # precompute_temporal_average not implemented
 
-class Attributes():
-    def __init__(self, **kwargs):
-        for k, v in kwargs.items():
-            setattr(self, k, v)
-
 class Trainer():
     '''
     Trainer class for the models
     takes a initialized model class as first parameter and a dictionary of configuration
     '''
-    def __init__(self, model, **kwargs):
+    def __init__(self, model, kwargs):
         self.cfg = Attributes(**kwargs)
         self.util = model
         self.model = model.model
@@ -252,6 +248,7 @@ class Trainer():
         self.scale = 0.00001
         self.local_log = {"loss":[],"valid_loss":[]}
         self.mse_all_vars = False
+        self.epoch = 0
 
     def train(self):
         self.setup()
@@ -280,16 +277,16 @@ class Trainer():
                     notes=self.cfg.notes,
                     tags=self.cfg.tags)
             # create checkpoint folder for run name
-            new_save_path = os.path.join(self.cfg.__dict__.save_path,wandb_run.name)
+            new_save_path = os.path.join(self.cfg.save_path,wandb_run.name)
             os.mkdir(new_save_path)
-            self.cfg.__dict__.save_path = new_save_path
+            self.cfg.save_path = new_save_path
         else : 
             wandb_run = None
-            if self.cfg.__dict__.film_gen_type: film_gen_str = "_"+self.cfg.__dict__.film_gen_type
+            if self.cfg.film_gen_type: film_gen_str = "_"+self.cfg.film_gen_type
             else:                  film_gen_str = ""
-            new_save_path = os.path.join(self.cfg.__dict__.save_path,self.cfg.__dict__.model_type+"_"+self.cfg.__dict__.model_version+film_gen_str+"_"+timestr)
+            new_save_path = os.path.join(self.cfg.save_path,self.cfg.model_type+"_"+self.cfg.model_version+film_gen_str+"_"+self.cfg.timestr)
             os.mkdir(new_save_path)
-            self.cfg.__dict__.save_path = new_save_path
+            self.cfg.save_path = new_save_path
             print("")
             print("no wandb")
 
@@ -351,7 +348,7 @@ class Trainer():
             
             self.mem_log("forward pass")
             outputs = self.model(input,input_sst,self.scale)
-        elif self.cfg.model == "mae":
+        elif self.cfg.model_type == "mae":
             gt = input
             self.mem_log("forward pass")
             outputs = self.model(input)
@@ -409,10 +406,9 @@ class Trainer():
             self.loss_fn = torch.nn.MSELoss()
 
     def get_dataloader(self):
-        if self.cfg.model == "mae":
+        if self.cfg.model_type == "mae":
             print("Trainig Data:")
             dataset = SST_galvani(
-                self.model,
                 path=self.cfg.trainingdata_path, 
                 start_year=self.cfg.trainingset_start_year,
                 end_year=self.cfg.trainingset_end_year,
@@ -420,7 +416,6 @@ class Trainer():
             )
             print("Validation Data:")
             dataset_validation = SST_galvani(
-                self.model,
                 path=self.cfg.trainingdata_path, 
                 start_year=self.cfg.validationset_start_year,
                 end_year=self.cfg.validationset_end_year,
@@ -581,6 +576,11 @@ class Trainer():
         torch.save(save_dict,os.path.join( self.save_path,save_file))
 
                 
+
+class Attributes():
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)  
             
         
 

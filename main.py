@@ -101,8 +101,9 @@ def _main():
               Defaults to ./S2S_on_SFNO/Assets/{model}. Gets overwritten by --assets",
     )
     parser.add_argument(
-        "--path",
-        help="Path where to write the output of the model if it is run. For training data output look for save-path. Default: S2S_on_SFNO/outputs/{model}",
+        "--output-path",
+        help="Path where to write the output of the model if it is run (atmospheric fields in grib or netcdf format). For training data output (e.g. checkpoints) look for save-path. Default ouput-path: S2S_on_SFNO/outputs/{model}",
+        dest="path",
     )
     parser.add_argument(
         "--num-threads",
@@ -565,6 +566,13 @@ def _main():
     # args, unknownargs = parser.parse_known_args()
     args = parser.parse_args()
     
+    # get parameters split by groups
+    arg_groups={}
+    for group in parser._action_groups:
+        group_dict={a.dest:getattr(args,a.dest,None) for a in group._group_actions}
+        arg_groups[group.title]=argparse.Namespace(**group_dict)
+
+    
     if args.debug: #new
         pdb.set_trace()
         torch.autograd.set_detect_anomaly(True)
@@ -728,21 +736,21 @@ def _main():
     
     if args.train:
         # Start training, catch errors like STRG+C and save model before exiting
-        try:
-            print("")
-            print("Started training ")
-            print("save path: ",args.save_path)
-            LOG.info("Process ID: %s", os.getpid())
-            kwargs = vars(args)
-            print("called training with following arguments:")
-            for k,v in kwargs.items():
-                print(f"    {k} : {v}")
-            model.training(wandb_run=wandb_run,**kwargs)
-        except :
-            LOG.error(traceback.format_exc())
-            print("shutting down training")
-            model.save_checkpoint()
-            sys.exit(0)
+        # try:
+        #     print("")
+        #     print("Started training ")
+        #     print("save path: ",args.save_path)
+        #     LOG.info("Process ID: %s", os.getpid())
+        #     kwargs = vars(args)
+        #     print("called training with following arguments:")
+        #     for k,v in kwargs.items():
+        #         print(f"    {k} : {v}")
+        #     model.training(wandb_run=wandb_run,**kwargs)
+        # except :
+        #     LOG.error(traceback.format_exc())
+        #     print("shutting down training")
+        #     model.save_checkpoint()
+        #     sys.exit(0)
 
         try:
             print("")
@@ -754,13 +762,12 @@ def _main():
             for k,v in kwargs.items():
                 print(f"    {k} : {v}")
 
-            trainer = Trainer(model, **kwargs)
+            trainer = Trainer(model,kwargs)
             trainer.train()
-            model.training(wandb_run=wandb_run,**kwargs)
         except :
             LOG.error(traceback.format_exc())
             print("shutting down training")
-            model.save_checkpoint()
+            trainer.save_checkpoint()
             sys.exit(0)
 
     elif args.eval_models_autoregressive:
