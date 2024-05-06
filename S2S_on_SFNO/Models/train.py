@@ -15,7 +15,7 @@ from time import time
 
 from S2S_on_SFNO.Models.provenance import system_monitor
 from .losses import CosineMSELoss, L2Sphere
-from .models import Timer
+from S2S_on_SFNO.utils import Timer
 
 import logging
 LOG = logging.getLogger('S2S_on_SFNO')

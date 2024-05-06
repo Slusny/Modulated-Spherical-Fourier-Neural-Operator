@@ -29,7 +29,8 @@ import cfgrib
 
 #if shipped as module, include in S2S_on_SFNO and remove absolute import to relative .inputs etc. . Also move main inside -> __main__.py
 from S2S_on_SFNO.inputs import available_inputs
-from S2S_on_SFNO.Models.models import Timer, available_models, load_model #########
+from S2S_on_SFNO.Models.models import available_models, load_model #########
+from S2S_on_SFNO.utils import Timer
 from S2S_on_SFNO.outputs import available_outputs
 from S2S_on_SFNO.Models.train import Trainer
 
