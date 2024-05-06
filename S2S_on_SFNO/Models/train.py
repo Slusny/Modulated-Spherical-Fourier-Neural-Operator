@@ -15,7 +15,7 @@ from time import time
 
 from S2S_on_SFNO.Models.provenance import system_monitor
 from .losses import CosineMSELoss, L2Sphere
-from S2S_on_SFNO.utils import Timer
+from S2S_on_SFNO.utils import Timer, Attributes
 
 import logging
 LOG = logging.getLogger('S2S_on_SFNO')
@@ -595,11 +595,7 @@ class Trainer():
         with Timer("Dataloader speed test"):
             for i, data in enumerate(self.training_loader):
                 pass
-    
-class Attributes():
-    def __init__(self, **kwargs):
-        for k, v in kwargs.items():
-            setattr(self, k, v)  
+
             
         
 

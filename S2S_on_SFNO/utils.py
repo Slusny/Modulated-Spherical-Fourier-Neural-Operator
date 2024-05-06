@@ -32,3 +32,8 @@ class Timer:
         elapsed = time.time() - self.start
         LOG.info("%s: %s.", self.title, seconds(elapsed))
 
+    
+class Attributes():
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)  

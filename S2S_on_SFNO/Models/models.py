@@ -25,7 +25,7 @@ from .train import ERA5_galvani
 import torch
 import numpy as np
 import random
-from S2S_on_SFNO.utils import Timer
+from S2S_on_SFNO.utils import Timer, Attributes
 
 
 LOG = logging.getLogger(__name__)
@@ -393,13 +393,6 @@ class ATMModel(Model):
     def patch_retrieve_request(self, request):
         # Overriden in subclasses if needed
         pass
-
-    
-
-class Attributes():
-    def __init__(self, **kwargs):
-        for k, v in kwargs.items():
-            setattr(self, k, v)  
 
     
 

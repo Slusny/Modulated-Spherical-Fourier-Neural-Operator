@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from einops.layers.torch import Rearrange
 
+from S2S_on_SFNO.utils import Attributes
 
 class MHA(nn.Module):
     '''
@@ -107,8 +108,8 @@ class ContextCast(nn.Module):
         """
         super().__init__()
 
-
-        grid_size = (self.temporal_step, 720//self.coarse_level, 1440//self.coarse_level), 
+        self.cfg = Attributes(**kwargs)
+        grid_size = (self.cfg.temporal_step, 720//self.coarse_level, 1440//self.coarse_level), 
         #set helper parameters
         self.patch_size = patch_size if len(patch_size) == 3 else (1, *patch_size) #add time dimension if not present
         self.grid_size = (grid_size[0] // self.patch_size[0], grid_size[1] // self.patch_size[1], grid_size[2] // self.patch_size[2]) #grid size in latent space

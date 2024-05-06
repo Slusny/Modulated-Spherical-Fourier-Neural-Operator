@@ -32,7 +32,7 @@ class MAE(Model):
             self.checkpoint_path = self.resume_checkpoint
             
         # init model
-        self.model = ContextCast(data_dim=1)
+        self.model = ContextCast(data_dim=1,**kwargs)
         # self.params = kwargs
         # self.timestr = kwargs["timestr"]
         # self.assets = kwargs["assets"]
