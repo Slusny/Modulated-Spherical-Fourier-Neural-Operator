@@ -223,13 +223,15 @@ class SST_galvani(Dataset):
 
     def __getitem__(self,idx):
         input = self.dataset.isel(time=slice(self.start_idx+idx, self.start_idx+idx + self.temporal_step))["sea_surface_temperature"]
-        time = str(input.time.to_numpy()[0])
-        time = torch.tensor(int(time[0:4]+time[5:7]+time[8:10]+time[11:13])) # time in format YYYYMMDDHH  
+        def format(input):
+            time = str(input.time.to_numpy()[0])
+            time = torch.tensor(int(time[0:4]+time[5:7]+time[8:10]+time[11:13])) # time in format YYYYMMDDHH  
+            return torch.from_numpy(input.to_numpy()), time
         if self.gt:
             g_truth = self.dataset.isel(time=slice(self.start_idx+idx+1, self.start_idx+idx+1 + self.temporal_step))["sea_surface_temperature"]
-            return torch.from_numpy(input.to_numpy()), torch.from_numpy(g_truth.to_numpy()), time
+            return format(input), format(g_truth)
         else:
-            return torch.from_numpy(input.to_numpy()), time
+            return [format(input)]
         # precompute_temporal_average not implemented
 
 class Trainer():
@@ -576,7 +578,10 @@ class Trainer():
         torch.save(save_dict,os.path.join( self.cfg.save_path,save_file))
 
                 
-
+    def test_model_speed():
+        for i in range(100):
+            self.model_foreward(
+    
 class Attributes():
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
