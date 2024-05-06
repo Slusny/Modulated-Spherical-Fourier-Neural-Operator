@@ -84,7 +84,7 @@ class ContextCast(nn.Module):
                  decoder_dim: int = 512,
                  grid_size: tuple = (1, 180, 360), 
                  num_latents = 1, 
-                 patch_size: tuple = (1, 8, 8), 
+                 patch_size: tuple = (1, 9, 9), 
                  encoder_depth: int = 4, 
                  decoder_depth: int = 2,
                  dropout: float = 0., 
