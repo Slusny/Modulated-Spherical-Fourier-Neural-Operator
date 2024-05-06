@@ -293,7 +293,7 @@ class Trainer():
         self.mem_log("loading data")
         for i, data in enumerate(training_loader):
             if (i+1) % (self.cfg.validation_interval*(self.cfg.accumulation_steps + 1)) == 0:
-                self.validation()
+                self.validation(validation_loader)
             loss = 0
             discount_factor = 1
             with amp.autocast(self.cfg.enable_amp):
@@ -363,6 +363,10 @@ class Trainer():
         self.set_wandb()
         if self.cfg.enable_amp == True:
             self.gscaler = amp.GradScaler()
+        self.create_loss()
+        self.create_optimizer()
+        self.create_sheduler()
+        self.ready_model()
 
     def ready_model(self):
         if self.cfg.checkpoint_path: self.util.load_model(self.util.checkpoint_path)
