@@ -577,6 +577,8 @@ class Trainer():
     
     def save_checkpoint(self):
         save_file ="checkpoint_"+self.cfg.model_type+"_"+self.cfg.model_version+"_"+str(self.cfg.film_gen_type)+"_iter={}_epoch={}.pkl".format(self.iter,self.epoch)
+        total_save_path = os.path.join( self.cfg.save_path,save_file)
+        LOG.info("Saving checkpoint to %s",total_save_path)
         if self.local_logging : 
             print(" -> saving to : ",self.cfg.save_path)
             np.save(os.path.join( self.cfg.save_path,"val_means.npy"),self.val_means)
@@ -592,7 +594,7 @@ class Trainer():
             "hyperparameters": self.cfg.__dict__
             }
         if self.scheduler: save_dict["scheduler_state_dict"]= self.scheduler.state_dict()
-        torch.save(save_dict,os.path.join( self.cfg.save_path,save_file))
+        torch.save(save_dict,total_save_path)
 
                 
     def test_model_speed(self):
