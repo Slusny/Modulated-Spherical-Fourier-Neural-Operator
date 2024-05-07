@@ -89,7 +89,7 @@ singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gk
 # don't use the "novalocal" in the hostname, eg. bg-slurmb-bm-3.novalocalssh -AtL $B_PORT:localhost:$B_PORT gkd965@134.2.168.72 "ssh -AtL $B_PORT:localhost:8888 gkd965@bg-slurmb-bm-3 bash"
 
 # 1 Terminal jupyter notebook
-# 2 Terminal ssh -AtL 8822:localhost:8888 gkd965@galvani-cn$node -i /home/goswami/gkd965/.ssh/cluster_lennart_slusny_rsa (execute from cluster)
+# 2 Terminal ssh -AtL 8822:localhost:8888 gkd965@galvani-cn$node -i /home/goswami/gkd965/.ssh/cluster_lennart_slusny_rsa 
 # 3 ssh -AtL 8888:localhost:8822 cluster11
 
 
