@@ -397,10 +397,10 @@ class Trainer():
             self.scheduler.step(valid_mean)
         elif self.cfg.scheduler_type == 'CosineAnnealingLR':
             self.scheduler.step()
-            if (self.epoch*len(self.dataset)+self.iter) >= self.cfg.scheduler_horizon:
+            if (self.epoch*len(self.dataset)+self.iter*self.cfg.batch_size) >= self.cfg.scheduler_horizon:
                 LOG.info("Terminating training after reaching params.max_epochs while LR scheduler is set to CosineAnnealingLR") 
         elif self.cfg.scheduler_type == 'CosineAnnealingWarmRestarts':
-            self.scheduler.step(self.epoch*len(self.dataset)+self.iter)
+            self.scheduler.step(self.epoch*len(self.dataset)+self.iter*self.cfg.batch_size)
         
     def create_optimizer(self):
         self.optimizer = torch.optim.Adam(self.util.get_parameters(), lr=self.cfg.learning_rate)# store the optimizer and scheduler in the model class
@@ -537,7 +537,7 @@ class Trainer():
                 
     def valid_log(self,val_log,loss_pervar_list):
         # little complicated console logging - looks nicer than LOG.info(str(val_log))
-        print("-- validation after ",self.iteri*self.cfg.batch_size, "training examples")
+        print("-- validation after ",self.iter*self.cfg.batch_size, "training examples")
         val_log_keys = list(val_log.keys())
         for log_idx in range(0,self.cfg.multi_step_validation*2+1,2): 
             LOG.info(val_log_keys[log_idx] + " : " + str(val_log[val_log_keys[log_idx]]) 
