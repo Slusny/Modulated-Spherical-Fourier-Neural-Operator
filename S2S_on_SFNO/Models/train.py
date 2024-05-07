@@ -325,7 +325,7 @@ class Trainer():
             # Adjust learning weights
             if ((i + 1) % (self.cfg.accumulation_steps + 1) == 0) or (i + 1 == len(self.training_loader)):
                 # Update Optimizer
-                self.mem_log("optimizer step",fin=True)
+                self.mem_log("optimizer step",fin=False)
                 if self.cfg.enable_amp:
                     self.gscaler.step(self.optimizer)
                     self.gscaler.update()
@@ -462,7 +462,10 @@ class Trainer():
     # train loop
     def get_loss(self,output,gt):
         if self.cfg.loss_fn == "NormalCRPS":
-            return self.loss_fn(*output[0], gt) 
+            mu = torch.nan_to_num(output[0][0],nan=0.0)
+            gt = torch.nan_to_num(gt,nan=0.0)
+            std = torch.nan_to_num(output[0][1],nan=1.0)
+            return self.loss_fn(mu, std, gt) 
         else:
             return self.loss_fn(output,gt)
     
@@ -555,10 +558,11 @@ class Trainer():
             wandb.log(val_log,commit=False)
 
     def mem_log(self,str,fin=False):
-        if self.cfg.advanced_logging:
-            print("VRAM used before "+str+" : ",round(torch.cuda.memory_allocated(self.util.device)/10**9,2)," GB")
-        if fin:
-            self.mem_log_not_done = False 
+        if self.cfg.advanced_logging and self.mem_log_not_done:
+            print("VRAM used before "+str+" : ",round(torch.cuda.memory_allocated(self.util.device)/10**9,2),
+                  " GB, reserved: ",round(torch.cuda.memory_reserved(self.util.device)/10**9,2)," GB")
+            if fin:
+                self.mem_log_not_done = False 
             
     def iter_log(self,batch_loss,scale=None):
         if self.cfg.advanced_logging:

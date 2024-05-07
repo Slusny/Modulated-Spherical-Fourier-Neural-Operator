@@ -110,7 +110,7 @@ class ContextCast(nn.Module):
 
         self.cfg = Attributes(**kwargs)
         grid_size = (self.cfg.temporal_step, 720//self.cfg.coarse_level, 1440//self.cfg.coarse_level)
-        self.mask = None
+
         #set helper parameters
         self.patch_size = patch_size if len(patch_size) == 3 else (1, *patch_size) #add time dimension if not present
         self.grid_size = (grid_size[0] // self.patch_size[0], grid_size[1] // self.patch_size[1], grid_size[2] // self.patch_size[2]) #grid size in latent space
@@ -154,13 +154,11 @@ class ContextCast(nn.Module):
         #predict mean
         self.to_mean = nn.Sequential(
             nn.LayerNorm(decoder_dim),
-            nn.Linear(decoder_dim, self.patch_dim),
-            self.from_patch)
+            nn.Linear(decoder_dim, self.patch_dim))
         #predict std if desired
         self.to_std = nn.Sequential(
             nn.LayerNorm(decoder_dim),
-            nn.Linear(decoder_dim, self.patch_dim),
-            self.from_patch) if predict_std else None
+            nn.Linear(decoder_dim, self.patch_dim)) if predict_std else None
 
         ###TOKENS###
         #Initialize mask token
@@ -187,7 +185,7 @@ class ContextCast(nn.Module):
         B = patches.shape[0] #batch size
         ###ENCODER###
         #calculate position code
-        s_enc = self.encoder_position_code.expand(B, -1, -1)[...,self.mask,:]
+        s_enc = self.encoder_position_code.expand(B, -1, -1)[...,self.nan_mask_th,:]
         #apply position code and linear projection
         z = s_enc + patches #+ self.encoder_projection(patches)
         #mask patches <=> select only non-masked patches
@@ -205,7 +203,7 @@ class ContextCast(nn.Module):
         ###DECODER###
         z = self.decoder_projection(z)
         #calculate position code
-        s_dec = self.decoder_position_code.expand(B, -1, -1)[...,self.mask,:]
+        s_dec = self.decoder_position_code.expand(B, -1, -1)[...,self.nan_mask_th,:]
         #append mask token
         N = self.num_patches - M + 1 #number of masked tokens (without class token)
         mask_tokens = self.mask_token.expand(B, N, -1) #create mask tokens
@@ -220,8 +218,8 @@ class ContextCast(nn.Module):
         #remove class token
         cls, out = y[:, :1], y[:, 1:]
         #predict mean and optionally std
-        mean = self.to_mean(out)
-        std = self.to_std(out) if self.to_std is not None else None
+        mean = self.from_patch(self.to_mean(out),self.nan_mask,self.nan_mask_th)
+        std = self.from_patch(self.to_std(out),self.nan_mask,self.nan_mask_th) if self.to_std is not None else None
         return (mean, std), cls
 
     def random_masking(self, data: torch.Tensor, mask_ratio: float):
@@ -242,7 +240,7 @@ class ContextCast(nn.Module):
         #observation: (B, C ,T, H, W)
         #patch      : (B, M, dim)
         #calculate patch embedding
-        patches, self.nan_mask, self.mask = self.to_patch(observation)
+        patches, self.nan_mask, self.nan_mask_th = self.to_patch(observation)
         self.num_patches = patches.shape[-2]
         #calculate random masks
         keep_idcs, mask, restore_idcs = self.random_masking(patches, mask_ratio)
@@ -251,7 +249,7 @@ class ContextCast(nn.Module):
         #decode
         (mean, std), cls = self.forward_decoder(z, restore_idcs)
         #mask to image
-        mask = self.from_patch(mask)
+        mask = self.from_patch(mask,self.nan_mask,self.nan_mask_th,fill=0)
         #return
         return (mean, std), mask, cls
 
@@ -268,10 +266,13 @@ class Transformer_patch_reconstruction(nn.Module):
         self.rearrange = Rearrange('b (t h w) (c pt ph pw) -> b c (t pt) (h ph) (w pw)', 
                                    pt = patch_time, ph = patch_height, pw = patch_width,
                                     t = t, h = h, w = w) 
-    def forward(self,x,nan_mask,mask):
-        full_patches = nan_mask.copy()
-        full_patches[nan_mask] = torch.nan
-        full_patches[nan_mask.logical_not()] = x
+    def forward(self,x,nan_mask,mask,fill=torch.nan):
+        full_shape = list(x.shape)
+        full_shape[-2] = mask.shape[0]
+        full_patches = torch.ones(full_shape,device=x.device)*fill
+        # full_patches[mask] = torch.nan
+        full_patches[...,mask,:] = x
+        full_patches[...,nan_mask] = fill
         x = self.rearrange(full_patches)
         return x
 
@@ -296,9 +297,9 @@ class Transformer_patch_embedding(nn.Module):
             nan_ratio_per_token = self.nan_mask.sum(dim=-1)/x.shape[-1]
             self.mask = nan_ratio_per_token < nan_threshold
 
-            x = x[...,self.mask,:]
-            x = torch.nan_to_num(x, nan=0.0)
-        return x, self.nan_mask, self.mask
+        x = x[...,self.mask,:]
+        x = torch.nan_to_num(x, nan=0.0)
+        return x
 
     def forward(self, x):
         batch = x.shape[0] ## not correct
@@ -307,7 +308,7 @@ class Transformer_patch_embedding(nn.Module):
         x = self.norm1(x)
         x = self.lin(x)
         x = self.norm2(x)
-        return x
+        return x, self.nan_mask, self.mask
 
     
 #load config
