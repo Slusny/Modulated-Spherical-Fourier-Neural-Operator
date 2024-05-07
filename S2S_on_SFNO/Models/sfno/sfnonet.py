@@ -676,6 +676,10 @@ class GCN(torch.nn.Module):
         self.perceptive_field = depth
         self.conv_layers = nn.ModuleList([GCNConv(self.hidden_size, self.hidden_size,cached=True) for _ in range(self.perceptive_field)])
         self.head_film = nn.Linear(self.hidden_size, 2*out_features*self.num_layers)
+
+        # with torch.no_grad():
+        self.head_film.weight = nn.Parameter(torch.zeros_like(self.head_film.weight))
+        self.head_film.bias = nn.Parameter(torch.zeros_like(self.head_film.bias))
         
         # prepare the graph 
 
@@ -777,8 +781,9 @@ class GCN_custom(nn.Module):
         self.head_film = nn.Linear(self.hidden_size, 2*out_features*self.num_layers)
 
         # Set film weights to 0
-        with torch.no_grad():
-            self.head_film.weight = nn.Parameter(torch.ones_like(self.head_film.weight))
+        # with torch.no_grad():
+        self.head_film.weight = nn.Parameter(torch.ones_like(self.head_film.weight))
+        self.head_film.bias = nn.Parameter(torch.zeros_like(self.head_film.bias))
             # self.head_film.weight[0, 0] = 2.
             # model[0].weight.fill_(3.)
 
@@ -975,6 +980,10 @@ class ViT(nn.Module):
         self.to_latent = nn.Identity()
 
         self.head_film = nn.Linear(dim, num_classes*num_layers*2) 
+
+        # Set weights of head film to 0
+        self.head_film.weight = nn.Parameter(torch.zeros_like(self.head_film.weight))
+        self.head_film.bias = nn.Parameter(torch.zeros_like(self.head_film.bias))
 
     def rm_nan(self, x, batch):
         if not self.nan_mask: self.nan_mask = torch.isnan(x).logical_not()
