@@ -776,6 +776,12 @@ class GCN_custom(nn.Module):
         self.activation = nn.LeakyReLU() # change parameter for leaky relu also in initalization of GraphConvolution layer
         self.head_film = nn.Linear(self.hidden_size, 2*out_features*self.num_layers)
 
+        # Set film weights to 0
+        with torch.no_grad():
+            self.head_film.weight = nn.Parameter(torch.ones_like(self.head_film.weight))
+            self.head_film.weight[0, 0] = 2.
+            model[0].weight.fill_(3.)
+
         ## Prepare Graph
         # load sparse adjacentcy matrix from file ( shape: num_node x num_nodes )
         self.adj = torch.load(os.path.join(graph_asset_path,"adj_coarsen_"+str(coarse_level)+"_sparse.pt")).to(device)
@@ -1148,3 +1154,17 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         return x
     
 
+class Nino_Index(nn.Module):
+    def __init__(self,device,clim_path,temporal_step):
+        super().__init__()
+        self.device = device
+        self.clim_sst = xr.open_dataset()
+
+    # weighting sst by grid cell size
+    # nino index lat=(-5,5) or lat=(-31,33)
+    
+    def forward(self,sst):
+        tos_nino34 = sst.sel(lat=slice(-5, 5), lon=slice(190, 240))
+        gb = tos_nino34.tos.groupby('time.month')
+        tos_nino34_anom = gb - gb.mean(dim='time')
+        index_nino34 = tos_nino34_anom.weighted(tos_nino34.areacello).mean(dim=['lat', 'lon'])

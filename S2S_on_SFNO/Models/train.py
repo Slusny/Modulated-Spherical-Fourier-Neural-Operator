@@ -482,11 +482,11 @@ class Trainer():
                 # if self.auto_regressive_steps = 0 the dataloader only outputs 2 datapoint 
                 # and the for loop only runs once (calculating the ordinary validation loss with no auto regressive evaluation
                 val_input_era5 = None
-                for val_step, data in range(self.cfg.multi_step_validation+1):
+                for val_step in range(self.cfg.multi_step_validation+1):
                     
                     if val_step == 0 : input = self.util.normalise(val_data[val_step][0]).to(self.util.device)
                     else: input = output
-                    output, gt = self.model_forward(input,data,val_step)
+                    output, gt = self.model_forward(input,val_data,val_step)
                     
                     val_loss_value = self.get_loss(output,gt)/ self.cfg.batch_size
 
