@@ -1021,8 +1021,8 @@ class FiLM(nn.Module):
     'FiLM: Visual Reasoning with a General Conditioning Layer'
     """
     def forward(self, x, gammas, betas,scale=1):
-        _gammas = repeat(gammas, 'j -> i j k l',i=x.shape[0],k=x.shape[2],l=x.shape[3])
-        _betas  = repeat(betas, 'j -> i j k l',i=x.shape[0],k=x.shape[2],l=x.shape[3])
+        _gammas = repeat(gammas, 'i j -> i j k l',k=x.shape[2],l=x.shape[3])
+        _betas  = repeat(betas, 'i j -> i j k l',k=x.shape[2],l=x.shape[3])
         return ((1+_gammas*scale) * x) + _betas*scale
 
 class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
