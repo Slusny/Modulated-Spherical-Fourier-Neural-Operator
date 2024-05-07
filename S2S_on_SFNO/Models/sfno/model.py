@@ -209,12 +209,6 @@ class FourCastNetv2(ATMModel):
         self.stds = self.stds[:, : self.backbone_channels, ...]
         self.stds = self.stds.astype(np.float32)
 
-        if film_gen_type is not None:
-            self.means_film = np.load(os.path.join(self.assets, "global_means_sst.npy"))
-            self.means_film = self.means_film.astype(np.float32)
-            self.stds_film = np.load(os.path.join(self.assets, "global_stds_sst.npy"))
-            self.stds_film = self.stds_film.astype(np.float32)
-
     def load_model(self, checkpoint_file):
         # model = nvs.FourierNeuralOperatorNet()
         # model = FourierNeuralOperatorNet()
