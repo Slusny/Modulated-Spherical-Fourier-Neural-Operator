@@ -14,7 +14,7 @@ from time import time
 # BatchSampler(drop_last=True)
 
 from S2S_on_SFNO.Models.provenance import system_monitor
-from .losses import CosineMSELoss, L2Sphere
+from .losses import CosineMSELoss, L2Sphere, NormalCRPS
 from S2S_on_SFNO.utils import Timer, Attributes
 
 import logging
@@ -247,6 +247,7 @@ class Trainer():
         self.util = model
         self.model = model.model
         self.mem_log_not_done = True
+        self.local_logging=False
         self.scale = 0.00001
         self.local_log = {"loss":[],"valid_loss":[]}
         self.mse_all_vars = False
@@ -294,6 +295,7 @@ class Trainer():
 
     def train_epoch(self):
         self.iter = 0
+        batch_loss = 0
         self.mem_log("loading data")
         for i, data in enumerate(self.training_loader):
             if (i+1) % (self.cfg.validation_interval*(self.cfg.accumulation_steps + 1)) == 0:
@@ -307,7 +309,7 @@ class Trainer():
                     output, gt = self.model_forward(input,data,step)
                     
                     if step % (self.cfg.training_step_skip+1) == 0:
-                        loss = loss + self.loss_fn(output, gt)/(self.cfg.multi_step_training+1) #*discount_factor**step
+                        loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1)/self.cfg.batch_size #*discount_factor**step
                     
                 loss = loss / (self.cfg.accumulation_steps+1)
                 # only for logging the loss for the batch
@@ -321,7 +323,7 @@ class Trainer():
                 loss.backward()
 
             # Adjust learning weights
-            if ((i + 1) % (self.accumulation_steps + 1) == 0) or (i + 1 == len(self.training_loader)):
+            if ((i + 1) % (self.cfg.accumulation_steps + 1) == 0) or (i + 1 == len(self.training_loader)):
                 # Update Optimizer
                 self.mem_log("optimizer step",fin=True)
                 if self.cfg.enable_amp:
@@ -408,6 +410,8 @@ class Trainer():
             self.loss_fn = CosineMSELoss(reduction='mean')
         elif self.cfg.loss_fn == "L2Sphere":
             self.loss_fn = L2Sphere(relative=True, squared=True)
+        elif self.cfg.loss_fn == "NormalCRPS":
+            self.loss_fn = NormalCRPS()
         else:
             self.loss_fn = torch.nn.MSELoss()
 
@@ -456,6 +460,11 @@ class Trainer():
         return #training_loader, validation_loader
     
     # train loop
+    def get_loss(self,output,gt):
+        if self.cfg.loss_fn == "NormalCRPS":
+            return self.loss_fn(*output[0], gt) 
+        else:
+            return self.loss_fn(output,gt)
     
     def validation(self):
         val_loss = {}
@@ -476,7 +485,7 @@ class Trainer():
                     else: input = output
                     output, gt = self.model_forward(input,data,val_step)
                     
-                    val_loss_value = self.loss_fn(output, gt) / self.cfg.batch_size
+                    val_loss_value = self.get_loss(output,gt)/ self.cfg.batch_size
 
                     # loss for each variable
                     if self.cfg.advanced_logging and self.mse_all_vars  and val_step == 0: # !! only for first multi validation step, could include next step with -> ... -> ... in print statement on same line
@@ -510,8 +519,7 @@ class Trainer():
 
         # save model and training statistics for checkpointing
         if (self.iter+1) % (self.cfg.validation_interval*self.cfg.save_checkpoint_interval) == 0:
-            save_file ="checkpoint_"+self.cfg.model_type+"_"+self.cfg.model_version+"_"+self.cfg.film_gen_type+"_epoch={}.pkl".format(self.iter)
-            self.save_checkpoint(save_file)
+            self.save_checkpoint()
             if self.cfg.advanced_logging and self.cfg.model_version == "film":
                 gamma_np = self.model.gamma.cpu().numpy()
                 beta_np  = self.model.beta.cpu().numpy()
@@ -563,9 +571,9 @@ class Trainer():
                 else :
                     print("Iteration: ", self.iter, " Loss: ", round(batch_loss,5))
     
-    def save_checkpoint(self,save_file=None):
-        local_logging=False
-        if local_logging : 
+    def save_checkpoint(self):
+        save_file ="checkpoint_"+self.cfg.model_type+"_"+self.cfg.model_version+"_"+self.cfg.film_gen_type+"_iter={}_epoch={}.pkl".format(self.iter,self.epoch)
+        if self.local_logging : 
             print(" -> saving to : ",self.cfg.save_path)
             np.save(os.path.join( self.cfg.save_path,"val_means.npy"),self.val_means)
             np.save(os.path.join( self.cfg.save_path,"val_stds.npy"),self.val_stds)

@@ -84,11 +84,11 @@ class ContextCast(nn.Module):
                  encoder_dim: int = 512, 
                  decoder_dim: int = 512,
                  num_latents = 1, 
-                 patch_size: tuple = (1, 9, 9), 
+                 patch_size: tuple = (28, 9, 9), 
                  encoder_depth: int = 4, 
                  decoder_depth: int = 2,
                  dropout: float = 0., 
-                 predict_std: bool = False,
+                 predict_std: bool = True,
                  layer_scale: float = None,
                  **kwargs):
         """
@@ -109,7 +109,7 @@ class ContextCast(nn.Module):
         super().__init__()
 
         self.cfg = Attributes(**kwargs)
-        grid_size = (self.cfg.temporal_step, 720//self.coarse_level, 1440//self.coarse_level), 
+        grid_size = (self.cfg.temporal_step, 720//self.cfg.coarse_level, 1440//self.cfg.coarse_level)
         #set helper parameters
         self.patch_size = patch_size if len(patch_size) == 3 else (1, *patch_size) #add time dimension if not present
         self.grid_size = (grid_size[0] // self.patch_size[0], grid_size[1] // self.patch_size[1], grid_size[2] // self.patch_size[2]) #grid size in latent space

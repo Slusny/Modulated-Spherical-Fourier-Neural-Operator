@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch_harmonics as harmonics
+import numpy as np
 
 class CosineMSELoss():
     def __init__(self, reduction=None):
