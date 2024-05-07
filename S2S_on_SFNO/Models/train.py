@@ -576,7 +576,7 @@ class Trainer():
                     print("Iteration: ", self.iter, " Loss: ", round(batch_loss,5))
     
     def save_checkpoint(self):
-        save_file ="checkpoint_"+self.cfg.model_type+"_"+self.cfg.model_version+"_"+self.cfg.film_gen_type+"_iter={}_epoch={}.pkl".format(self.iter,self.epoch)
+        save_file ="checkpoint_"+self.cfg.model_type+"_"+self.cfg.model_version+"_"+str(self.cfg.film_gen_type)+"_iter={}_epoch={}.pkl".format(self.iter,self.epoch)
         if self.local_logging : 
             print(" -> saving to : ",self.cfg.save_path)
             np.save(os.path.join( self.cfg.save_path,"val_means.npy"),self.val_means)
