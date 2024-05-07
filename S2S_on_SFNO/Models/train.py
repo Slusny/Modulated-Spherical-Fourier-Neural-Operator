@@ -325,7 +325,7 @@ class Trainer():
             # Adjust learning weights
             if ((i + 1) % (self.cfg.accumulation_steps + 1) == 0) or (i + 1 == len(self.training_loader)):
                 # Update Optimizer
-                self.mem_log("optimizer step",fin=False)
+                self.mem_log("optimizer step",fin=True)
                 if self.cfg.enable_amp:
                     self.gscaler.step(self.optimizer)
                     self.gscaler.update()
