@@ -252,6 +252,7 @@ def _main():
     data.add_argument(
         "--coarse-level",
         action="store",
+        default=4,
         help=("factor by which the sst data gets reduced in lat, long dimensions"),
     )
 
@@ -507,7 +508,7 @@ def _main():
         action="store",
         help="Which loss function to use",
         default="MSE",
-        choices=["MSE","CosineMSE","L2Sphere"],
+        choices=["MSE","CosineMSE","L2Sphere","NormalCRPS"],
     )
 
     # Logging
