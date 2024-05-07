@@ -110,6 +110,7 @@ class ContextCast(nn.Module):
 
         self.cfg = Attributes(**kwargs)
         grid_size = (self.cfg.temporal_step, 720//self.cfg.coarse_level, 1440//self.cfg.coarse_level)
+        self.mask = None
         #set helper parameters
         self.patch_size = patch_size if len(patch_size) == 3 else (1, *patch_size) #add time dimension if not present
         self.grid_size = (grid_size[0] // self.patch_size[0], grid_size[1] // self.patch_size[1], grid_size[2] // self.patch_size[2]) #grid size in latent space
@@ -187,10 +188,10 @@ class ContextCast(nn.Module):
     def forward_encoder(self, observation: torch.Tensor, keep_idcs: torch.Tensor) -> torch.Tensor:
         B = observation.shape[0] #batch size
         ###ENCODER###
-        #calculate position code
-        s_enc = self.encoder_position_code.expand(B, -1, -1)
         #calculate patch embedding
         patches = self.to_patch(observation)
+        #calculate position code
+        s_enc = self.encoder_position_code.expand(B, -1, -1)[...,self.to_patch.mask,:]
         #apply position code and linear projection
         z = s_enc + patches #+ self.encoder_projection(patches)
         #mask patches <=> select only non-masked patches
@@ -243,6 +244,7 @@ class ContextCast(nn.Module):
 
     def forward(self, observation: torch.Tensor, mask_ratio: float = 0.) -> tuple:
         #observation: (B, C ,T, H, W)
+        observation = self.rm_embed_nan(observation)
         #calculate random masks
         keep_idcs, mask, restore_idcs = self.random_masking(observation, mask_ratio)
         #encode
@@ -253,7 +255,12 @@ class ContextCast(nn.Module):
         mask = self.from_patch(mask)
         #return
         return (mean, std), mask, cls
-    
+
+    def rm_embed_nan(self, x):
+        if not torch.is_tensor(self.mask):
+            self.mask = torch.any(torch.isnan(x),dim=-1).logical_not()[0] # keeps batch dimension in mask and removes it by this # x is rearranged sst to patches 
+        return x[...,self.mask,:]
+
 # This torch module realises patch embedding for the transformer and handles nan values in the input
 class Transformer_patch_embedding(nn.Module):
     def __init__(self, patch_time, patch_height, patch_width, patch_dim, dim):
@@ -266,16 +273,10 @@ class Transformer_patch_embedding(nn.Module):
 
         self.mask = None
 
-    def rm_embed_nan(self, x, batch):
-        if not torch.is_tensor(self.mask):
-            self.mask = torch.any(torch.isnan(x),dim=-1).logical_not()[0] # keeps batch dimension in mask and removes it by this # x is rearranged sst to patches 
-        return x[...,self.mask,:]
-
-
     def forward(self, x):
         batch = x.shape[0] ## not correct
         x = self.rearrange(x)
-        x = self.rm_embed_nan(x,batch)
+        # x = self.rm_embed_nan(x,batch)
         x = self.norm1(x)
         x = self.lin(x)
         x = self.norm2(x)

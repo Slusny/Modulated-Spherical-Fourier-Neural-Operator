@@ -354,7 +354,7 @@ class Trainer():
         elif self.cfg.model_type == "mae":
             gt = input
             self.mem_log("forward pass")
-            outputs = self.model(input)
+            outputs = self.model(input,np.random.uniform(0.4,0.8))
         else:
             gt = self.util.normalise(data[step+1][0]).to(self.util.device)
             self.mem_log("forward pass")
