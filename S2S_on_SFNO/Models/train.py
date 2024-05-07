@@ -397,10 +397,10 @@ class Trainer():
             self.scheduler.step(valid_mean)
         elif self.cfg.scheduler_type == 'CosineAnnealingLR':
             self.scheduler.step()
-            if self.epoch >= kwargs["scheduler_horizon"]:
+            if (self.epoch*len(self.dataset)+self.iter) >= self.cfg.scheduler_horizon:
                 LOG.info("Terminating training after reaching params.max_epochs while LR scheduler is set to CosineAnnealingLR") 
         elif self.cfg.scheduler_type == 'CosineAnnealingWarmRestarts':
-            self.scheduler.step(i)
+            self.scheduler.step(self.epoch*len(self.dataset)+self.iter)
         
     def create_optimizer(self):
         self.optimizer = torch.optim.Adam(self.util.get_parameters(), lr=self.cfg.learning_rate)# store the optimizer and scheduler in the model class
@@ -418,14 +418,14 @@ class Trainer():
     def set_dataloader(self):
         if self.cfg.model_type == "mae":
             print("Trainig Data:")
-            dataset = SST_galvani(
+            self.dataset = SST_galvani(
                 path=self.cfg.trainingdata_path, 
                 start_year=self.cfg.trainingset_start_year,
                 end_year=self.cfg.trainingset_end_year,
                 temporal_step=self.cfg.temporal_step
             )
             print("Validation Data:")
-            dataset_validation = SST_galvani(
+            self.dataset_validation = SST_galvani(
                 path=self.cfg.trainingdata_path, 
                 start_year=self.cfg.validationset_start_year,
                 end_year=self.cfg.validationset_end_year,
@@ -437,7 +437,7 @@ class Trainer():
                 sst = False
 
             print("Trainig Data:")
-            dataset = ERA5_galvani(
+            self.dataset = ERA5_galvani(
                 self.util,
                 path=self.cfg.trainingdata_path, 
                 start_year=self.cfg.trainingset_start_year,
@@ -446,7 +446,7 @@ class Trainer():
                 sst=sst
             )
             print("Validation Data:")
-            dataset_validation = ERA5_galvani(
+            self.dataset_validation = ERA5_galvani(
                 self.util,
                 path=self.cfg.trainingdata_path, 
                 start_year=self.cfg.validationset_start_year,
@@ -454,8 +454,8 @@ class Trainer():
                 auto_regressive_steps=self.cfg.multi_step_validation,
                 sst=sst
             )
-        self.training_loader = DataLoader(dataset,shuffle=True,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
-        self.validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
+        self.training_loader = DataLoader(self.dataset,shuffle=True,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
+        self.validation_loader = DataLoader(self.dataset_validation,shuffle=True,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
 
         return #training_loader, validation_loader
     

@@ -779,8 +779,8 @@ class GCN_custom(nn.Module):
         # Set film weights to 0
         with torch.no_grad():
             self.head_film.weight = nn.Parameter(torch.ones_like(self.head_film.weight))
-            self.head_film.weight[0, 0] = 2.
-            model[0].weight.fill_(3.)
+            # self.head_film.weight[0, 0] = 2.
+            # model[0].weight.fill_(3.)
 
         ## Prepare Graph
         # load sparse adjacentcy matrix from file ( shape: num_node x num_nodes )
