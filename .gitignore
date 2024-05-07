@@ -167,6 +167,7 @@ S2S_on_SFNO/outputs/*
 # Inputs
 S2S_on_SFNO/inputs/*
 !S2S_on_SFNO/inputs/__init__.py
+wandb/
 
 
 # Assets
