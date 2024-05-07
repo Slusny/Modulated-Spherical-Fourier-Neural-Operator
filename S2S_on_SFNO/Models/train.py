@@ -248,7 +248,7 @@ class Trainer():
         self.model = model.model
         self.mem_log_not_done = True
         self.local_logging=False
-        self.scale = 0.00001
+        self.scale = 1.0
         self.local_log = {"loss":[],"valid_loss":[]}
         self.mse_all_vars = False
         self.epoch = 0
@@ -514,9 +514,9 @@ class Trainer():
 
             # change scale value based on validation loss
             # if valid_mean < kwargs["val_loss_threshold"] and scale < 1.0:
-            if scale < 1.0 and self.cfg.model_version == "film":
-                val_log["scale"] = scale
-                scale = scale + 0.002 # 5e-5 #
+            if self.scale < 1.0 and self.cfg.model_version == "film":
+                val_log["scale"] = self.scale
+                self.scale = self.scale + 0.002 # 5e-5 #
 
             self.valid_log(val_log,loss_pervar_list)
 
