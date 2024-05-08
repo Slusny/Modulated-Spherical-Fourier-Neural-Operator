@@ -89,7 +89,7 @@ class MAE(Model):
         pred = data[0][0].cpu().numpy().squeeze()
         gt = gt.cpu().numpy().squeeze()
         std = data[0][1].cpu().numpy().squeeze()
-        mask = data[1].cpu().numpy()
+        mask = data[1].cpu().numpy().squeeze()
         vmin = np.min((pred,gt))
         vmax = np.max((pred,gt))
         for time in range(pred.shape[0]):
