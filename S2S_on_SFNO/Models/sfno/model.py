@@ -596,7 +596,7 @@ class FourCastNetv2(ATMModel):
         
         self.save_checkpoint()
 
-    def auto_regressive_skillscore(self,checkpoint_list,auto_regressive_steps,save_path,sfno=False):
+    def evaluate_model(self,checkpoint_list,auto_regressive_steps,save_path,sfno=False):
         """
         Method to calculate the skill score of the model for different auto-regressive steps.
         """
@@ -658,7 +658,7 @@ class FourCastNetv2(ATMModel):
             
             torch.save(validation_loss_curve,os.path.join(save_path,"validation_loss_curve_autoregressivesteps_{}.pkl".format(auto_regressive_steps)))
         
-    def auto_regressive_skillscore(self,checkpoint_list,auto_regressive_steps,save_path,sfno=False):
+    def evaluate_model(self,checkpoint_list,save_path):
         """
         Method to calculate the skill score of the model for different auto-regressive steps.
         Needs batch size 1
@@ -673,7 +673,7 @@ class FourCastNetv2(ATMModel):
             path=self.trainingdata_path, 
             start_year=self.validationset_start_year,
             end_year=self.validationset_end_year,
-            auto_regressive_steps=auto_regressive_steps)
+            auto_regressive_steps=self.cfg.multi_step_validation)
         
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=self.training_workers, batch_size=self.batch_size)
         loss_fn = torch.nn.MSELoss()#reduction='none'
@@ -1259,7 +1259,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         print("End of epoch ",self.epoch)
         self.save_checkpoint()
 
-    def auto_regressive_skillscore(self,checkpoint_list,auto_regressive_steps,save_path,sfno=False):
+    def evaluate_model(self,checkpoint_list,save_path):
         """
         Method to calculate the skill score of the model for different auto-regressive steps.
         Needs batch size 1
@@ -1276,7 +1276,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
             path=self.trainingdata_path, 
             start_year=self.validationset_start_year,
             end_year=self.validationset_end_year,
-            auto_regressive_steps=auto_regressive_steps)
+            auto_regressive_steps=self.cfg.multi_step_validation)
         
         validation_loader = DataLoader(dataset_validation,shuffle=True,num_workers=self.training_workers, batch_size=self.batch_size)
         loss_fn = torch.nn.MSELoss()#reduction='none'
@@ -1309,13 +1309,13 @@ class FourCastNetv2_filmed(FourCastNetv2):
         #     sfno_model.eval()
         
         # add iteration to for loop to calculate sfno skillscores
-        if sfno:
+        if self.cfg.sfno:
             checkpoint_list.insert(0,"sfno")
 
         print("skillscores for ",variables,":")
         for cp_idx, checkpoint in enumerate(checkpoint_list):
             # the first checkpoint is always pure sfno with film scale = 0
-            if cp_idx == 0 and sfno: 
+            if cp_idx == 0 and self.cfg.sfno: 
                 scale = 0.
                 cp_name = "sfno"
                 print(" --- sfno --- ")
@@ -1401,7 +1401,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                                 for variable in variables:
                                     output_var = output_real_space.squeeze()[self.ordering_reverse[variable]]
                                     g_truth_var= val_g_truth_era5.squeeze()[self.ordering_reverse[variable]]
-                                    self.plot_variable(output_var,g_truth_var,save_path,cp_name, variable,steps=val_idx,sfno=sfno)
+                                    self.plot_variable(output_var,g_truth_var,save_path,cp_name, variable,steps=val_idx,sfno=self.cfg.sfno)
                             if self.advanced_logging and ultra_advanced_logging : print("step ",val_idx)
                         else:
                             if self.advanced_logging and ultra_advanced_logging: print("skipping step ",val_idx)
@@ -1423,7 +1423,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                     if val_epoch > self.validation_epochs:
                         print("save at ",save_path)
                         savefile=os.path.join(save_path,"{}_{}_{}.npy")
-                        if cp_idx == 0 and sfno: 
+                        if cp_idx == 0 and self.cfg.sfno: 
                             np.save(savefile.format("","skill_score","sfno"),skill_score_validation_list)
                             np.save(savefile.format("","MSE","sfno"),loss_validation_list)
                             np.save(savefile.format("","MSE_normalised","sfno"),loss_validation_list_normalised)

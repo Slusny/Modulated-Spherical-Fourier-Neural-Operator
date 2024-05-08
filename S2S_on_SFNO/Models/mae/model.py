@@ -54,7 +54,7 @@ class MAE(Model):
         self.model.eval()
         self.model.zero_grad()
         self.model.to(self.device)
-        return self.model
+        return checkpoint if checkpoint_file is not None else None
 
     ## common
 
@@ -73,6 +73,17 @@ class MAE(Model):
             new_data = (data - self.means_film) / self.stds_film
         return new_data
 
+    def evaluate_model(self, checkpoint_list,save_path):
+        """Evaluate model using checkpoint list"""
+        for cp_idx, checkpoint in enumerate(checkpoint_list):
+            self.checkpoint_path = checkpoint
+            model = self.load_model(self.checkpoint_path)
+            model.eval()
+            model.to(self.device)
+            self.save_path = save_path
+            self.validation()
+            model.train()
+
     def plot(self, data, gt, training_examples,checkpoint):
         """Plot data using matplotlib"""
         vmin = np.min(data[0])
@@ -89,7 +100,7 @@ class MAE(Model):
         
         fig.colorbar(im_gt, ax=ax[0],shrink=0.7)
         fig.colorbar(img_std, ax=ax[1],shrink=0.7) 
-        fig.suptitle("MAE reconstruction after ("+training_examples+" training examples)")
+        fig.suptitle("MAE reconstruction after ("+str(training_examples)+" training examples)")
         plt.savefig(os.path.join(self.save_path,'figures','MAE_',checkpoint+"_.pdf"))
 
         

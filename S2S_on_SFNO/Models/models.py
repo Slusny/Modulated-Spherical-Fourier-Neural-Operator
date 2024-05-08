@@ -49,7 +49,7 @@ class ArchiveCollector:
 class Model():
 
     def __init__(self, **kwargs):
-        # self.cfg = Attributes(**kwargs)
+        self.cfg = Attributes(**kwargs)
         # here the kwargs of the parser become model properties (legacy from ai-models)
         for k, v in kwargs.items():
             setattr(self, k, v)

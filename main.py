@@ -815,7 +815,11 @@ def _main():
         save_path = os.path.join(args.eval_checkpoint_path,"figures","valid_iter"+str(args.validation_epochs))#str(args.multi_step_validation//(args.validation_step_skip+1))
         os.makedirs(save_path, exist_ok=True)
         os.makedirs(os.path.join(save_path,"variable_plots"), exist_ok=True)
-        model.auto_regressive_skillscore(checkpoint_list_shorten,args.multi_step_validation,save_path,args.eval_sfno)
+
+        # model.evaluate_model(checkpoint_list_shorten,save_path)
+        trainer = Trainer(model,vars(args))
+        trainer.evaluate_model(checkpoint_list_shorten,save_path)
+        
     elif args.run:
 
         try:

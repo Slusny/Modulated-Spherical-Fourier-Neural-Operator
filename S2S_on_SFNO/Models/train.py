@@ -623,6 +623,21 @@ class Trainer():
             for i, data in enumerate(self.training_loader):
                 pass
 
+    def evaluate_model(self, checkpoint_list,save_path):
+        """Evaluate model using checkpoint list"""
+        self.set_dataloader()
+        for cp_idx, checkpoint in enumerate(checkpoint_list):
+            cp = self.util.load_model(checkpoint)
+            self.save_path = save_path
+            for i, data in enumerate(self.validation_loader):
+                for step in range(self.cfg.multi_step_validation+1):
+                    if step == 0 : input = self.util.normalise(data[step][0]).to(self.util.device)
+                    else: input = output
+                    output, gt = self.model_forward(input,data,step)
+                    self.util.plot(output, gt, int(cp["iter"])*int(cp["epoch"]),checkpoint)
+                    break
+            
+        print("done")
             
         
 
