@@ -625,21 +625,22 @@ class Trainer():
 
     def evaluate_model(self, checkpoint_list,save_path):
         """Evaluate model using checkpoint list"""
-        self.set_dataloader()
-        self.util.load_statistics()
-        self.util.set_seed(42)  
-        for cp_idx, checkpoint in enumerate(checkpoint_list):
-            cp = self.util.load_model(checkpoint)
-            self.save_path = save_path
-            for i, data in enumerate(self.validation_loader):
-                for step in range(self.cfg.multi_step_validation+1):
-                    if step == 0 : input = self.util.normalise(data[step][0]).to(self.util.device)
-                    else: input = output
-                    output, gt = self.model_forward(input,data,step)
-                    self.util.plot(output, gt, int(cp["iter"])*int(cp["epoch"]),checkpoint)
-                    break
-            
-        print("done")
+        with torch.no_grad():
+            self.set_dataloader()
+            self.util.load_statistics()
+            self.util.set_seed(42)  
+            for cp_idx, checkpoint in enumerate(checkpoint_list):
+                cp = self.util.load_model(checkpoint)
+                self.save_path = save_path
+                for i, data in enumerate(self.validation_loader):
+                    for step in range(self.cfg.multi_step_validation+1):
+                        if step == 0 : input = self.util.normalise(data[step][0]).to(self.util.device)
+                        else: input = output
+                        output, gt = self.model_forward(input,data,step)
+                        self.util.plot(output, gt, int(cp["iter"])*int(cp["epoch"]),checkpoint)
+                        break
+                
+            print("done")
             
         
 
