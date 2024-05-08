@@ -19,6 +19,8 @@ From: continuumio/miniconda3:23.10.0-1
     #/opt/conda/envs/model/bin/pip install -e /opt/atmodata
     conda env create -f environment_manual.yml
     #pip install -e /opt/atmodata
+    apt install curl
+    curl -fsSL https://code-server.dev/install.sh | sh
 
 
 # not installed pynio
