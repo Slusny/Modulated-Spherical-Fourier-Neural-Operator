@@ -542,18 +542,31 @@ class Trainer():
         for log_idx in range(0,self.cfg.multi_step_validation*2+1,2): 
             LOG.info(val_log_keys[log_idx] + " : " + str(val_log[val_log_keys[log_idx]]) 
                         + " +/- " + str(val_log[val_log_keys[log_idx+1]]))
-            # log to local file
-            # self.val_means[log_idx].append(val_log[val_log_keys[log_idx]]) ## error here
-            # self.val_stds[log_idx].append(val_log[val_log_keys[log_idx+1]]) 
+        
+        # log to local file
+        # self.val_means[log_idx].append(val_log[val_log_keys[log_idx]]) ## error here
+        # self.val_stds[log_idx].append(val_log[val_log_keys[log_idx+1]]) 
+        
+        # log scheduler
+        if self.scheduler is not None and self.scheduler != "None": 
+            lr = self.scheduler.get_last_lr()[0]
+            val_log["learning rate"] = lr
+        
+        # MSE for all variables
         if self.cfg.advanced_logging and self.mse_all_vars:
             print("MSE for each variable:")
             val_loss_value_pervar = torch.stack(loss_pervar_list).mean(dim=0)
             for idx_var,var_name in enumerate(self.ordering):
                 print("    ",var_name," = ",round(val_loss_value_pervar[idx_var].item(),5))
+        
+        # log film parameters gamma/beta
+        if self.cfg.model_version == "film":
             gamma_np = self.model.gamma.cpu().numpy()
             beta_np  = self.model.beta.cpu().numpy()
             print("gamma values mean : ",round(gamma_np.mean(),5),"+/-",round(gamma_np.std(),5))
             print("beta values mean  : ",round(beta_np.mean(),5),"+/-",round(beta_np.std(),5))
+        
+        # wandb
         if self.cfg.wandb :
             wandb.log(val_log,commit=False)
 

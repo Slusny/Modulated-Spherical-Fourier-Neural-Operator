@@ -157,7 +157,7 @@ def _main():
         action="store_true",
     )
     parser.add_argument(
-        "--eval-models-autoregressive",
+        "--eval-model",
         help="evaluate model list of checkpoints for autoregressive forecast",
         action="store_true",
     )
@@ -691,7 +691,7 @@ def _main():
     args.metadata = dict(kv.split("=") for kv in args.metadata)
 
     resume_cp = args.resume_checkpoint
-    if args.eval_models_autoregressive:
+    if args.eval_model:
         resume_cp = list(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len))[-1]
     if resume_cp:
         cp = torch.load(resume_cp)
@@ -784,7 +784,7 @@ def _main():
             trainer.save_checkpoint()
             sys.exit(0)
 
-    elif args.eval_models_autoregressive:
+    elif args.eval_model:
         print("evaluating models")
         checkpoint_list = list(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len)) 
         

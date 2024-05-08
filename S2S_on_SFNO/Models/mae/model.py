@@ -9,6 +9,7 @@ import wandb
 import os
 import numpy as np
 import sys
+import matplotlib.pyplot as plt
 
 ultra_advanced_logging=False
 local_logging = False
@@ -24,13 +25,6 @@ class MAE(Model):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-
-        # if self.cfg.resume_checkpoint:
-        #     self.checkpoint_path = self.resume_checkpoint
-        
-        if self.resume_checkpoint:
-            self.checkpoint_path = self.resume_checkpoint
-            
         # init model
         self.model = ContextCast(data_dim=1,**kwargs)
         # self.params = kwargs
@@ -78,6 +72,27 @@ class MAE(Model):
         else:
             new_data = (data - self.means_film) / self.stds_film
         return new_data
+
+    def plot(self, data, gt, training_examples,checkpoint):
+        """Plot data using matplotlib"""
+        vmin = np.min(data[0])
+        vmax = np.max(data[0])
+        ax,fig = plt.subplots(2, 2, figsize=(10, 10))
+        ax[0][0].imshow(data[0, 0],vmin=vmin, vmax=vmax,)
+        ax[0][0].set_title("Predicted SST")
+        im_gt = ax[0][1].imshow(gt,vmin=vmin, vmax=vmax,)
+        ax[0][1].set_title("Ground Truth SST")
+        ax[1][0].imshow(data[1])
+        ax[1][0].set_title("Mask")
+        ax[1][1].imshow(data[0,1])
+        img_std = ax[1][1].set_title("Predicted std")
+        
+        fig.colorbar(im_gt, ax=ax[0],shrink=0.7)
+        fig.colorbar(img_std, ax=ax[1],shrink=0.7) 
+        fig.suptitle("MAE reconstruction after ("+training_examples+" training examples)")
+        plt.savefig(os.path.join(self.save_path,'figures','MAE_',checkpoint+"_.pdf"))
+
+        
 
     def run(self):
         raise NotImplementedError("Filmed model run not implemented yet. Needs to considder sst input.")
