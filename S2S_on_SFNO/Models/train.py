@@ -625,6 +625,7 @@ class Trainer():
 
     def evaluate_model(self, checkpoint_list,save_path):
         """Evaluate model using checkpoint list"""
+        self.cfg.batch_size = 1
         with torch.no_grad():
             self.set_dataloader()
             self.util.load_statistics()

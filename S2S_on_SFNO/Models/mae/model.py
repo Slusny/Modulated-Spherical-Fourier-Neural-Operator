@@ -86,26 +86,27 @@ class MAE(Model):
 
     def plot(self, data, gt, training_examples,checkpoint):
         """Plot data using matplotlib"""
-        pred = data[0][0].cpu().numpy()
-        gt = gt.cpu().numpy()
-        std = data[0][1].cpu().numpy()
+        pred = data[0][0].cpu().numpy().squeeze()
+        gt = gt.cpu().numpy().squeeze()
+        std = data[0][1].cpu().numpy().squeeze()
         mask = data[1].cpu().numpy()
         vmin = np.min((pred,gt))
         vmax = np.max((pred,gt))
-        fig, ax = plt.subplots(2, 2, figsize=(10, 10))
-        ax[0][0].imshow(pred,vmin=vmin, vmax=vmax,)
-        ax[0][0].set_title("Predicted SST")
-        im_gt = ax[0][1].imshow(gt,vmin=vmin, vmax=vmax,)
-        ax[0][1].set_title("Ground Truth SST")
-        ax[1][0].imshow(mask)
-        ax[1][0].set_title("Mask")
-        ax[1][1].imshow(std)
-        img_std = ax[1][1].set_title("Predicted std")
-        
-        fig.colorbar(im_gt, ax=ax[0],shrink=0.7)
-        fig.colorbar(img_std, ax=ax[1],shrink=0.7) 
-        fig.suptitle("MAE reconstruction after ("+str(training_examples)+" training examples)")
-        plt.savefig(os.path.join(self.save_path,'figures','MAE_',checkpoint+"_.pdf"))
+        for time in range(pred.shape[0]):
+            fig, ax = plt.subplots(2, 2, figsize=(10, 10))
+            ax[0][0].imshow(pred[time],vmin=vmin, vmax=vmax,)
+            ax[0][0].set_title("Predicted SST")
+            im_gt = ax[0][1].imshow(gt[time],vmin=vmin, vmax=vmax,)
+            ax[0][1].set_title("Ground Truth SST")
+            ax[1][0].imshow(mask[time])
+            ax[1][0].set_title("Mask")
+            ax[1][1].imshow(std[time])
+            img_std = ax[1][1].set_title("Predicted std")
+            
+            fig.colorbar(im_gt, ax=ax[0],shrink=0.7)
+            fig.colorbar(img_std, ax=ax[1],shrink=0.7) 
+            fig.suptitle("MAE reconstruction after ("+str(training_examples)+" training examples)")
+            plt.savefig(os.path.join(self.save_path,'figures','MAE_',checkpoint+"_time_{}.pdf".format(time)))
 
         
 
