@@ -86,16 +86,20 @@ class MAE(Model):
 
     def plot(self, data, gt, training_examples,checkpoint):
         """Plot data using matplotlib"""
-        vmin = np.min(data[0])
-        vmax = np.max(data[0])
+        pred = data[0, 0].cpu().numpy()
+        gt = gt.cpu().numpy()
+        std = data[0, 1].cpu().numpy()
+        mask = data[1].cpu().numpy()
+        vmin = np.min((pred,gt))
+        vmax = np.max((pred,gt))
         ax,fig = plt.subplots(2, 2, figsize=(10, 10))
-        ax[0][0].imshow(data[0, 0],vmin=vmin, vmax=vmax,)
+        ax[0][0].imshow(pred,vmin=vmin, vmax=vmax,)
         ax[0][0].set_title("Predicted SST")
         im_gt = ax[0][1].imshow(gt,vmin=vmin, vmax=vmax,)
         ax[0][1].set_title("Ground Truth SST")
-        ax[1][0].imshow(data[1])
+        ax[1][0].imshow(mask)
         ax[1][0].set_title("Mask")
-        ax[1][1].imshow(data[0,1])
+        ax[1][1].imshow(std)
         img_std = ax[1][1].set_title("Predicted std")
         
         fig.colorbar(im_gt, ax=ax[0],shrink=0.7)
