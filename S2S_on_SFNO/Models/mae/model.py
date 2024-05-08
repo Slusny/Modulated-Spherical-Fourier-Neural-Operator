@@ -86,9 +86,9 @@ class MAE(Model):
 
     def plot(self, data, gt, training_examples,checkpoint):
         """Plot data using matplotlib"""
-        pred = data[0, 0].cpu().numpy()
+        pred = data[0][0].cpu().numpy()
         gt = gt.cpu().numpy()
-        std = data[0, 1].cpu().numpy()
+        std = data[0][1].cpu().numpy()
         mask = data[1].cpu().numpy()
         vmin = np.min((pred,gt))
         vmax = np.max((pred,gt))
