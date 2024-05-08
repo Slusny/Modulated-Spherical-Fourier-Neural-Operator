@@ -92,7 +92,7 @@ class MAE(Model):
         mask = data[1].cpu().numpy()
         vmin = np.min((pred,gt))
         vmax = np.max((pred,gt))
-        ax,fig = plt.subplots(2, 2, figsize=(10, 10))
+        fig, ax = plt.subplots(2, 2, figsize=(10, 10))
         ax[0][0].imshow(pred,vmin=vmin, vmax=vmax,)
         ax[0][0].set_title("Predicted SST")
         im_gt = ax[0][1].imshow(gt,vmin=vmin, vmax=vmax,)
