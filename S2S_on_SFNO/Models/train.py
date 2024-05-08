@@ -626,6 +626,8 @@ class Trainer():
     def evaluate_model(self, checkpoint_list,save_path):
         """Evaluate model using checkpoint list"""
         self.set_dataloader()
+        self.util.load_statistics()
+        self.util.set_seed(42)  
         for cp_idx, checkpoint in enumerate(checkpoint_list):
             cp = self.util.load_model(checkpoint)
             self.save_path = save_path
