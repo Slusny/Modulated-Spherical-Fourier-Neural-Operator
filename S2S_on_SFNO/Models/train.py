@@ -636,7 +636,7 @@ class Trainer():
                     if step == 0 : input = self.util.normalise(data[step][0]).to(self.util.device)
                     else: input = output
                     output, gt = self.model_forward(input,data,step)
-                    self.util.plot(output, gt, int(cp["iter"])*int(cp["epoch"]),checkpoint)
+                    self.util.plot(output.cpu().numpy(), gt.cpu().numpy(), int(cp["iter"])*int(cp["epoch"]),checkpoint)
                     break
             
         print("done")
