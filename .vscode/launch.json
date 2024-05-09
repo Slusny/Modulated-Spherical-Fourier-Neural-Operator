@@ -2,8 +2,9 @@
     // Use IntelliSense to learn about possible attributes.
     // Hover to view descriptions of existing attributes.
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.0.1",
+    "version": "0.2.0",
     "configurations": [
+
         {
             "name": "Python: Current File",
             "type": "python",
@@ -11,7 +12,8 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args":["--model","sfno","--date","20190101","--time","0000","--lead-time","18","--output","netcdf","--input-store", "./S2S_on_SFNO/inputs"]
+            
+            //"args":["--model","sfno","--date","20190101","--time","0000","--lead-time","18","--output","netcdf","--input-store", "./S2S_on_SFNO/inputs"]
             // python main.py --model sfno --date 20190101 --time 0000 --lead-time 8760 --output netcdf --file ./S2S_on_SFNO/inputs/ClimateInputData_201901010.grib
         }
     ]

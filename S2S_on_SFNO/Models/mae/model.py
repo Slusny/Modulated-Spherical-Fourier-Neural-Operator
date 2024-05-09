@@ -100,8 +100,8 @@ class MAE(Model):
             ax[0][1].set_title("Ground Truth SST")
             ax[1][0].imshow(mask[time])
             ax[1][0].set_title("Mask")
-            ax[1][1].imshow(std[time])
-            img_std = ax[1][1].set_title("Predicted std")
+            img_std = ax[1][1].imshow(std[time])
+            ax[1][1].set_title("Predicted std")
             
             fig.colorbar(im_gt, ax=ax[0],shrink=0.7)
             fig.colorbar(img_std, ax=ax[1],shrink=0.7) 
