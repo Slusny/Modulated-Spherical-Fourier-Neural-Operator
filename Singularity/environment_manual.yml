@@ -53,11 +53,13 @@ dependencies:
   - seaborn
   - jupyter
   - jupyter_server>=2.0.0
+  - code-server
+  - ipython
   - memory_profiler
   - wandb
 
   - pip:
-      - atmodata
+      # - atmodasta
       - torch-harmonics
       - nvsmi                 # (ai-models, provenance, gpu) 
       - ecmwflibs             # (ai-models)

@@ -39,6 +39,11 @@ LOG = logging.getLogger('S2S_on_SFNO')
 
 print("cuda available? : ",torch.cuda.is_available(),flush=True)
 
+
+# global variables
+do_return_trainer = False
+
+
 def _main():
     parser = argparse.ArgumentParser()
 
@@ -85,14 +90,12 @@ def _main():
         action="store",
         help="Absolute path to weights.tar file containing the weights of the Film-Model.",
         default=None,
-        # default="/mnt/qb/work2/goswami0/gkd965/Assets/gcn/weights.tar"
     )
     parser.add_argument(
         "--sfno-weights",
         action="store",
         help="Absolute path to weights.tar file containing the weights of the SFNO-Model.",
         default=None,
-        # default="/mnt/qb/work2/goswami0/gkd965/Assets/gcn/weights.tar"
     )
     parser.add_argument(
         "--assets-sub-directory",
@@ -156,42 +159,6 @@ def _main():
         help="Show the fields needed as input for the model",
         action="store_true",
     )
-    parser.add_argument(
-        "--eval-model",
-        help="evaluate model list of checkpoints for autoregressive forecast",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--eval-sfno",
-        help="evaluate base sfno model",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--eval-checkpoint-num",
-        help="how many checkpoints should be evaluated from --eval-checkpoint-path. The checkpoints are selected equidistantly. -1 evaluates all checkpoints",
-        action="store",
-        type=int,
-        default=1,
-    )
-    parser.add_argument(
-        "--eval-checkpoints",
-        help="Name the epoch for which checkpoints should be loaded. E.g. --eval-checkpoints 500 700 900",
-        nargs='+',
-        default=[],
-    )
-    parser.add_argument(
-        "--eval-checkpoint-path",
-        help="evaluate model list of checkpoints for autoregressive forecast",
-        action="store",
-        type=str
-    )
-    parser.add_argument(
-        "--eval-skip-checkpoints",
-        help="evaluate model list of checkpoints for autoregressive forecast",
-        action="store",
-        type=int,
-        default=0,
-    )
 
     # Data
     data = parser.add_argument_group('Data and Data Sources')
@@ -215,11 +182,6 @@ def _main():
     data.add_argument(
         "--file",
         help="Specify path to file with input weather data. Sets source=file automatically",
-    )
-    data.add_argument(
-        "--era5-path",
-        default="/mnt/qb/goswami/data/era5",
-        help="path to era5 data when using input=localERA5",
     )
         # Mars requests options
     data.add_argument(
@@ -510,6 +472,52 @@ def _main():
         default="MSE",
         choices=["MSE","CosineMSE","L2Sphere","NormalCRPS"],
     )
+    training.add_argument(
+        "--loss-reduction",
+        action="store",
+        help="Which loss reduction method to use",
+        default="mean",
+        choices=["mean","none","sum"],
+    )
+
+    # Evaluation
+    evaluate = parser.add_argument_group('Evaluate Models')
+    evaluate.add_argument(
+        "--eval-model",
+        help="evaluate model list of checkpoints for autoregressive forecast",
+        action="store_true",
+    )
+    evaluate.add_argument(
+        "--eval-sfno",
+        help="evaluate base sfno model",
+        action="store_true",
+    )
+    evaluate.add_argument(
+        "--eval-checkpoint-num",
+        help="how many checkpoints should be evaluated from --eval-checkpoint-path. The checkpoints are selected equidistantly. -1 evaluates all checkpoints",
+        action="store",
+        type=int,
+        default=1,
+    )
+    evaluate.add_argument(
+        "--eval-checkpoints",
+        help="Name the epoch for which checkpoints should be loaded. E.g. --eval-checkpoints 500 700 900",
+        nargs='+',
+        default=[],
+    )
+    evaluate.add_argument(
+        "--eval-checkpoint-path",
+        help="evaluate model list of checkpoints for autoregressive forecast",
+        action="store",
+        type=str
+    )
+    evaluate.add_argument(
+        "--eval-skip-checkpoints",
+        help="evaluate model list of checkpoints for autoregressive forecast",
+        action="store",
+        type=int,
+        default=0,
+    )
 
     # Logging
     logging_parser = parser.add_argument_group('Logging')
@@ -569,7 +577,14 @@ def _main():
         action='store',
         type=int,
         default=28,
-        help='How many 6 hr steps should be included in the temporal dimension',
+        help='How many 6 hr steps should be included in the temporal dimension for the mae model',
+    )
+    architecture_parser.add_argument(
+        '--nan-mask-threshold',  
+        action='store',
+        type=float,
+        default=0.5,
+        help='token with a ratio of nan values higher than this threshold are masked',
     )
     
 
@@ -700,19 +715,40 @@ def _main():
             model = load_model(args.model_type, vars(args))
         else:
             model_args = cp["hyperparameters"]
-            model_args["trainingdata_path"] = args.trainingdata_path
-            model_args["validationset_start_year"] = args.validationset_start_year
-            model_args["validationset_end_year"] = args.validationset_end_year
-            model_args["training_workers"] = args.training_workers
-            model_args["batch_size"] = args.batch_size
-            model_args["validation_step_skip"] = args.validation_step_skip
-            model_args["validation_epochs"] = args.validation_epochs
-            model_args["advanced_logging"] = args.advanced_logging
+            print("parameters of loaded checkpoint ",resume_cp)
+            for group,value in arg_groups.items():
+                if group == 'positional arguments': continue
+                print(" --",group)
+                for k,v in sorted(vars(value).items()):
+                    print("    ",k," : ",v)
+                print("")
+            
+            # use architecture parameters from checkpoint 
+            for k,v in vars(arg_groups["Architecture"]).items():
+                if k in model_args.keys():
+                    model_args[k] = v
+            # overwrite checkpoint parameters with given parameters
+            for passed_arg in sys.argv[1:]:
+                if passed_arg.startswith("--"):
+                    dest = next(x for x in parser._actions if x.option_strings[0] == passed_arg).dest
+                    # arg = passed_arg[2:]
+                    # arg = arg.replace("-","_")
+                    # if arg in model_args.keys():
+                    #     model_args[arg] = vars(args)[arg]
+                    model_args[dest] = vars(args)[dest]
+            # model_args["trainingdata_path"] = args.trainingdata_path
+            # model_args["validationset_start_year"] = args.validationset_start_year
+            # model_args["validationset_end_year"] = args.validationset_end_year
+            # model_args["training_workers"] = args.training_workers
+            # model_args["batch_size"] = args.batch_size
+            # model_args["validation_step_skip"] = args.validation_step_skip
+            # model_args["validation_epochs"] = args.validation_epochs
+            # model_args["advanced_logging"] = args.advanced_logging
             # if a new argument is added to the model in main, but the checkpoint doesn't have it (old version of a model), add it default value
-            for k in vars(args).keys():
-                if k not in model_args.keys():
-                    model_args[k] = vars(args)[k]
-            model = load_model(cp["hyperparameters"]["model_type"], model_args)
+            # for k in vars(args).keys():
+            #     if k not in model_args.keys():
+            #         model_args[k] = vars(args)[k]
+            model = load_model(model_args["model_type"], model_args)
     else:
         model = load_model(args.model_type, vars(args))
 
@@ -784,6 +820,10 @@ def _main():
             trainer.save_checkpoint()
             sys.exit(0)
 
+    if do_return_trainer:
+        trainer = Trainer(model,vars(args))
+        return trainer
+
     elif args.eval_model:
         print("evaluating models")
         checkpoint_list = list(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len)) 
@@ -850,16 +890,25 @@ def _main():
                 json.dump(prov, f, indent=4)
 
 
-def main():
+def return_trainer(args):
+    print("returning trainer")
+    global do_return_trainer 
+    do_return_trainer = True
+    # args = ["--model","sfno","--test","--training-workers","0","--batch-size","1","--debug"]
+    sys.argv = [sys.argv[0]]
+    for arg in args: sys.argv.append(arg)
+    return _main()
+
+
+def main_console():
     with Timer("Total time"):
         _main()
 
-
 if __name__ == "__main__":
-    # args = ["--model","sfno","--test","--training-workers","0","--batch-size","1","--debug"]
-    # for arg in args: sys.argv.append(arg)
-    main()
+    main_console()
 
+
+    
 
 '''
 # Test / Work

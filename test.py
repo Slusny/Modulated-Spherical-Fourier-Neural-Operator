@@ -145,47 +145,93 @@
 
 # t = test(a=3,b=4)
 # t.p()
-# t.mod()
-# t.p()
+# # t.mod()
+# # t.p()
 
+# import torch
+# from time import sleep
+# import numpy as np
+# import traceback
+# # class net(torch.nn.Module):
+# #     def __init__(self):
+# #         super(net,self).__init__()
+# #         self.lin = torch.nn.Linear(3,3)
+    
+# #     def forward(self,x):
+# #         return self.lin(x)
+    
+# # a = net()
+# # x = torch.tensor([1,np.nan,3])
+# # o = a(x)
+# # # print(o)
+
+
+# # k="hi "
+# # try:
+# #     for i in range(100000):
+# #         print(i)
+# #         k += str(i)
+# #         sleep(2)
+# # except Exception as e:
+# #     print(e)
+# # except KeyboardInterrupt as kk:
+# #     print(kk)
+# #     print(traceback.format_exc())
+# #     print("done1")
+# # except :
+# #     print(k)
+# #     print("done")
+
+# # print("haa")
+
+
+
+# for i in range(5):
+#     print(i)
+#     i = -1
+
+from main import return_trainer
 import torch
-from time import sleep
-import numpy as np
-import traceback
-# class net(torch.nn.Module):
-#     def __init__(self):
-#         super(net,self).__init__()
-#         self.lin = torch.nn.Linear(3,3)
-    
-#     def forward(self,x):
-#         return self.lin(x)
-    
-# a = net()
-# x = torch.tensor([1,np.nan,3])
-# o = a(x)
-# # print(o)
+import matplotlib.pyplot as plt
+
+trainer = return_trainer([
+    '--model','mae',
+    '--assets','/mnt/ssd2/Master/S2S_on_SFNO/Assets',
+    '--trainingdata-path',"/mnt/V/wb2_2001-2003.zarr",
+    '--resume-checkpoint',"/mnt/V/Master/checkpoints/summer-puddle-7/checkpoint_mae_latest_None_iter=423_epoch=2.pkl",
+    '--trainingset-start-year','2001',
+    '--trainingset-end-year','2002',
+    '--validationset-start-year','2002',
+    '--validationset-end-year','2003',
+    '--loss-fn','NormalCRPS',
+    '--loss-reduction','mean',
+    '--nan-mask-threshold','0.8',
+    ])
+
+checkpoint_list = ["/mnt/V/Master/checkpoints/summer-puddle-7/checkpoint_mae_latest_None_iter=423_epoch=2.pkl","save-path","/mnt/V/Master/checkpoints"]
+
+trainer.set_dataloader()
+trainer.util.load_statistics()
+trainer.util.set_seed(42) 
+trainer.create_loss() 
 
 
-# k="hi "
-# try:
-#     for i in range(100000):
-#         print(i)
-#         k += str(i)
-#         sleep(2)
-# except Exception as e:
-#     print(e)
-# except KeyboardInterrupt as kk:
-#     print(kk)
-#     print(traceback.format_exc())
-#     print("done1")
-# except :
-#     print(k)
-#     print("done")
+with torch.no_grad():
+    for cp_idx, checkpoint in enumerate(checkpoint_list):
+        cp = trainer.util.load_model(checkpoint)
+        # trainer.save_path = save_path
+        for i, data in enumerate(trainer.validation_loader):
+            for step in range(trainer.cfg.multi_step_validation+1):
+                data_nn = data[step][0].to(trainer.util.device)
+                data_norm = trainer.util.normalise(data[step][0]).to(trainer.util.device)
+                outputs, gt = trainer.model_forward(data_norm,data_norm,0)
+                break
+            break
+        break
 
-# print("haa")
+loss = trainer.get_loss(outputs,gt)
 
-
-
-for i in range(5):
-    print(i)
-    i = -1
+plt.figure()
+plt.imshow(loss.cpu().numpy()[0,0,0])
+plt.colorbar()
+plt.show()

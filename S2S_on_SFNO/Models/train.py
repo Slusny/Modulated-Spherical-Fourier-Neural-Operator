@@ -48,7 +48,6 @@ class ERA5_galvani(Dataset):
             # chunked
             # path = "/mnt/qb/goswami/data/era5/weatherbench2/1959-2022-wb13-6h-0p25deg-chunk-1.zarr-v2", # start date: 1959-01-01 end date : 2023-01-10T18:00 # not default, needs derived variables
             
-            path_era5="/mnt/qb/goswami/data/era5/single_pressure_level/",
             start_year=2000,
             end_year=2022,
             steps_per_day=4,
@@ -255,12 +254,11 @@ class Trainer():
 
     def train(self):
         self.setup()
-        while self.epoch <= self.cfg.training_epochs:
+        while self.epoch < self.cfg.training_epochs:
             # self.pre_epoch()
             self.train_epoch() 
             # self.evaluate_epoch() 
             # self.post_epoch() 
-        self.post_training() 
 
     def set_wandb(self):
         if self.cfg.wandb   : 
@@ -341,23 +339,21 @@ class Trainer():
                 
         # end of epoch
         self.epoch += 1
+        self.iter = 0
         print("End of epoch ",self.epoch)
         self.save_checkpoint()
         
     def model_forward(self,input,data,step):
-        if self.cfg.model_version == "film" :
+        self.mem_log("forward pass")
+        if self.cfg.model_type == 'sfno' and self.cfg.model_version == "film" :
             input_sst  = self.util.normalise_film(data[step+1][1]).to(self.util.device)
             gt = self.util.normalise(data[step+1][0]).to(self.util.device)
-            
-            self.mem_log("forward pass")
             outputs = self.model(input,input_sst,self.scale)
         elif self.cfg.model_type == "mae":
             gt = input
-            self.mem_log("forward pass")
-            outputs = self.model(input,np.random.uniform(0.4,0.8))
+            outputs = self.model(input,np.random.uniform(0.4,0.8)) # outputs = (mean, std), mask, cls
         else:
             gt = self.util.normalise(data[step+1][0]).to(self.util.device)
-            self.mem_log("forward pass")
             outputs = self.model(input)
         return outputs, gt
 
@@ -407,11 +403,11 @@ class Trainer():
         
     def create_loss(self):
         if self.cfg.loss_fn == "CosineMSE":
-            self.loss_fn = CosineMSELoss(reduction='mean')
+            self.loss_fn = CosineMSELoss(reduction=self.cfg.loss_reduction)
         elif self.cfg.loss_fn == "L2Sphere":
-            self.loss_fn = L2Sphere(relative=True, squared=True)
+            self.loss_fn = L2Sphere(relative=True, squared=True,reduction=self.cfg.loss_reduction)
         elif self.cfg.loss_fn == "NormalCRPS":
-            self.loss_fn = NormalCRPS()
+            self.loss_fn = NormalCRPS(reduction=self.cfg.loss_reduction)
         else:
             self.loss_fn = torch.nn.MSELoss()
 
@@ -462,10 +458,10 @@ class Trainer():
     # train loop
     def get_loss(self,output,gt):
         if self.cfg.loss_fn == "NormalCRPS":
-            mu = torch.nan_to_num(output[0][0],nan=0.0)
-            gt = torch.nan_to_num(gt,nan=0.0)
-            std = torch.nan_to_num(output[0][1],nan=1.0)
-            return self.loss_fn(mu, std, gt) 
+            mu = output[0][0]
+            std =output[0][1]
+            mask = output[1][1]
+            return self.loss_fn(mu, std, gt,mask) 
         else:
             return self.loss_fn(output,gt)
     
@@ -579,14 +575,15 @@ class Trainer():
             
     def iter_log(self,batch_loss,scale=None):
         if self.cfg.advanced_logging:
+            step = self.iter*self.cfg.batch_size+len(self.dataset)*self.epoch
             if self.local_logging : self.local_log["losses"].append(round(batch_loss,5))
             if self.cfg.wandb:
-                wandb.log({"loss": round(batch_loss,5) })
+                wandb.log({"loss": round(batch_loss,5),"step":step })
             if self.cfg.advanced_logging:
                 if scale is not None:
-                    print("Iteration: ", self.iter, " Loss: ", round(batch_loss,5)," - scale: ",round(scale,5))
+                    print("Iteration: ", step, " Loss: ", round(batch_loss,5)," - scale: ",round(scale,5))
                 else :
-                    print("Iteration: ", self.iter, " Loss: ", round(batch_loss,5))
+                    print("Iteration: ", step, " Loss: ", round(batch_loss,5))
     
     def save_checkpoint(self):
         save_file ="checkpoint_"+self.cfg.model_type+"_"+self.cfg.model_version+"_"+str(self.cfg.film_gen_type)+"_iter={}_epoch={}.pkl".format(self.iter,self.epoch)

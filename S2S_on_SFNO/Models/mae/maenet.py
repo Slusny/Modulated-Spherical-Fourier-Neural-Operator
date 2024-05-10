@@ -121,7 +121,7 @@ class ContextCast(nn.Module):
         #patch embedding
         # self.to_patch = Rearrange('b c (t pt) (h ph) (w pw) -> b (t h w) (c pt ph pw)', 
         #                           pt = self.patch_size[0], ph = self.patch_size[1], pw = self.patch_size[2])  
-        self.to_patch = Transformer_patch_embedding(*self.patch_size, self.patch_dim, encoder_dim)
+        self.to_patch = Transformer_patch_embedding(*self.patch_size, self.patch_dim, encoder_dim, self.cfg.nan_mask_threshold )
         
         # self.to_patch_embedding = Transformer_patch_embedding(self.patch_size[1], self.patch_size[2], patch_dim, dim)
         
@@ -249,9 +249,9 @@ class ContextCast(nn.Module):
         #decode
         (mean, std), cls = self.forward_decoder(z, restore_idcs)
         #mask to image
+        nan_tokens = self.from_patch(torch.ones_like(mask,dtype=torch.bool),self.nan_mask,self.nan_mask_th,fill=False) # 1 where a loss should not be computed aka. at nan values
         mask = self.from_patch(mask,self.nan_mask,self.nan_mask_th,fill=0)
-        #return
-        return (mean, std), mask, cls
+        return (mean, std), (mask,nan_tokens), cls
 
     # def add_masked_nans(x):
     #     self.nan_mask
@@ -266,49 +266,60 @@ class Transformer_patch_reconstruction(nn.Module):
         self.rearrange = Rearrange('b (t h w) (c pt ph pw) -> b c (t pt) (h ph) (w pw)', 
                                    pt = patch_time, ph = patch_height, pw = patch_width,
                                     t = t, h = h, w = w) 
-    def forward(self,x,nan_mask,mask,fill=torch.nan):
+    def forward(self,x,nan_mask,nan_mask_th,fill=torch.nan):
+        # full_patches is the full ouput image where the nan patches/values are added again, 
+        # that were removed for the transformer forward pass
         full_shape = list(x.shape)
-        full_shape[-2] = mask.shape[0]
-        full_patches = torch.ones(full_shape,device=x.device)*fill
-        # full_patches[mask] = torch.nan
-        full_patches[...,mask,:] = x
+        # increase patch dimension to the size of the original nan mask
+        full_shape[-2] = nan_mask_th.shape[0]
+        full_patches = torch.ones(full_shape,device=x.device,dtype=x.dtype)*fill
+        # restore fully removed tokens
+        full_patches[...,nan_mask_th,:] = x
+        # set nan where in the original tokens nan values where present (and were set to 0)
         full_patches[...,nan_mask] = fill
         x = self.rearrange(full_patches)
         return x
 
 # This torch module realises patch embedding for the transformer and handles nan values in the input
 class Transformer_patch_embedding(nn.Module):
-    def __init__(self, patch_time, patch_height, patch_width, patch_dim, dim):
+    '''
+    Transforms the input tensor to patches and removes nan values
+    If a patch has a certain ratio of nan values (nan_threshold), the whole patch is removed
+    The nan_mask_th removes all the tokens that go above the threshold
+    The nan_mask keeps track at which position in the token an nan value was present
+    When the token that had only a few nan values gets reconstruced, these positions are filled again with nan values
+    '''
+    def __init__(self, patch_time, patch_height, patch_width, patch_dim, dim, nan_mask_threshold):
         super().__init__()
         
         self.rearrange = Rearrange('b c (t pt) (h ph) (w pw) -> b (t h w) (c pt ph pw)',pt = patch_time, ph = patch_height, pw = patch_width)  
         self.norm1 = nn.LayerNorm(patch_dim)
         self.lin = nn.Linear(patch_dim, dim)
         self.norm2 = nn.LayerNorm(dim)
-
-        self.mask = None
+        self.nan_mask_threshold = nan_mask_threshold
+        self.nan_mask_th = None
 
     def rm_embed_nan(self, x):
-        if not torch.is_tensor(self.mask):
-            # keeps batch dimension in mask and removes it by this # x is rearranged sst to patches
-            # self.mask = torch.any(torch.isnan(x[0]),dim=-1).logical_not() # remove all nan values
+        # x are the rearranged sst to patches
+        # compute masks only onece for dataset
+        if not torch.is_tensor(self.nan_mask_th):
             nan_threshold = 0.5
             self.nan_mask = torch.isnan(x[0])
             nan_ratio_per_token = self.nan_mask.sum(dim=-1)/x.shape[-1]
-            self.mask = nan_ratio_per_token < nan_threshold
+            self.nan_mask_th = nan_ratio_per_token < self.nan_mask_threshold 
 
-        x = x[...,self.mask,:]
+        x = x[...,self.nan_mask_th,:]
+        # fill the remaining nan values with 0 to be useable in the trasformer
         x = torch.nan_to_num(x, nan=0.0)
         return x
 
     def forward(self, x):
-        batch = x.shape[0] ## not correct
         x = self.rearrange(x)
         x = self.rm_embed_nan(x)
         x = self.norm1(x)
         x = self.lin(x)
         x = self.norm2(x)
-        return x, self.nan_mask, self.mask
+        return x, self.nan_mask, self.nan_mask_th
 
     
 #load config

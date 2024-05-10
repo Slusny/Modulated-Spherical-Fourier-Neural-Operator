@@ -90,8 +90,8 @@ class MAE(Model):
         gt = gt.cpu().numpy().squeeze()
         std = data[0][1].cpu().numpy().squeeze()
         mask = data[1].cpu().numpy().squeeze()
-        vmin = np.min((pred,gt))
-        vmax = np.max((pred,gt))
+        vmin = np.min(np.concatenate((pred[~np.isnan(pred)],gt[~np.isnan(gt)])))
+        vmax = np.max(np.concatenate((pred[~np.isnan(pred)],gt[~np.isnan(gt)])))
         for time in range(pred.shape[0]):
             fig, ax = plt.subplots(2, 2, figsize=(10, 10))
             ax[0][0].imshow(pred[time],vmin=vmin, vmax=vmax,)

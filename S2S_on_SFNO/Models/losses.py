@@ -55,7 +55,9 @@ class L2Sphere(torch.nn.Module):
             loss = torch.sqrt(loss)
 
         if self.reduction == "mean":
-            return loss.mean()
+            # mean is done by weights
+            # return loss.mean()
+            return loss.sum()
         elif self.reduction == "sum":
             return loss.sum()
         else:
@@ -173,16 +175,20 @@ class NormalCRPS(nn.Module):
         else:
             raise NotImplementedError(f'Sigma transform {sigma_transform} not implemented')
 
-        if reduction == 'mean':
-            self.reduce = lambda x: x.mean()
-        elif reduction == 'sum':
-            self.reduce = lambda x: x.sum()
-        elif reduction == 'none':
-            self.reduce = lambda x: x
+        # if reduction == 'mean':
+        #     self.reduce = lambda x: x.mean()
+        # elif reduction == 'sum':
+        #     self.reduce = lambda x: x.sum()
+        # elif reduction == 'none':
+        #     self.reduce = lambda x: x
+       
+        if reduction in ['mean','sum','none']:
+            self.reduction = reduction
         else:
-            raise NotImplementedError(f'Reduction {reduction} not implemented')
+            raise NotImplementedError(f'reduction method {reduction} not implemented')
+       
 
-    def forward(self, observation: torch.Tensor, mu: torch.Tensor, sigma: torch.Tensor):
+    def forward(self,mu: torch.Tensor, sigma: torch.Tensor,  observation: torch.Tensor, mask: torch.Tensor = None):
         '''
         Compute the CRPS for a normal distribution
             :param observation: (batch, *) tensor of observations
@@ -194,8 +200,23 @@ class NormalCRPS(nn.Module):
         z = (observation - mu) / std #z transform
         phi = torch.exp(-z ** 2 / 2).div(self.sqrtTwo * self.sqrtPi) #standard normal pdf
         score = std * (z * torch.erf(z / self.sqrtTwo) + 2 * phi - 1 / self.sqrtPi) #crps as per Gneiting et al 2005
-        reduced_score = self.reduce(score)
+        reduced_score = self.reduce(score,mask)
         return reduced_score
+
+    def reduce(self,x,mask):
+        if self.reduction == 'mean':
+            if mask is not None:
+                return x[mask].mean()
+            else:
+                return x.mean()
+        elif self.reduction == 'sum':
+            if mask is not None:
+                return x[mask].sum()
+            else:
+                return x.sum() 
+        elif self.reduction == 'none':
+            # x[~mask] = torch.nan
+            return x
     
 class Beta_NLL(nn.Module):
     '''
@@ -228,7 +249,7 @@ class Beta_NLL(nn.Module):
         
         self.beta = beta
         
-    def forward(self, observation: torch.Tensor, mu: torch.Tensor, sigma: torch.Tensor):
+    def forward(self, mu: torch.Tensor, sigma: torch.Tensor, observation: torch.Tensor):
         '''
         Calculates the beta nll as described in the paper "On the Pitfalls of Heteroscedastic Uncertainty Estimation with Probabilistic Neural Networks"
         :param observation: the observation
@@ -262,7 +283,7 @@ class StatisticalLoss(nn.Module):
         
         self.ensemble_dim = ensemble_dim
 
-    def forward(self, observation: torch.Tensor, prediction: torch.Tensor):
+    def forward(self, prediction: torch.Tensor, observation: torch.Tensor):
         '''
         Compute the first order statistical loss from ensemble predictions
             :param observation: (batch, *) tensor of observations

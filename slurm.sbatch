@@ -61,7 +61,7 @@ singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gk
 # node=127
 # srun --pty --gres=gpu:1 --partition=2080-galvani -w galvani-cn$node bash
 # srun --pty --gres=gpu:1 --partition=a100-galvani -w galvani-cn$node bash
-# singularity shell --nv --bind /mnt/ceph/goswamicd/datasets,/mnt/qb/work2/goswami0/gkd965,/mnt/qb/goswami/data/era5 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif
+# singularity shell --nv --bind /scratch_local,/mnt/qb/work2/goswami0/gkd965,/mnt/qb/goswami/data/era5 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif
 # . /opt/conda/etc/profile.d/conda.sh 
 # /opt/conda/envs/model/bin/jupyter-notebook
 
