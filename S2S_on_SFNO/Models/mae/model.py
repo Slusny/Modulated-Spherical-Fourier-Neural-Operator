@@ -89,11 +89,11 @@ class MAE(Model):
         pred = data[0][0].cpu().numpy().squeeze()
         gt = gt.cpu().numpy().squeeze()
         std = data[0][1].cpu().numpy().squeeze()
-        mask = data[1].cpu().numpy().squeeze()
+        mask = data[1][0].cpu().numpy().squeeze()
         vmin = np.min(np.concatenate((pred[~np.isnan(pred)],gt[~np.isnan(gt)])))
         vmax = np.max(np.concatenate((pred[~np.isnan(pred)],gt[~np.isnan(gt)])))
         for time in range(pred.shape[0]):
-            fig, ax = plt.subplots(2, 2, figsize=(10, 10))
+            fig, ax = plt.subplots(2, 2, figsize=(10, 5))
             ax[0][0].imshow(pred[time],vmin=vmin, vmax=vmax,)
             ax[0][0].set_title("Predicted SST")
             im_gt = ax[0][1].imshow(gt[time],vmin=vmin, vmax=vmax,)
@@ -106,7 +106,8 @@ class MAE(Model):
             fig.colorbar(im_gt, ax=ax[0],shrink=0.7)
             fig.colorbar(img_std, ax=ax[1],shrink=0.7) 
             fig.suptitle("MAE reconstruction after ("+str(training_examples)+" training examples)")
-            plt.savefig(os.path.join(self.save_path,'figures','MAE_',checkpoint+"_time_{}.pdf".format(time)))
+            plt.savefig(os.path.join(self.save_path,'figures','MAE_'+checkpoint+"_time_{}.pdf".format(time)))
+            plt.close()
 
     def finalise(self):
         print("Fin")

@@ -203,12 +203,14 @@ trainer = return_trainer([
     '--validationset-start-year','2002',
     '--validationset-end-year','2003',
     '--loss-fn','NormalCRPS',
-    '--loss-reduction','mean',
+    '--loss-reduction','none',
     '--nan-mask-threshold','0.5',
-    '--patch-size','14','9','9'
+    '--patch-size','28','9','9',
+    '--resume-checkpoint','/mnt/ssd2/Master/S2S_on_SFNO/outputs/mae/mae_latest_20240511T0254/checkpoint_mae_latest_None_iter=0_epoch=1.pkl',
+    '--save-path','/mnt/ssd2/Master/S2S_on_SFNO/outputs/mae',
     ])
 
-checkpoint_list = ["/mnt/V/Master/checkpoints/summer-puddle-7/checkpoint_mae_latest_None_iter=423_epoch=2.pkl","save-path","/mnt/V/Master/checkpoints"]
+checkpoint_list = ["/mnt/ssd2/Master/S2S_on_SFNO/outputs/mae/mae_latest_20240511T0254/checkpoint_mae_latest_None_iter=0_epoch=2.pkl"]
 
 trainer.set_dataloader()
 trainer.util.load_statistics()
@@ -235,3 +237,5 @@ plt.figure()
 plt.imshow(loss.cpu().numpy()[0,0,0])
 plt.colorbar()
 plt.show()
+
+trainer.util.plot(outputs, gt, "1","test")

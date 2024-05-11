@@ -738,7 +738,7 @@ def _main():
                 if passed_arg.startswith("--"):
                     dest = next(x for x in parser._actions if x.option_strings[0] == passed_arg).dest
                     # skip Architectural changes
-                    if dest in vars(arg_groups["Architecture"]).keys():continue
+                    if dest in vars(arg_groups["Architecture"]).keys(): continue
                     model_args[dest] = vars(args)[dest]
 
             print("Checkpoint called with the following parameters")
