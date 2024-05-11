@@ -6,16 +6,6 @@ import numpy as np
 from climetlab.utils.humanize import seconds
 LOG = logging.getLogger(__name__)
 
-def test_autoregressive_forecast(checkpoint_list,hyperparams):
-    for checkpoint in checkpoint_list:
-        print(f"Testing checkpoint {checkpoint}")
-        model = S2SModel(hyperparams)
-        model.load_state_dict(torch.load(checkpoint))
-        model.eval()
-        model = model.to(device)
-        model.autoregressive_forecast()
-        print("Test passed")
-
 
 class Timer:
     '''

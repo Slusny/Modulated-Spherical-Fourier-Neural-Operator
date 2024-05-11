@@ -43,7 +43,7 @@ from .layers import (
 import torch_harmonics as harmonics
 
 # to fake the sht module with ffts
-from .layers import RealFFT2, InverseRealFFT2
+from .layers import RealFFT2, InverseRealFFT2 
 
 from .contractions import *
 

@@ -710,10 +710,6 @@ def train_test(kwargs):
     #     start_year=kwargs["trainingset_start_year"],
     #     end_year=kwargs["trainingset_end_year"])
 
-    dataset = ERA5_galvani(
-        params
-    )
-
     #
 
     training_loader = DataLoader(dataset,shuffle=True,num_workers=kwargs["training_workers"], batch_size=kwargs["batch_size"])
@@ -870,19 +866,19 @@ def train_test(kwargs):
         #     print("saving model")
         #     torch.save(model.state_dict(), "/mnt/qb/work2/goswami0/gkd965/GCN/model_2_{}.pth".format(i))
 
-def test(kwargs):
+# def test(kwargs):
 
-    dataset_masked = ERA5_galvani(
-        params,
-        start_year=2000,
-        end_year=2010,
-    )
-    # dataset_coarsen = ERA5_galvani_coarsen(
-    #     params,
-    #     start_year=1990,
-    #     end_year=2000,
-    # )
-    for i in range(0,10):
-        print("--- Workers: ", i, " ---")
-        # coarsen_loader = DataLoader(dataset_coarsen,shuffle=True,num_workers=i, batch_size=kwargs["batch_size"])
-        masked_loader = DataLoader(dataset_masked,shuffle=True,num_workers=i, batch_size=kwargs["batch_size"])
+#     dataset_masked = ERA5_galvani(
+#         params,
+#         start_year=2000,
+#         end_year=2010,
+#     )
+#     # dataset_coarsen = ERA5_galvani_coarsen(
+#     #     params,
+#     #     start_year=1990,
+#     #     end_year=2000,
+#     # )
+#     for i in range(0,10):
+#         print("--- Workers: ", i, " ---")
+#         # coarsen_loader = DataLoader(dataset_coarsen,shuffle=True,num_workers=i, batch_size=kwargs["batch_size"])
+#         masked_loader = DataLoader(dataset_masked,shuffle=True,num_workers=i, batch_size=kwargs["batch_size"])
