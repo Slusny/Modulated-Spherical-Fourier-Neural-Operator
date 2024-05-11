@@ -108,7 +108,8 @@ class MAE(Model):
             fig.suptitle("MAE reconstruction after ("+str(training_examples)+" training examples)")
             plt.savefig(os.path.join(self.save_path,'figures','MAE_',checkpoint+"_time_{}.pdf".format(time)))
 
-        
+    def finalise(self):
+        print("Fin")
 
     def run(self):
         raise NotImplementedError("Filmed model run not implemented yet. Needs to considder sst input.")

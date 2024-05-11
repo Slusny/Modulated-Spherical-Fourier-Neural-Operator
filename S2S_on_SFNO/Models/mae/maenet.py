@@ -118,6 +118,8 @@ class ContextCast(nn.Module):
         self.patch_dim = self.patch_size[0] * self.patch_size[1] * self.patch_size[2] * data_dim #patch dimension
         self.encoder_dim = encoder_dim #encoder dimension
         self.decoder_dim = decoder_dim #decoder dimension
+
+        print("Number of patches: ", self.num_patches)
         #patch embedding
         # self.to_patch = Rearrange('b c (t pt) (h ph) (w pw) -> b (t h w) (c pt ph pw)', 
         #                           pt = self.patch_size[0], ph = self.patch_size[1], pw = self.patch_size[2])  

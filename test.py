@@ -198,14 +198,14 @@ trainer = return_trainer([
     '--model','mae',
     '--assets','/mnt/ssd2/Master/S2S_on_SFNO/Assets',
     '--trainingdata-path',"/mnt/V/wb2_2001-2003.zarr",
-    '--resume-checkpoint',"/mnt/V/Master/checkpoints/summer-puddle-7/checkpoint_mae_latest_None_iter=423_epoch=2.pkl",
     '--trainingset-start-year','2001',
     '--trainingset-end-year','2002',
     '--validationset-start-year','2002',
     '--validationset-end-year','2003',
     '--loss-fn','NormalCRPS',
     '--loss-reduction','mean',
-    '--nan-mask-threshold','0.8',
+    '--nan-mask-threshold','0.5',
+    '--patch-size','14','9','9'
     ])
 
 checkpoint_list = ["/mnt/V/Master/checkpoints/summer-puddle-7/checkpoint_mae_latest_None_iter=423_epoch=2.pkl","save-path","/mnt/V/Master/checkpoints"]

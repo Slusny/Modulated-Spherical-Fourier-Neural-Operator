@@ -586,6 +586,14 @@ def _main():
         default=0.5,
         help='token with a ratio of nan values higher than this threshold are masked',
     )
+    architecture_parser.add_argument(
+        '--patch-size', 
+        action='store',
+        type=int,
+        nargs="+",
+        default=[28,9,9],
+        help='Define the patch sizes for the MAE (temporal, lat, lon) and Transfomrer (lat,long)',
+    )
     
 
     # !! args from parser become model properties (whatch that no conflicting model properties/methods exist)
@@ -704,6 +712,15 @@ def _main():
 
     # Manipulation on args
     args.metadata = dict(kv.split("=") for kv in args.metadata)
+    
+    #Print args
+    print("Script called with the following parameters")
+    for group,value in arg_groups.items():
+        if group == 'positional arguments': continue
+        print(" --",group)
+        for k,v in sorted(vars(value).items()):
+            print("    ",k," : ",v)
+        print("")
 
     resume_cp = args.resume_checkpoint
     if args.eval_model:
@@ -715,39 +732,18 @@ def _main():
             model = load_model(args.model_type, vars(args))
         else:
             model_args = cp["hyperparameters"]
-            print("parameters of loaded checkpoint ",resume_cp)
-            for group,value in arg_groups.items():
-                if group == 'positional arguments': continue
-                print(" --",group)
-                for k,v in sorted(vars(value).items()):
-                    print("    ",k," : ",v)
-                print("")
             
-            # use architecture parameters from checkpoint 
-            for k,v in vars(arg_groups["Architecture"]).items():
-                if k in model_args.keys():
-                    model_args[k] = v
-            # overwrite checkpoint parameters with given parameters
+            # overwrite checkpoint parameters with given parameters, attention, ignores default values, only specified ones
             for passed_arg in sys.argv[1:]:
                 if passed_arg.startswith("--"):
                     dest = next(x for x in parser._actions if x.option_strings[0] == passed_arg).dest
-                    # arg = passed_arg[2:]
-                    # arg = arg.replace("-","_")
-                    # if arg in model_args.keys():
-                    #     model_args[arg] = vars(args)[arg]
+                    # skip Architectural changes
+                    if dest in vars(arg_groups["Architecture"]).keys():continue
                     model_args[dest] = vars(args)[dest]
-            # model_args["trainingdata_path"] = args.trainingdata_path
-            # model_args["validationset_start_year"] = args.validationset_start_year
-            # model_args["validationset_end_year"] = args.validationset_end_year
-            # model_args["training_workers"] = args.training_workers
-            # model_args["batch_size"] = args.batch_size
-            # model_args["validation_step_skip"] = args.validation_step_skip
-            # model_args["validation_epochs"] = args.validation_epochs
-            # model_args["advanced_logging"] = args.advanced_logging
-            # if a new argument is added to the model in main, but the checkpoint doesn't have it (old version of a model), add it default value
-            # for k in vars(args).keys():
-            #     if k not in model_args.keys():
-            #         model_args[k] = vars(args)[k]
+
+            print("Checkpoint called with the following parameters")
+            for k,v in model_args.items():
+                print("    ",k," : ",v)
             model = load_model(model_args["model_type"], model_args)
     else:
         model = load_model(args.model_type, vars(args))
@@ -784,7 +780,7 @@ def _main():
         # model.test_training(**kwargs)
         # sys.exit(0)
     
-    if args.train:
+    elif args.train:
         # Start training, catch errors like STRG+C and save model before exiting
         # try:
         #     print("")
@@ -808,9 +804,6 @@ def _main():
             print("save path: ",args.save_path)
             LOG.info("Process ID: %s", os.getpid())
             kwargs = vars(args)
-            print("called training with following arguments:")
-            for k,v in kwargs.items():
-                print(f"    {k} : {v}")
 
             trainer = Trainer(model,kwargs)
             trainer.train()
@@ -820,7 +813,7 @@ def _main():
             trainer.save_checkpoint()
             sys.exit(0)
 
-    if do_return_trainer:
+    elif do_return_trainer:
         trainer = Trainer(model,vars(args))
         return trainer
 

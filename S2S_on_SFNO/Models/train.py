@@ -375,7 +375,7 @@ class Trainer():
         self.util.load_model(self.util.checkpoint_path)
         self.model.train()
         self.util.load_statistics()
-        self.util.set_seed(42)    
+        # self.util.set_seed(42)    
 
     def create_sheduler(self):
         # Scheduler
