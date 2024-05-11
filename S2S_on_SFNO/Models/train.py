@@ -17,6 +17,8 @@ from S2S_on_SFNO.Models.provenance import system_monitor
 from .losses import CosineMSELoss, L2Sphere, NormalCRPS
 from S2S_on_SFNO.utils import Timer, Attributes
 
+from ..utils import LocalLog
+
 import logging
 LOG = logging.getLogger('S2S_on_SFNO')
 
@@ -248,8 +250,8 @@ class Trainer():
         self.mem_log_not_done = True
         self.local_logging=False
         self.scale = 1.0
-        self.local_log = {"loss":[],"valid_loss":[]}
-        self.mse_all_vars = False
+        self.local_log = LocalLog(self.local_logging,self.cfg.save_path)
+        self.mse_all_vars = True
         self.epoch = 0
 
     def train(self):
@@ -259,6 +261,7 @@ class Trainer():
             self.train_epoch() 
             # self.evaluate_epoch() 
             # self.post_epoch() 
+        self.finalise()
 
     def set_wandb(self):
         if self.cfg.wandb   : 
@@ -333,6 +336,7 @@ class Trainer():
 
                 # logging
                 self.iter += 1
+                self.step = self.iter*self.cfg.batch_size+len(self.dataset)*self.epoch
                 self.iter_log(batch_loss,scale=None)
                 batch_loss = 0
                 
@@ -371,6 +375,10 @@ class Trainer():
         self.ready_model()
         self.set_dataloader()
 
+    def finalise(self):
+        self.local_log.save("training_log.npy")
+        self.save_checkpoint()
+
     def ready_model(self):
         self.util.load_model(self.util.checkpoint_path)
         self.model.train()
@@ -393,10 +401,10 @@ class Trainer():
             self.scheduler.step(valid_mean)
         elif self.cfg.scheduler_type == 'CosineAnnealingLR':
             self.scheduler.step()
-            if (self.epoch*len(self.dataset)+self.iter*self.cfg.batch_size) >= self.cfg.scheduler_horizon:
+            if (self.step) >= self.cfg.scheduler_horizon:
                 LOG.info("Terminating training after reaching params.max_epochs while LR scheduler is set to CosineAnnealingLR") 
         elif self.cfg.scheduler_type == 'CosineAnnealingWarmRestarts':
-            self.scheduler.step(self.epoch*len(self.dataset)+self.iter*self.cfg.batch_size)
+            self.scheduler.step(self.step)
         
     def create_optimizer(self):
         self.optimizer = torch.optim.Adam(self.util.get_parameters(), lr=self.cfg.learning_rate)# store the optimizer and scheduler in the model class
@@ -503,29 +511,25 @@ class Trainer():
                         val_log[k]          = round(val_loss_array.mean(),5)
                         val_log["std " + k] = round(val_loss_array.std(),5)
                     break
-            
-            #scheduler
-            valid_mean = list(val_log.values())[0]
-            self.step_scheduler(valid_mean)
+        
+        #scheduler
+        valid_mean = list(val_log.values())[0]
+        self.step_scheduler(valid_mean)
 
-            # change scale value based on validation loss
-            # if valid_mean < kwargs["val_loss_threshold"] and scale < 1.0:
-            if self.scale < 1.0 and self.cfg.model_version == "film":
-                val_log["scale"] = self.scale
-                self.scale = self.scale + 0.002 # 5e-5 #
+        # change scale value based on validation loss
+        # if valid_mean < kwargs["val_loss_threshold"] and scale < 1.0:
+        if self.scale < 1.0 and self.cfg.model_version == "film":
+            val_log["scale"] = self.scale
+            self.scale = self.scale + 0.002 # 5e-5 #
 
-            self.valid_log(val_log,loss_pervar_list)
+        self.valid_log(val_log,loss_pervar_list)
+        
 
         # save model and training statistics for checkpointing
         if (self.iter+1) % (self.cfg.validation_interval*self.cfg.save_checkpoint_interval) == 0:
             self.save_checkpoint()
-            if self.cfg.advanced_logging and self.cfg.model_version == "film":
-                gamma_np = self.model.gamma.cpu().numpy()
-                beta_np  = self.model.beta.cpu().numpy()
-                np.save(os.path.join( self.save_path,"gamma_{}.npy".format(i)),gamma_np)
-                np.save(os.path.join( self.save_path,"beta_{}.npy".format(i)),beta_np)
-                print("gamma values mean : ",round(gamma_np.mean(),5),"+/-",round(gamma_np.std(),5))
-                print("beta values mean  : ",round(beta_np.mean(),5),"+/-",round(beta_np.std(),5))
+        
+        # return to training
         if self.cfg.model_version == "film" :
             self.model.film_gen.train()
         else:
@@ -533,7 +537,7 @@ class Trainer():
                 
     def valid_log(self,val_log,loss_pervar_list):
         # little complicated console logging - looks nicer than LOG.info(str(val_log))
-        print("-- validation after ",self.iter*self.cfg.batch_size, "training examples")
+        print("-- validation after ",self.step, "training examples")
         val_log_keys = list(val_log.keys())
         for log_idx in range(0,self.cfg.multi_step_validation*2+1,2): 
             LOG.info(val_log_keys[log_idx] + " : " + str(val_log[val_log_keys[log_idx]]) 
@@ -549,19 +553,27 @@ class Trainer():
             val_log["learning rate"] = lr
         
         # MSE for all variables
-        if self.cfg.advanced_logging and self.mse_all_vars:
+        if self.cfg.advanced_logging and self.mse_all_vars and self.cfg.model_type != "mae":
             print("MSE for each variable:")
             val_loss_value_pervar = torch.stack(loss_pervar_list).mean(dim=0)
             for idx_var,var_name in enumerate(self.ordering):
                 print("    ",var_name," = ",round(val_loss_value_pervar[idx_var].item(),5))
+                val_log["MSE "+var_name] = round(val_loss_value_pervar[idx_var].item(),5)
         
         # log film parameters gamma/beta
-        if self.cfg.model_version == "film":
+        if self.cfg.advanced_logging and self.cfg.model_version == "film":
             gamma_np = self.model.gamma.cpu().numpy()
             beta_np  = self.model.beta.cpu().numpy()
-            print("gamma values mean : ",round(gamma_np.mean(),5),"+/-",round(gamma_np.std(),5))
-            print("beta values mean  : ",round(beta_np.mean(),5),"+/-",round(beta_np.std(),5))
+            print("gamma values mean : ",round(gamma_np.mean(),6),"+/-",round(gamma_np.std(),6))
+            print("beta values mean  : ",round(beta_np.mean(),6),"+/-",round(beta_np.std(),6))
+            val_log["gamma"] = round(gamma_np.mean(),6)
+            val_log["beta"]  = round(beta_np.mean(),6)
+            val_log["gamma_std"] = round(gamma_np.std(),6)
+            val_log["beta_std"]  = round(beta_np.std(),6)
         
+        # local logging
+        self.local_log.log(val_log)
+            
         # wandb
         if self.cfg.wandb :
             wandb.log(val_log,commit=False)
@@ -574,27 +586,22 @@ class Trainer():
                 self.mem_log_not_done = False 
             
     def iter_log(self,batch_loss,scale=None):
+        # local logging
+        self.local_log.log({"loss": round(batch_loss,6),"step":self.step})
+
+        if self.cfg.wandb:
+            wandb.log({"loss": round(batch_loss,5),"step":self.step })
         if self.cfg.advanced_logging:
-            step = self.iter*self.cfg.batch_size+len(self.dataset)*self.epoch
-            if self.local_logging : self.local_log["losses"].append(round(batch_loss,5))
-            if self.cfg.wandb:
-                wandb.log({"loss": round(batch_loss,5),"step":step })
-            if self.cfg.advanced_logging:
-                if scale is not None:
-                    print("Iteration: ", step, " Loss: ", round(batch_loss,5)," - scale: ",round(scale,5))
-                else :
-                    print("Iteration: ", step, " Loss: ", round(batch_loss,5))
+            if scale is not None:
+                print("After ", self.step, " Samples - Loss: ", round(batch_loss,5)," - scale: ",round(scale,5))
+            else :
+                print("After ", self.step, " Samples - Loss: ", round(batch_loss,5))
     
     def save_checkpoint(self):
         save_file ="checkpoint_"+self.cfg.model_type+"_"+self.cfg.model_version+"_"+str(self.cfg.film_gen_type)+"_iter={}_epoch={}.pkl".format(self.iter,self.epoch)
         total_save_path = os.path.join( self.cfg.save_path,save_file)
         LOG.info("Saving checkpoint to %s",total_save_path)
-        if self.local_logging : 
-            print(" -> saving to : ",self.cfg.save_path)
-            np.save(os.path.join( self.cfg.save_path,"val_means.npy"),self.val_means)
-            np.save(os.path.join( self.cfg.save_path,"val_stds.npy"),self.val_stds)
-            np.save(os.path.join( self.cfg.save_path,"losses.npy"),self.losses)
-
+       
         if save_file is None: save_file ="checkpoint_"+self.cfg.timestr+"_final.pkl"
         save_dict = {
             "model_state":self.model.state_dict(),
@@ -605,6 +612,13 @@ class Trainer():
             }
         if self.scheduler: save_dict["scheduler_state_dict"]= self.scheduler.state_dict()
         torch.save(save_dict,total_save_path)
+
+        # Gamma Beta
+        if self.cfg.advanced_logging and self.cfg.model_version == "film":
+            gamma_np = self.model.gamma.cpu().numpy()
+            beta_np  = self.model.beta.cpu().numpy()
+            np.save(os.path.join( self.cfg.save_path,"gamma_{}.npy".format(self.step)),gamma_np)
+            np.save(os.path.join( self.cfg.save_path,"beta_{}.npy".format(self.step)),beta_np)
 
                 
     def test_model_speed(self):

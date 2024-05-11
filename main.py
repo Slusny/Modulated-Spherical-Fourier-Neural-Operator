@@ -311,7 +311,7 @@ def _main():
     )
     training.add_argument(
         "--save-checkpoint-interval",
-        help="saving every x validation. E.g. if validation-intervall is 100 and save-checkpoint-interval is 10, the model is saved every 1000 epochs",
+        help="saving every x validation. E.g. if validation-intervall is 100 and save-checkpoint-interval is 10, the model is saved every 1000 iterations",
         action="store",
         default=10,
         type=int
@@ -812,19 +812,19 @@ def _main():
         #     model.save_checkpoint()
         #     sys.exit(0)
 
-        try:
-            print("")
-            print("Started training ")
-            print("save path: ",args.save_path)
-            LOG.info("Process ID: %s", os.getpid())
-            kwargs = vars(args)
+        print("")
+        print("Started training ")
+        print("save path: ",args.save_path)
+        LOG.info("Process ID: %s", os.getpid())
+        kwargs = vars(args)
 
-            trainer = Trainer(model,kwargs)
+        trainer = Trainer(model,kwargs)
+        try:
             trainer.train()
         except :
             LOG.error(traceback.format_exc())
             print("shutting down training")
-            trainer.save_checkpoint()
+            trainer.finalise()
             sys.exit(0)
 
     elif do_return_trainer:
