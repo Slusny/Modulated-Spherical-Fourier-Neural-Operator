@@ -5,6 +5,12 @@
 DATASET_DIR='/mnt/qb/goswami/data/era5/weatherbench2/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr'
 TARGET_DIR="/mnt/qb/work2/goswami0/gkd965/inputs/wb2_2001-2003.zarr"
 
+
+DATASET_u100='/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/u100m_1959-2022_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr'
+DATASET_v100='/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/v100m_1959-2023-10_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr'
+TARGET_DIR_u100="/mnt/qb/work2/goswami0/gkd965/inputs/u100_2001-2003.zarr"
+TARGET_DIR_v100="/mnt/qb/work2/goswami0/gkd965/inputs/v100_2001-2003.zarr"
+
 CLIMATOLOGY_DIR='/mnt/qb/goswami/data/WeatherBench2/1990-2017-daily_clim_daily_mean_61_dw_240x121_equiangular_with_poles_conservative.zarr'
 CLIM_TARGET_DIR="$SCRATCH/wb2_clim.zarr"
 
@@ -45,27 +51,6 @@ VARIABLESPL=(
 
 STD_VARIABLES=("${VARIABLES[@]/%/_std}")
 
-copy_zarr() {
-    set -x
-    mkdir -p $2
-    cd $2
-
-    # Copy metadata
-    cp $1/.z* ./
-
-    # Create directories for each variable (otherwise gsutil fails)
-    mkdir "${VARIABLES[@]}" "${COORDS[@]}"
-
-    # Copy each coordinate
-    gsutil -m cp -r  "${COORDS[@]/#/$1/}" ./
-
-    # Copy each variable
-    gsutil -m cp -r "${VARIABLES[@]/#/$1/}" ./
-    if [ "$3" = true ]; then
-        mkdir "${VARIABLES[@]/%/_std}"
-        gsutil -m cp -r "${VARIABLES[@]/%/_std}" ./
-    fi
-}
 
 set -x
 
@@ -80,22 +65,6 @@ PL_TIMES=( "${TIMES[@]/%/.0.0.0}" )
 SCF_TIMES=( "${TIMES[@]/%/.0.0}" )
 
 
-# for each time in PL_TIMES append the time to each variable in VARIABLESPL
-# VARIABLES_PLT=()
-# for time in "${PL_TIMES[@]}"; do
-#     for var in "${VARIABLESPL[@]}"; do
-#         VARIABLES_PLT+=("$var/$time")
-#     done
-# done
-
-# VARIABLES_SCFT=()
-# for time in "${SCF_TIMES[@]}"; do
-#     for var in "${VARIABLESSCF[@]}"; do
-#         VARIABLES_SCFT+=("$var/$time")
-#     done
-# done
-
-
 # 59947 - 61408 - 62869
 
 # # Copy climatology
@@ -106,29 +75,48 @@ SCF_TIMES=( "${TIMES[@]/%/.0.0}" )
 # gsutil -q -m cp -r  "${CLIM_COORDS[@]/#/$CLIMATOLOGY_DIR/}" "${VARIABLES[@]/#/$CLIMATOLOGY_DIR/}" "${STD_VARIABLES[@]/#/$CLIMATOLOGY_DIR/}" ./
 
 # Copy WB2
-mkdir -p $TARGET_DIR
-cd $TARGET_DIR
-mkdir -p "${VARIABLESSCF[@]}" "${VARIABLESPL[@]}" "${COORDS[@]}"
-cp $DATASET_DIR/.z* ./
-gsutil -q -m cp -r  "${COORDS[@]/#/$DATASET_DIR/}" ./
-# gsutil -q -m cp -r  "${COORDS[@]/#/$DATASET_DIR/}" "${VARIABLES[@]/#/$DATASET_DIR/}" ./
+copy_wb(){
+    mkdir -p $TARGET_DIR
+    cd $TARGET_DIR
+    mkdir -p "${VARIABLESSCF[@]}" "${VARIABLESPL[@]}" "${COORDS[@]}"
+    cp $DATASET_DIR/.z* ./
+    gsutil -q -m cp -r  "${COORDS[@]/#/$DATASET_DIR/}" ./
+
+    for var in "${VARIABLESSCF[@]}"; do
+        VARIABLES_SCFT=()
+        for time in "${SCF_TIMES[@]}"; do
+            VARIABLES_SCFT+=("$var/$time")
+        done
+        gsutil -q -m cp -r  "${VARIABLES_SCFT[@]/#/$DATASET_DIR/}" $TARGET_DIR/$var/
+    done
+
+    for var in "${VARIABLESPL[@]}"; do
+        VARIABLES_PLT=()
+        for time in "${PL_TIMES[@]}"; do
+            VARIABLES_PLT+=("$var/$time")
+        done
+        gsutil -q -m cp -r  "${VARIABLES_PLT[@]/#/$DATASET_DIR/}" $TARGET_DIR/$var/
+    done
+}
+
+# Copy u100m and v100m
+copy_wind(){
+    TARGET_DIR=TARGET_DIR_$1
+    DATASET_DIR=DATASET_$1
+    mkdir -p $TARGET_DIR
+    cd $TARGET_DIR
+    mkdir -p "$1" "${COORDS[@]}"
+    cp $DATASET_DIR/.z* ./
+    gsutil -q -m cp -r  "${COORDS[@]/#/$TARGET_DIR/}" ./
 
 
-# gsutil -q -m cp -r  "${COORDS[@]/#/$DATASET_DIR/}" "${VARIABLES_PLT[@]/#/$DATASET_DIR/}" "${VARIABLES_SCFT[@]/#/$DATASET_DIR/}" ./
-# gsutil -q -m cp -r  "${VARIABLES_PLT[@]/#/$DATASET_DIR/}" "${VARIABLES_PLT[@]/#/$TARGET_DIR/}" 
-
-for var in "${VARIABLESSCF[@]}"; do
     VARIABLES_SCFT=()
     for time in "${SCF_TIMES[@]}"; do
-        VARIABLES_SCFT+=("$var/$time")
+        VARIABLES_SCFT+=("$1/$time")
     done
     gsutil -q -m cp -r  "${VARIABLES_SCFT[@]/#/$DATASET_DIR/}" $TARGET_DIR/$var/
-done
 
-for var in "${VARIABLESPL[@]}"; do
-    VARIABLES_PLT=()
-    for time in "${PL_TIMES[@]}"; do
-        VARIABLES_PLT+=("$var/$time")
-    done
-    gsutil -q -m cp -r  "${VARIABLES_PLT[@]/#/$DATASET_DIR/}" $TARGET_DIR/$var/
-done
+}
+
+copy_wind u100
+copy_wind v100
