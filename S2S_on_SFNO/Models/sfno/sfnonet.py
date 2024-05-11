@@ -663,13 +663,13 @@ class FourierNeuralOperatorNet(nn.Module):
         return x
 
 class GCN(torch.nn.Module):
-    def __init__(self,batch_size,device,depth=8,out_features=256,num_layers=12,coarse_level=4,graph_asset_path="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
+    def __init__(self,batch_size,device,depth=8,embed_dim=512, out_features=256,num_layers=12,coarse_level=4,graph_asset_path="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
         super().__init__()
 
         # Model
         self.batch_size = batch_size
         self.num_layers = num_layers
-        self.hidden_size = out_features*2
+        self.hidden_size = embed_dim
         self.out_features = out_features
         self.activation = nn.LeakyReLU()
         self.conv1 = GCNConv(1, self.hidden_size,cached=True)
@@ -748,7 +748,7 @@ class GCN(torch.nn.Module):
 
 # Blowes up STD (7 layers -> std=8.3)
 class GCN_custom(nn.Module):
-    def __init__(self,batch_size,device,depth,out_features=256,num_layers=12,coarse_level=4,graph_asset_path="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
+    def __init__(self,batch_size,device,depth,embed_dim=512, out_features=256,num_layers=12,coarse_level=4,graph_asset_path="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
         """
         Paramters: last lin layer: 131072, conv hidden layer (sparse): 262144
         But Pararmeters SFNO: 
@@ -772,7 +772,7 @@ class GCN_custom(nn.Module):
         self.batch_size = batch_size
         self.device = device
         self.num_layers = num_layers
-        self.hidden_size = out_features*2
+        self.hidden_size = embed_dim
         self.out_features = out_features
         self.conv1 = GraphConvolution(1, self.hidden_size)
         self.perceptive_field = depth # 3
@@ -1098,11 +1098,11 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         
         # coarse level =  4 default, could be changed by coarse_level in film_gen arguments
         if kwargs["film_gen_type"] == "gcn":
-            self.film_gen = GCN(self.batch_size,device,depth=self.depth,out_features=self.embed_dim,num_layers=self.film_layers)# num layers is 1 for now
+            self.film_gen = GCN(self.batch_size,device,depth=self.cfg.depth,embed_dim=self.cfg.embed_dim,num_layers=self.film_layers)# num layers is 1 for now
         elif kwargs["film_gen_type"] == "transformer":
-            self.film_gen = ViT(patch_size=4, num_classes=256, dim=1024, depth=self.depth, heads=16, mlp_dim = 2048, dropout = 0.1, channels =1, device=device, num_layers=self.film_layers)
+            self.film_gen = ViT(patch_size=4, num_classes=256, dim=self.cfg.embed_dim, depth=self.cfg.depth, heads=16, mlp_dim = self.cfg.mlp_dim, dropout = 0.1, channels =1, device=device, num_layers=self.film_layers)
         else:
-            self.film_gen = GCN_custom(self.batch_size,device,depth=self.depth,out_features=self.embed_dim,num_layers=self.film_layers)# num layers is 1 for now
+            self.film_gen = GCN_custom(self.batch_size,device,depth=self.cfg.depth,embed_dim=self.cfg.embed_dim,num_layers=self.film_layers)# num layers is 1 for now
     
     def cp_forward(self, module):
         def custom_forward(*inputs):

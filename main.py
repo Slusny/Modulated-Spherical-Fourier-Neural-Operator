@@ -594,6 +594,20 @@ def _main():
         default=[28,9,9],
         help='Define the patch sizes for the MAE (temporal, lat, lon) and Transfomrer (lat,long)',
     )
+    architecture_parser.add_argument(
+        '--embed-dim', 
+        action='store',
+        type=int,
+        default=512,
+        help='',
+    )
+    architecture_parser.add_argument(
+        '--mlp-dim', 
+        action='store',
+        type=int,
+        default=1024,
+        help='',
+    )
     
 
     # !! args from parser become model properties (whatch that no conflicting model properties/methods exist)
