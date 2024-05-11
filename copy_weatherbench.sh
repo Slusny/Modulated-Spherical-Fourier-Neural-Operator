@@ -100,23 +100,21 @@ copy_wb(){
 }
 
 # Copy u100m and v100m
-copy_wind(){
-    TARGET_DIR=TARGET_DIR_$1
-    DATASET_DIR=DATASET_$1
-    mkdir -p $TARGET_DIR
-    cd $TARGET_DIR
-    mkdir -p "$1" "${COORDS[@]}"
-    cp $DATASET_DIR/.z* ./
-    gsutil -q -m cp -r  "${COORDS[@]/#/$TARGET_DIR/}" ./
+copy_wind(){ #$1 DATASET_DIR $2 TARGET_DIR $3 var
+    mkdir -p $2
+    cd $2
+    mkdir -p "$3" "${COORDS[@]}"
+    cp $1/.z* ./
+    gsutil -q -m cp -r  "${COORDS[@]/#/$1/}" ./
 
 
     VARIABLES_SCFT=()
     for time in "${SCF_TIMES[@]}"; do
-        VARIABLES_SCFT+=("$1/$time")
+        VARIABLES_SCFT+=("$3/$time")
     done
-    gsutil -q -m cp -r  "${VARIABLES_SCFT[@]/#/$DATASET_DIR/}" $TARGET_DIR/$var/
+    gsutil -q -m cp -r  "${VARIABLES_SCFT[@]/#/$1/}" $2/$3/
 
 }
 
-copy_wind u100
-copy_wind v100
+copy_wind $DATASET_u100 $TARGET_DIR_u100 u100
+# copy_wind $DATASET_v100 $TARGET_DIR_v100 v100
