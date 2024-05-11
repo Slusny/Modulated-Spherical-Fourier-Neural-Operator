@@ -50,6 +50,9 @@ class ERA5_galvani(Dataset):
             # chunked
             # path = "/mnt/qb/goswami/data/era5/weatherbench2/1959-2022-wb13-6h-0p25deg-chunk-1.zarr-v2", # start date: 1959-01-01 end date : 2023-01-10T18:00 # not default, needs derived variables
             
+            u100_path = "/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/u100m_1959-2022_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr",
+            v100_path = "/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/v100m_1959-2023-10_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr",
+
             start_year=2000,
             end_year=2022,
             steps_per_day=4,
@@ -72,12 +75,11 @@ class ERA5_galvani(Dataset):
             #ceph
             # self.dataset_uv100 = xr.open_mfdataset("/mnt/ceph/goswamicd/datasets/weatherbench2/era5/1959-2023_01_10-u100mv100m-6h-1440x721"))
             # qb zarr
-            file_u100 = "/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/u100m_1959-2022_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr"
-            if file_u100.endswith(".zarr"): self.dataset_u100 = xr.open_zarr(file_u100,chunks=None)
-            else:                           self.dataset_u100 = xr.open_mfdataset(file_u100,chunks=None) # sd: 1959-01-01, end date : 2022-12-30T18
-            file_v100 = "/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/v100m_1959-2023-10_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr"
-            if file_u100.endswith(".zarr"): self.dataset_v100 = xr.open_zarr(file_v100,chunks=None)
-            else:                           self.dataset_v100 = xr.open_mfdataset(file_v100,chunks=None) # sd: 1959-01-01 end date: 2023-10-31
+            
+            if u100_path.endswith(".zarr"): self.dataset_u100 = xr.open_zarr(u100_path,chunks=None)
+            else:                           self.dataset_u100 = xr.open_mfdataset(u100_path,chunks=None) # sd: 1959-01-01, end date : 2022-12-30T18
+            if v100_path.endswith(".zarr"): self.dataset_v100 = xr.open_zarr(v100_path,chunks=None)
+            else:                           self.dataset_v100 = xr.open_mfdataset(v100_path,chunks=None) # sd: 1959-01-01 end date: 2023-10-31
 
         # check if the 100uv-datasets and era5 have same start and end date
         # Check if set Start date to be viable
@@ -248,10 +250,9 @@ class Trainer():
         self.util = model
         self.model = model.model
         self.mem_log_not_done = True
-        self.local_logging=False
+        self.local_logging=True
         self.scale = 1.0
-        self.local_log = LocalLog(self.local_logging,self.cfg.save_path)
-        self.mse_all_vars = True
+        self.mse_all_vars = self.cfg.model_type == "sfno"
         self.epoch = 0
 
     def train(self):
@@ -259,11 +260,12 @@ class Trainer():
         while self.epoch < self.cfg.training_epochs:
             # self.pre_epoch()
             self.train_epoch() 
-            # self.evaluate_epoch() 
-            # self.post_epoch() 
+            self.post_epoch() 
         self.finalise()
 
-    def set_wandb(self):
+    def set_logger(self):
+        print("")
+        print("logger settings:")
         if self.cfg.wandb   : 
             # config_wandb = vars(args).copy()
             # for key in ['notes','tags','wandb']:del config_wandb[key]
@@ -291,8 +293,10 @@ class Trainer():
             new_save_path = os.path.join(self.cfg.save_path,self.cfg.model_type+"_"+self.cfg.model_version+film_gen_str+"_"+self.cfg.timestr)
             os.mkdir(new_save_path)
             self.cfg.save_path = new_save_path
-            print("")
-            print("no wandb")
+            print("    no wandb")
+        
+        print("    Save path: %s", self.cfg.save_path)
+        self.local_log = LocalLog(self.local_logging,self.cfg.save_path)
 
     def train_epoch(self):
         self.iter = 0
@@ -339,14 +343,17 @@ class Trainer():
                 self.step = self.iter*self.cfg.batch_size+len(self.dataset)*self.epoch
                 self.iter_log(batch_loss,scale=None)
                 batch_loss = 0
-                
-                
+  
         # end of epoch
+        
+    
+    def post_epoch(self):
         self.epoch += 1
         self.iter = 0
         print("End of epoch ",self.epoch)
         self.save_checkpoint()
-        
+        self.local_log.save("training_log_epoch{}.npy".format(self.epoch))
+
     def model_forward(self,input,data,step):
         self.mem_log("forward pass")
         if self.cfg.model_type == 'sfno' and self.cfg.model_version == "film" :
@@ -365,8 +372,7 @@ class Trainer():
         pass
 
     def setup(self):
-        LOG.info("Save path: %s", self.cfg.save_path)
-        self.set_wandb()
+        self.set_logger()
         if self.cfg.enable_amp == True:
             self.gscaler = amp.GradScaler()
         self.create_loss()
@@ -444,6 +450,8 @@ class Trainer():
             self.dataset = ERA5_galvani(
                 self.util,
                 path=self.cfg.trainingdata_path, 
+                u100_path=self.cfg.trainingdata_u100_path,
+                v100_path=self.cfg.trainingdata_v100_path,
                 start_year=self.cfg.trainingset_start_year,
                 end_year=self.cfg.trainingset_end_year,
                 auto_regressive_steps=self.cfg.multi_step_training,
@@ -453,6 +461,8 @@ class Trainer():
             self.dataset_validation = ERA5_galvani(
                 self.util,
                 path=self.cfg.trainingdata_path, 
+                u100_path=self.cfg.trainingdata_u100_path,
+                v100_path=self.cfg.trainingdata_v100_path,
                 start_year=self.cfg.validationset_start_year,
                 end_year=self.cfg.validationset_end_year,
                 auto_regressive_steps=self.cfg.multi_step_validation,
@@ -496,7 +506,7 @@ class Trainer():
 
                     # loss for each variable
                     if self.cfg.advanced_logging and self.mse_all_vars  and val_step == 0: # !! only for first multi validation step, could include next step with -> ... -> ... in print statement on same line
-                        val_g_truth_era5 = self.normalise(val_data[val_step+1][0]).to(self.util.device)
+                        val_g_truth_era5 = self.util.normalise(val_data[val_step+1][0]).to(self.util.device)
                         loss_pervar_list.append(loss_fn_pervar(output, val_g_truth_era5).mean(dim=(0,2,3)) / self.cfg.batch_size)
                     
                     if val_idx == 0: 

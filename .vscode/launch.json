@@ -53,8 +53,8 @@
 
 //GCN
 
-//local
-// python main.py --model sfno --model-version film --train --validation-interval 2 --validation-epochs 3 --training-workers 6 --batch-size 1 --learning-rate 0.000005 --multi-step-training 1 --training-step-skip 0 --film-gen gcn --film-layers 12 --save-checkpoint-interval 5 --advanced-logging --accumulation-steps 100 --loss-fn L2Sphere --scheduler CosineAnnealingLR --scheduler-horizon 432440 --training-epochs 8 --trainingset-start-year 2001 --trainingset-end-year 2002 --validationset-start-year 2002 --validationset-end-year 2003 --trainingdata-path /mnt/V/wb2_2001-2003.zarr --assets /mnt/ssd2/Master/S2S_on_SFNO/Assets --save-path /mnt/ssd2/Master/S2S_on_SFNO/outputs/gcn 
+//GCN local
+// python main.py --model sfno --model-version film --train --validation-interval 2 --validation-epochs 3 --training-workers 6 --batch-size 1 --learning-rate 0.000005 --multi-step-training 1 --training-step-skip 0 --film-gen gcn --film-layers 12 --save-checkpoint-interval 5 --advanced-logging --accumulation-steps 100 --loss-fn L2Sphere --scheduler CosineAnnealingLR --scheduler-horizon 432440 --training-epochs 8 --trainingset-start-year 2001 --trainingset-end-year 2002 --validationset-start-year 2002 --validationset-end-year 2003 --trainingdata-path /mnt/V/wb2_2001-2003.zarr --assets /mnt/ssd2/Master/S2S_on_SFNO/Assets --save-path /mnt/ssd2/Master/S2S_on_SFNO/outputs/gcn --trainingdata-u100-path /mnt/V/v100_2001-2003.zarr --trainingdata-u100-path /mnt/V/u100_2001-2003.zarr
 
 // SFNO
 // python main.py --model sfno --model-version latest --train --validation-interval 5 --validation-epochs 5 --training-workers 6 --batch-size 1  --learning-rate 0.0005 --multi-step-training 1 --training-step-skip 0 --accumulation-steps 2 --save-checkpoint-interval 30 --advanced-logging --enable-amp --loss-fn L2Sphere --debug

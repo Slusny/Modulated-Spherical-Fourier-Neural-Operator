@@ -80,8 +80,9 @@ class ContextCast(nn.Module):
     '''
     ContextCast implements a masked autoencoder for pretrained context embeddings.
     '''
-    def __init__(self, data_dim: int, 
+    def __init__(self, 
                  cfg,
+                 data_dim: int, 
                  encoder_dim: int = 512, 
                  decoder_dim: int = 512,
                  num_latents = 1, 
@@ -120,7 +121,8 @@ class ContextCast(nn.Module):
         self.encoder_dim = encoder_dim #encoder dimension
         self.decoder_dim = decoder_dim #decoder dimension
 
-        print("Number of patches: ", self.num_patches)
+        print("Architecture: MAE")
+        print("    Number of patches: ", self.num_patches)
         #patch embedding
         # self.to_patch = Rearrange('b c (t pt) (h ph) (w pw) -> b (t h w) (c pt ph pw)', 
         #                           pt = self.patch_size[0], ph = self.patch_size[1], pw = self.patch_size[2])  

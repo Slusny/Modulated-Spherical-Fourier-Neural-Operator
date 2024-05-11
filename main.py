@@ -386,6 +386,18 @@ def _main():
         default="/mnt/qb/goswami/data/era5/weatherbench2/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr"
     )
     training.add_argument(
+        "--trainingdata-u100-path",
+        help="path to training data zarr file for u100m",
+        action="store",
+        default="/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/u100m_1959-2022_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr"
+    )
+    training.add_argument(
+        "--trainingdata-v100-path",
+        help="path to training data zarr file for v100m",
+        action="store",
+        default="/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/v100m_1959-2023-10_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr"
+    )
+    training.add_argument(
         "--training-workers",
         help="number of workers to use in dataloader for training",
         action="store",
@@ -814,7 +826,6 @@ def _main():
 
         print("")
         print("Started training ")
-        print("save path: ",args.save_path)
         LOG.info("Process ID: %s", os.getpid())
         kwargs = vars(args)
 

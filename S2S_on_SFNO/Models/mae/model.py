@@ -26,7 +26,7 @@ class MAE(Model):
         super().__init__(**kwargs)
 
         # init model
-        self.model = ContextCast(self.cfg, data_dim=1,**kwargs)
+        self.model = ContextCast( self.cfg, data_dim=1, **kwargs)
         # self.params = kwargs
         # self.timestr = kwargs["timestr"]
         # self.assets = kwargs["assets"]
@@ -60,9 +60,9 @@ class MAE(Model):
 
     def load_statistics(self):
             
-        self.means_film = np.load(os.path.join(self.assets, "global_means_sst.npy"))
+        self.means_film = np.load(os.path.join(self.assets,self.model_type, "global_means_sst.npy"))
         self.means_film = self.means_film.astype(np.float32)
-        self.stds_film = np.load(os.path.join(self.assets, "global_stds_sst.npy"))
+        self.stds_film = np.load(os.path.join(self.assets,self.model_type, "global_stds_sst.npy"))
         self.stds_film = self.stds_film.astype(np.float32)
     
     def normalise(self, data, reverse=False):
