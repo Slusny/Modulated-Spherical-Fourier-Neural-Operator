@@ -81,6 +81,7 @@ class ContextCast(nn.Module):
     ContextCast implements a masked autoencoder for pretrained context embeddings.
     '''
     def __init__(self, data_dim: int, 
+                 cfg,
                  encoder_dim: int = 512, 
                  decoder_dim: int = 512,
                  num_latents = 1, 
@@ -108,7 +109,7 @@ class ContextCast(nn.Module):
         """
         super().__init__()
 
-        self.cfg = Attributes(**kwargs)
+        self.cfg = cfg
         grid_size = (self.cfg.temporal_step, 720//self.cfg.coarse_level, 1440//self.cfg.coarse_level)
 
         #set helper parameters

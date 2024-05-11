@@ -5,12 +5,6 @@
 from functools import partial
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch_geometric.nn import GCNConv
-from torch_geometric.nn.pool import global_mean_pool
-
-import torch
-from torch import nn
 
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
@@ -22,6 +16,12 @@ import os
 # from apex.normalization import FusedLayerNorm
 
 from torch.utils.checkpoint import checkpoint
+
+# film_gens
+from ..mae.maenet import ContextCast
+from ..gcn.gcn import GCN_custom, GCN
+from ..vit.vit import ViT
+
 
 
 # helpers
@@ -39,7 +39,6 @@ from .layers import (
     SpectralConv2d,
 )
 
-from .layers import GraphConvolution
 
 import torch_harmonics as harmonics
 
@@ -388,6 +387,8 @@ class FourierNeuralOperatorBlock_Filmed(nn.Module):
 class FourierNeuralOperatorNet(nn.Module):
     def __init__(
         self,
+        device,
+        cfg,
         spectral_transform="sht",
         filter_type="non-linear",
         img_size=(721, 1440),
@@ -420,6 +421,9 @@ class FourierNeuralOperatorNet(nn.Module):
         **overflow
     ):
         super(FourierNeuralOperatorNet, self).__init__()
+        
+        self.cfg = cfg
+        self.device = device
 
         self.spectral_transform = spectral_transform
         self.filter_type = filter_type
@@ -662,368 +666,7 @@ class FourierNeuralOperatorNet(nn.Module):
 
         return x
 
-class GCN(torch.nn.Module):
-    def __init__(self,batch_size,device,depth=8,embed_dim=512, out_features=256,num_layers=12,coarse_level=4,graph_asset_path="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
-        super().__init__()
 
-        # Model
-        self.batch_size = batch_size
-        self.num_layers = num_layers
-        self.hidden_size = embed_dim
-        self.out_features = out_features
-        self.activation = nn.LeakyReLU()
-        self.conv1 = GCNConv(1, self.hidden_size,cached=True)
-        self.perceptive_field = depth
-        self.conv_layers = nn.ModuleList([GCNConv(self.hidden_size, self.hidden_size,cached=True) for _ in range(self.perceptive_field)])
-        self.head_film = nn.Linear(self.hidden_size, 2*out_features*self.num_layers)
-
-        # with torch.no_grad():
-        self.head_film.weight = nn.Parameter(torch.zeros_like(self.head_film.weight))
-        self.head_film.bias = nn.Parameter(torch.zeros_like(self.head_film.bias))
-        
-        # prepare the graph 
-
-        # Nan_mask removes nans from sst-matrix -> 1D array, edge_index and nan_mask loaded from file    
-        # !! if numpy masking is used to downsample instead of coarsen, an other edge_index, nan_mask needs to be loaded
-        edge_index = torch.load(os.path.join(graph_asset_path,"edge_index_coarsen_"+str(coarse_level)+".pt"))
-        nan_mask = np.load(os.path.join(graph_asset_path,"nan_mask_coarsen_"+str(coarse_level)+"_notflatten.npy"))
-        num_node_features = 686364
-        num_nodes = np.sum(nan_mask)
-        num_edges = edge_index.shape[1]
-
-        # repeat nan_mask for each sst-matrix in batch 
-        self.batch_nan_mask = np.repeat(nan_mask[ np.newaxis,: ], batch_size, axis=0)
-
-        # handle batch by appending sst-matrices to long 1D array, edge_index gets repeated and offseted to create the distinct graphs 
-        self.batch = torch.tensor(list(range(batch_size))*num_nodes).reshape((num_nodes,batch_size)).T.flatten().to(device)
-        offset_ = torch.tensor(list(range(batch_size))*num_edges).reshape((num_edges,batch_size)).T.flatten()*num_nodes
-        offset = torch.stack([offset_,offset_])
-        self.edge_index_batch = ( edge_index.repeat((1,batch_size))+offset ).to(device)
-
-        # shape anlysis
-        # node values (sst): (num_nodes,1) ...
-
-    def forward(self, sst):
-        x = sst[self.batch_nan_mask][None].T
-        # orig = x
-        # # No Skip
-        # h = self.conv1(x, self.edge_index_batch)
-        # h = F.relu(h)
-        # # x = F.dropout(x, training=self.training)
-        # h = self.conv2(h, self.edge_index_batch)
-        # h = F.relu(h)
-        # h = self.conv2(h, self.edge_index_batch)
-        # h = F.relu(h)
-        # h = self.conv2(h, self.edge_index_batch)
-        # h = global_mean_pool(h, self.batch)
-
-        # # No Skip
-        # x = self.activation(self.conv1(x, self.edge_index_batch))
-        # for conv in self.conv_layers:
-        #     x =  self.activation(conv(x, self.edge_index_batch))
-        # x = global_mean_pool(x, self.batch)
-        
-
-        # Skip
-        x = x + self.activation(self.conv1(x, self.edge_index_batch))
-        for conv in self.conv_layers:
-            x = x + self.activation(conv(x, self.edge_index_batch))
-        x = global_mean_pool(x, self.batch)
-
-        # # Skip
-        # x1 = self.conv1(x, self.edge_index_batch)
-        # # x = repeat(x,'i j -> i (repeat j)',repeat=self.hidden_size) + F.leaky_relu(x1)
-        # x = x + F.leaky_relu(x1)
-        # # x = F.dropout(x, training=self.training)
-        # x2 = self.conv2(x, self.edge_index_batch)
-        # x = x + F.leaky_relu(x2)
-        # x3 = self.conv2(x, self.edge_index_batch)
-        # x = x + F.leaky_relu(x3)
-        # # x = x + self.conv2(x, self.edge_index_batch)
-        # x =  self.conv2(x, self.edge_index_batch)
-        # x = global_mean_pool(x, self.batch)
-        return self.head_film(x).reshape(2,self.num_layers,self.batch_size,self.out_features)#.squeeze()
-        
-
-
-# Blowes up STD (7 layers -> std=8.3)
-class GCN_custom(nn.Module):
-    def __init__(self,batch_size,device,depth,embed_dim=512, out_features=256,num_layers=12,coarse_level=4,graph_asset_path="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
-        """
-        Paramters: last lin layer: 131072, conv hidden layer (sparse): 262144
-        But Pararmeters SFNO: 
-            blocks.7.norm0.weight                   256
-            blocks.7.norm0.bias                     256
-            blocks.7.filter_layer.filter.wout       262144
-            blocks.7.filter_layer.filter.w.0        262144
-            blocks.7.filter_layer.filter.w.1        524288
-            blocks.7.filter_layer.filter.w.2        524288
-            blocks.7.inner_skip.weight              65536
-            blocks.7.inner_skip.bias                256
-            blocks.7.norm1.weight                   256
-            blocks.7.norm1.bias                     256
-            blocks.7.mlp.fwd.0.weight               131072
-            blocks.7.mlp.fwd.0.bias                 512
-            blocks.7.mlp.fwd.2.weight               131072
-            blocks.7.mlp.fwd.2.bias                 256
-            pos_embed        265789440 ??
-        """
-        super().__init__()
-        self.batch_size = batch_size
-        self.device = device
-        self.num_layers = num_layers
-        self.hidden_size = embed_dim
-        self.out_features = out_features
-        self.conv1 = GraphConvolution(1, self.hidden_size)
-        self.perceptive_field = depth # 3
-        self.conv_layers = nn.ModuleList([GraphConvolution(self.hidden_size, self.hidden_size) for _ in range(self.perceptive_field)])
-        self.activation = nn.LeakyReLU() # change parameter for leaky relu also in initalization of GraphConvolution layer
-        self.head_film = nn.Linear(self.hidden_size, 2*out_features*self.num_layers)
-
-        # Set film weights to 0
-        # with torch.no_grad():
-        self.head_film.weight = nn.Parameter(torch.ones_like(self.head_film.weight))
-        self.head_film.bias = nn.Parameter(torch.zeros_like(self.head_film.bias))
-            # self.head_film.weight[0, 0] = 2.
-            # model[0].weight.fill_(3.)
-
-        ## Prepare Graph
-        # load sparse adjacentcy matrix from file ( shape: num_node x num_nodes )
-        self.adj = torch.load(os.path.join(graph_asset_path,"adj_coarsen_"+str(coarse_level)+"_sparse.pt")).to(device)
-        # sparse adj needs 0.01  GB on memory
-        # dense 7
-        
-        # self.adj = torch.load(os.path.join(graph_asset_path,"adj_coarsen_"+str(coarse_level)+"_fully.pt")).to(device)
-        # # adj matrix takes 8.16 GB on memory
-        
-        # nan mask masks out every nan value on land ( shape: 180x360 for 1° data )
-        self.nan_mask = np.load(os.path.join(graph_asset_path,"nan_mask_coarsen_"+str(coarse_level)+"_notflatten.npy"))
-        # repeat nan mask in batch size dimension ( shape: batch_sizex180x360 )
-        self.batch_nan_mask = np.repeat(self.nan_mask[ np.newaxis,: ], batch_size, axis=0)
-        
-    def forward(self, sst):
-        # x.shape: batch_size x num_nodes x features
-        x = sst[self.batch_nan_mask].reshape(self.batch_size,-1,1)
-        
-        # No Skip
-        # x = self.activation(self.conv1(x, self.adj))
-        # for conv in self.conv_layers:
-        #     x = self.activation(conv(x, self.adj))
-        # x = x.mean(dim=-2)
-
-        # Skip
-        x = x + self.activation(self.conv1(x, self.adj))
-        for conv in self.conv_layers:
-            x = x + self.activation(conv(x, self.adj))
-        x = x.mean(dim=-2)
-    
-        # Film Heads
-        return self.head_film(x).reshape(2,self.num_layers,self.batch_size,self.out_features)#.squeeze()
-    
-
-
-def pair(t):
-    return t if isinstance(t, tuple) else (t, t)
-
-# classes
-
-class FeedForward(nn.Module):
-    def __init__(self, dim, hidden_dim, dropout = 0.):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.LayerNorm(dim),
-            nn.Linear(dim, hidden_dim),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(hidden_dim, dim),
-            nn.Dropout(dropout)
-        )
-
-    def forward(self, x):
-        return self.net(x)
-
-class Attention(nn.Module):
-    def __init__(self, dim, heads = 8, dim_head = 64, dropout = 0.):
-        super().__init__()
-        inner_dim = dim_head *  heads
-        project_out = not (heads == 1 and dim_head == dim)
-
-        self.heads = heads
-        self.scale = dim_head ** -0.5
-
-        self.norm = nn.LayerNorm(dim)
-
-        self.attend = nn.Softmax(dim = -1) 
-        self.dropout = nn.Dropout(dropout)
-
-        self.to_qkv = nn.Linear(dim, inner_dim * 3, bias = False)
-
-        self.to_out = nn.Sequential(
-            nn.Linear(inner_dim, dim),
-            nn.Dropout(dropout)
-        ) if project_out else nn.Identity()
-
-    def forward(self, x):
-        x = self.norm(x)
-
-        qkv = self.to_qkv(x).chunk(3, dim = -1)
-        q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = self.heads), qkv)
-
-        dots = torch.matmul(q, k.transpose(-1, -2)) * self.scale
-
-        # my first idea
-        # attn = self.attend(torch.nan_to_num(dots,nan=-torch.inf))
-        attn = self.attend(dots)
-        attn = self.dropout(attn)
-
-        out = torch.matmul(attn, v)
-        out = rearrange(out, 'b h n d -> b n (h d)')
-        return self.to_out(out)
-
-def posemb_sincos_2d(h, w, dim, temperature: int = 10000, dtype = torch.float32):
-    y, x = torch.meshgrid(torch.arange(h), torch.arange(w), indexing="ij")
-    assert (dim % 4) == 0, "feature dimension must be multiple of 4 for sincos emb"
-    omega = torch.arange(dim // 4) / (dim // 4 - 1)
-    omega = 1.0 / (temperature ** omega)
-
-    y = y.flatten()[:, None] * omega[None, :]
-    x = x.flatten()[:, None] * omega[None, :]
-    pe = torch.cat((x.sin(), x.cos(), y.sin(), y.cos()), dim=1)
-    return pe.type(dtype)
-
-class Transformer(nn.Module):
-    def __init__(self, dim, depth, heads, dim_head, mlp_dim, dropout = 0.):
-        super().__init__()
-        self.norm = nn.LayerNorm(dim)
-        self.layers = nn.ModuleList([])
-        for _ in range(depth):
-            self.layers.append(nn.ModuleList([
-                Attention(dim, heads = heads, dim_head = dim_head, dropout = dropout),
-                FeedForward(dim, mlp_dim, dropout = dropout)
-            ]))
-
-    def forward(self, x):
-        for attn, ff in self.layers:
-            x = attn(x) + x
-            x = ff(x) + x
-
-        return self.norm(x)
-
-# This torch module realises patch embedding for the transformer and handles nan values in the input
-class Transformer_patch_embedding(nn.Module):
-    def __init__(self, patch_height, patch_width, patch_dim, dim):
-        super().__init__()
-        
-        self.rearrange = Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1 = patch_height, p2 = patch_width)
-        self.norm1 = nn.LayerNorm(patch_dim)
-        self.lin = nn.Linear(patch_dim, dim)
-        self.norm2 = nn.LayerNorm(dim)
-
-        self.mask = None
-
-    def rm_embed_nan(self, x, batch):
-        if not torch.is_tensor(self.mask):
-            self.mask = torch.any(torch.isnan(x),dim=-1).logical_not()[0] # keeps batch dimension in mask and removes it by this # x is rearranged sst to patches 
-        return x[...,self.mask,:]
-
-
-    def forward(self, x):
-        batch = x.shape[0] ## not correct
-        x = self.rearrange(x)
-        x = self.rm_embed_nan(x,batch)
-        x = self.norm1(x)
-        x = self.lin(x)
-        x = self.norm2(x)
-        return x
-
-class ViT(nn.Module):
-    # simple vit doesn't have dropout, different pos emb and no cls token
-    def __init__(self, *, patch_size, num_classes, dim, depth, heads, mlp_dim, pool = 'mean', channels = 3, dim_head = 64, dropout = 0., emb_dropout = 0., coarse_level=4,device="cpu", num_layers=1):
-        super().__init__()
-        image_height, image_width = 721//coarse_level, 1440//coarse_level #pair(image_size)
-        patch_height, patch_width = pair(patch_size)
-        self.device = device
-        self.dim = dim
-        self.num_layers = num_layers
-
-        assert image_height % patch_height == 0 and image_width % patch_width == 0, 'Image dimensions must be divisible by the patch size.'
-
-        num_patches = (image_height // patch_height) * (image_width // patch_width)
-        patch_dim = channels * patch_height * patch_width
-        assert pool in {'cls', 'mean'}, 'pool type must be either cls (cls token) or mean (mean pooling)'
-
-        # self.to_patch_embedding = nn.Sequential(
-        #     Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1 = patch_height, p2 = patch_width),
-        #     nn.LayerNorm(patch_dim),
-        #     nn.Linear(patch_dim, dim),
-        #     nn.LayerNorm(dim),
-        # )
-
-        self.to_patch_embedding = Transformer_patch_embedding(patch_height, patch_width, patch_dim, dim)
-
-        # if we load the mask from  file once instead of calculating it each time in the forward pass, do we save significant run time?
-        # self.nan_mask = np.load(os.path.join(graph_asset_path,"nan_mask_coarsen_"+str(coarse_level)+"_notflatten.npy"))
-        self.nan_mask = None
-
-        # self.pos_embedding = nn.Parameter(torch.randn(1, num_patches + 1, dim))
-        self.pos_embedding = posemb_sincos_2d(
-            h = image_height // patch_height,
-            w = image_width // patch_width,
-            dim = dim,
-        ) 
-        self.cls_token = nn.Parameter(torch.randn(1, 1, dim))
-        self.dropout = nn.Dropout(emb_dropout)
-
-        self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim, dropout)
-
-        self.pool = pool
-        self.to_latent = nn.Identity()
-
-        self.head_film = nn.Linear(dim, num_classes*num_layers*2) 
-
-        # Set weights of head film to 0
-        self.head_film.weight = nn.Parameter(torch.zeros_like(self.head_film.weight))
-        self.head_film.bias = nn.Parameter(torch.zeros_like(self.head_film.bias))
-
-    def rm_nan(self, x, batch):
-        if not self.nan_mask: self.nan_mask = torch.isnan(x).logical_not()
-        x = x[self.nan_mask]
-        return x.reshape(batch,-1,self.dim)
-    
-    def forward(self, img):
-        img = img[None] #?? do i need this, get a key error if i don't
-        b = 1 #cringe
-        # x = self.to_patch_embedding(img)
-
-        # # class token? needs changes to the pos_embedding, add the extra token
-        # b, n, _ = x.shape ## !!!! batch has to be size 1 ? The [None] is needed since the Transformer has a channel dimension
-        # cls_tokens = repeat(self.cls_token, '1 1 d -> b 1 d', b = b)
-        # x = torch.cat((cls_tokens, x), dim=1)
-
-        # x += self.pos_embedding[:, :(n + 1)]
-        # x += self.pos_embedding.to(self.device, dtype=x.dtype) # ([1, 4050, 1024]) ->  
-
-        # remove nan values from sst
-        # x = self.rm_nan(img,b)
-        x = self.to_patch_embedding(img)
-        pos_embed = self.pos_embedding.to(self.device, dtype=x.dtype)
-        x += pos_embed[...,self.to_patch_embedding.mask,:] #######!!!!! batch aah, and handle this in to_patch_embedding
-
-        # x = x[torch.isnan(x).logical_not()]
-        # x = x.reshape(b,-1,self.dim)
-        x = self.dropout(x)
-
-        x = self.transformer(x)
-
-        x = x.mean(dim = 1) if self.pool == 'mean' else x[:, 0]
-
-        x = self.to_latent(x)
-        
-        # heads for gamma and beta (curretly only 1 gamma/beta used across blocks)
-        x = self.head_film(x)
-        return x
-        # return self.mlp_head(x),self.mlp_head(x)
-    
 class FiLM(nn.Module):
     """
     A Feature-wise Linear Modulation Layer from
@@ -1038,13 +681,14 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
     def __init__(
             self,
             device,
+            cfg,
             mlp_ratio=2.0,
             drop_rate=0.0,
             sparsity_threshold=0.0,
             use_complex_kernels=True,
             **kwargs
         ):
-        super().__init__(**kwargs)
+        super().__init__(device,cfg,**kwargs)
 
         # save gamma and beta in model if advanced logging is required
         self.advanced_logging = kwargs["advanced_logging"]
@@ -1098,11 +742,11 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         
         # coarse level =  4 default, could be changed by coarse_level in film_gen arguments
         if kwargs["film_gen_type"] == "gcn":
-            self.film_gen = GCN(self.batch_size,device,depth=self.cfg.depth,embed_dim=self.cfg.embed_dim,num_layers=self.film_layers)# num layers is 1 for now
+            self.film_gen = GCN(self.batch_size,device,depth=self.cfg.model_depth,embed_dim=self.cfg.embed_dim,num_layers=self.film_layers,assets=os.path.join(self.cfg.assets,"gcn"))# num layers is 1 for now
         elif kwargs["film_gen_type"] == "transformer":
-            self.film_gen = ViT(patch_size=4, num_classes=256, dim=self.cfg.embed_dim, depth=self.cfg.depth, heads=16, mlp_dim = self.cfg.mlp_dim, dropout = 0.1, channels =1, device=device, num_layers=self.film_layers)
+            self.film_gen = ViT(patch_size=4, num_classes=256, dim=self.cfg.embed_dim, depth=self.cfg.model_depth, heads=16, mlp_dim = self.cfg.mlp_dim, dropout = 0.1, channels =1, device=device, num_layers=self.film_layers)
         else:
-            self.film_gen = GCN_custom(self.batch_size,device,depth=self.cfg.depth,embed_dim=self.cfg.embed_dim,num_layers=self.film_layers)# num layers is 1 for now
+            self.film_gen = GCN_custom(self.batch_size,device,depth=self.cfg.model_depth,embed_dim=self.cfg.embed_dim,num_layers=self.film_layers,assets=os.path.join(self.cfg.assets,"gcn"))# num layers is 1 for now
     
     def cp_forward(self, module):
         def custom_forward(*inputs):

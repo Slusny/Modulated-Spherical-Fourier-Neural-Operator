@@ -569,7 +569,7 @@ def _main():
         '--model-depth', 
         action='store',
         type=int,
-        default=8,
+        default=6,
         help='Number of layers for film generator',
     )
     architecture_parser.add_argument(
@@ -632,10 +632,10 @@ def _main():
         print("setting training workers to 0 to be able to debug code in ")
 
     # Format Assets path
-    if args.assets:
-        args.assets = os.path.join(os.path.abspath(args.assets),args.model_type)
-    elif args.assets_sub_directory:
-        args.assets = os.path.join(Path(".").absolute(),args.assets_sub_directory,args.model_type)
+    if args.assets_sub_directory:
+        args.assets = os.path.join(Path(".").absolute(),args.assets_sub_directory)
+    # else:
+    #     args.assets = os.path.join(Path(".").absolute(),args.model_type)
 
     # Format Output path
     timestr = time.strftime("%Y%m%dT%H%M")

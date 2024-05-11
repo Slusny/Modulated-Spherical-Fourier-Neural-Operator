@@ -188,22 +188,22 @@ class FourCastNetv2(ATMModel):
         if self.resume_checkpoint:
             self.checkpoint_path = self.resume_checkpoint
         elif self.pre_trained_sfno:
-            self.checkpoint_path = os.path.join(self.assets, "weights.tar")
+            self.checkpoint_path = os.path.join(self.assets,self.model_type, "weights.tar")
         else:
             self.checkpoint_path = None
 
 
         # create model
-        self.model = FourierNeuralOperatorNet(**kwargs)
+        self.model = FourierNeuralOperatorNet(self.device,self.cfg,**kwargs)
     
     def load_statistics(self):
-        path = os.path.join(self.assets, "global_means.npy")
+        path = os.path.join(self.assets,self.model_type, "global_means.npy")
         LOG.info("Loading %s", path)
         self.means = np.load(path)
         self.means = self.means[:, : self.backbone_channels, ...]
         self.means = self.means.astype(np.float32)
 
-        path = os.path.join(self.assets, "global_stds.npy")
+        path = os.path.join(self.assets,self.model_type, "global_stds.npy")
         LOG.info("Loading %s", path)
         self.stds = np.load(path)
         self.stds = self.stds[:, : self.backbone_channels, ...]
@@ -917,7 +917,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
             self.checkpoint_path_film = None
             
         # init model
-        self.model = FourierNeuralOperatorNet_Filmed(self.device,**kwargs)
+        self.model = FourierNeuralOperatorNet_Filmed(self.device,self.cfg,**kwargs)
     
     def load_model(self, checkpoint_file):
         
@@ -1005,9 +1005,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
     def load_statistics(self):
         super().load_statistics()
-        self.means_film = np.load(os.path.join(self.assets, "global_means_sst.npy"))
+        self.means_film = np.load(os.path.join(self.assets,self.model_type, "global_means_sst.npy"))
         self.means_film = self.means_film.astype(np.float32)
-        self.stds_film = np.load(os.path.join(self.assets, "global_stds_sst.npy"))
+        self.stds_film = np.load(os.path.join(self.assets,self.model_type, "global_stds_sst.npy"))
         self.stds_film = self.stds_film.astype(np.float32)
 
     def run(self):

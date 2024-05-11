@@ -26,7 +26,7 @@ class MAE(Model):
         super().__init__(**kwargs)
 
         # init model
-        self.model = ContextCast(data_dim=1,**kwargs)
+        self.model = ContextCast(self.cfg, data_dim=1,**kwargs)
         # self.params = kwargs
         # self.timestr = kwargs["timestr"]
         # self.assets = kwargs["assets"]

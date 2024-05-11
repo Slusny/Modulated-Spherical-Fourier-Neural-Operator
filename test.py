@@ -186,56 +186,77 @@
 
 
 
-# for i in range(5):
-#     print(i)
-#     i = -1
-
-from main import return_trainer
-import torch
-import matplotlib.pyplot as plt
-
-trainer = return_trainer([
-    '--model','mae',
-    '--assets','/mnt/ssd2/Master/S2S_on_SFNO/Assets',
-    '--trainingdata-path',"/mnt/V/wb2_2001-2003.zarr",
-    '--trainingset-start-year','2001',
-    '--trainingset-end-year','2002',
-    '--validationset-start-year','2002',
-    '--validationset-end-year','2003',
-    '--loss-fn','NormalCRPS',
-    '--loss-reduction','none',
-    '--nan-mask-threshold','0.5',
-    '--patch-size','28','9','9',
-    '--resume-checkpoint','/mnt/ssd2/Master/S2S_on_SFNO/outputs/mae/mae_latest_20240511T0254/checkpoint_mae_latest_None_iter=0_epoch=1.pkl',
-    '--save-path','/mnt/ssd2/Master/S2S_on_SFNO/outputs/mae',
-    ])
-
-checkpoint_list = ["/mnt/ssd2/Master/S2S_on_SFNO/outputs/mae/mae_latest_20240511T0254/checkpoint_mae_latest_None_iter=0_epoch=2.pkl"]
-
-trainer.set_dataloader()
-trainer.util.load_statistics()
-trainer.util.set_seed(42) 
-trainer.create_loss() 
 
 
-with torch.no_grad():
-    for cp_idx, checkpoint in enumerate(checkpoint_list):
-        cp = trainer.util.load_model(checkpoint)
-        # trainer.save_path = save_path
-        for i, data in enumerate(trainer.validation_loader):
-            for step in range(trainer.cfg.multi_step_validation+1):
-                data_nn = data[step][0].to(trainer.util.device)
-                data_norm = trainer.util.normalise(data[step][0]).to(trainer.util.device)
-                outputs, gt = trainer.model_forward(data_norm,data_norm,0)
-                break
-            break
-        break
+# from main import return_trainer
+# import torch
+# import matplotlib.pyplot as plt
 
-loss = trainer.get_loss(outputs,gt)
+# trainer = return_trainer([
+#     '--model','mae',
+#     '--assets','/mnt/ssd2/Master/S2S_on_SFNO/Assets',
+#     '--trainingdata-path',"/mnt/V/wb2_2001-2003.zarr",
+#     '--trainingset-start-year','2001',
+#     '--trainingset-end-year','2002',
+#     '--validationset-start-year','2002',
+#     '--validationset-end-year','2003',
+#     '--loss-fn','NormalCRPS',
+#     '--loss-reduction','none',
+#     '--nan-mask-threshold','0.5',
+#     '--patch-size','28','9','9',
+#     '--resume-checkpoint','/mnt/ssd2/Master/S2S_on_SFNO/outputs/mae/mae_latest_20240511T0254/checkpoint_mae_latest_None_iter=0_epoch=1.pkl',
+#     '--save-path','/mnt/ssd2/Master/S2S_on_SFNO/outputs/mae',
+#     ])
 
-plt.figure()
-plt.imshow(loss.cpu().numpy()[0,0,0])
-plt.colorbar()
-plt.show()
+# checkpoint_list = ["/mnt/ssd2/Master/S2S_on_SFNO/outputs/mae/mae_latest_20240511T0254/checkpoint_mae_latest_None_iter=0_epoch=2.pkl"]
 
-trainer.util.plot(outputs, gt, "1","test")
+# trainer.set_dataloader()
+# trainer.util.load_statistics()
+# trainer.util.set_seed(42) 
+# trainer.create_loss() 
+
+
+# with torch.no_grad():
+#     for cp_idx, checkpoint in enumerate(checkpoint_list):
+#         cp = trainer.util.load_model(checkpoint)
+#         # trainer.save_path = save_path
+#         for i, data in enumerate(trainer.validation_loader):
+#             for step in range(trainer.cfg.multi_step_validation+1):
+#                 data_nn = data[step][0].to(trainer.util.device)
+#                 data_norm = trainer.util.normalise(data[step][0]).to(trainer.util.device)
+#                 outputs, gt = trainer.model_forward(data_norm,data_norm,0)
+#                 break
+#             break
+#         break
+
+# loss = trainer.get_loss(outputs,gt)
+
+# plt.figure()
+# plt.imshow(loss.cpu().numpy()[0,0,0])
+# plt.colorbar()
+# plt.show()
+
+# trainer.util.plot(outputs, gt, "1","test")
+
+
+class test():
+    def __init__(self,a=1,b=2,**kwargs):
+        self.a = a
+        self.b = b
+        print(kwargs)
+    def __getitem__(self,key):
+        return self.a
+    def __setitem__(self,key,value):
+        self.a = value
+
+class test2():
+    def __init__(self,**kwargs):
+        self.kwargs = kwargs
+        self.t = test(**kwargs)
+    def __getitem__(self,key):
+        return self.a
+    def __setitem__(self,key,value):
+        self.a = value
+
+kwargs = {"a":3,"b":4,"c":5,"d":6}
+t = test2(**kwargs)
