@@ -30,7 +30,7 @@ class Attributes():
             setattr(self, k, v)  
 
 class LocalLog():
-    def __init(self,do_local_logging,save_path=None):
+    def __init__(self,do_local_logging,save_path=None):
         self.do_local_logging = do_local_logging
         self.save_path = save_path
         self.log_dict = {}

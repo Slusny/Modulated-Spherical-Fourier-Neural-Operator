@@ -56,7 +56,7 @@ class SpectralFilterLayer(nn.Module):
         self,
         forward_transform,
         inverse_transform,
-        embed_dim,
+        embed_dim_sfno,
         filter_type="linear",
         sparsity_threshold=0.0,
         use_complex_kernels=True,
@@ -76,7 +76,7 @@ class SpectralFilterLayer(nn.Module):
             self.filter = SpectralAttentionS2(
                 forward_transform,
                 inverse_transform,
-                embed_dim,
+                embed_dim_sfno,
                 sparsity_threshold,
                 use_complex_network=complex_network,
                 use_complex_kernels=use_complex_kernels,
@@ -90,7 +90,7 @@ class SpectralFilterLayer(nn.Module):
             self.filter = SpectralAttention2d(
                 forward_transform,
                 inverse_transform,
-                embed_dim,
+                embed_dim_sfno,
                 sparsity_threshold,
                 use_complex_kernels=use_complex_kernels,
                 hidden_size_factor=hidden_size_factor,
@@ -104,7 +104,7 @@ class SpectralFilterLayer(nn.Module):
             self.filter = SpectralConvS2(
                 forward_transform,
                 inverse_transform,
-                embed_dim,
+                embed_dim_sfno,
                 sparsity_threshold,
                 use_complex_kernels=use_complex_kernels,
                 compression=compression,
@@ -116,7 +116,7 @@ class SpectralFilterLayer(nn.Module):
             self.filter = SpectralConv2d(
                 forward_transform,
                 inverse_transform,
-                embed_dim,
+                embed_dim_sfno,
                 sparsity_threshold,
                 use_complex_kernels=use_complex_kernels,
                 compression=compression,
@@ -136,7 +136,7 @@ class FourierNeuralOperatorBlock(nn.Module):
         self,
         forward_transform,
         inverse_transform,
-        embed_dim,
+        embed_dim_sfno,
         filter_type="linear",
         mlp_ratio=2.0,
         drop_rate=0.0,
@@ -166,7 +166,7 @@ class FourierNeuralOperatorBlock(nn.Module):
         self.filter_layer = SpectralFilterLayer(
             forward_transform,
             inverse_transform,
-            embed_dim,
+            embed_dim_sfno,
             filter_type,
             sparsity_threshold,
             use_complex_kernels=use_complex_kernels,
@@ -180,14 +180,14 @@ class FourierNeuralOperatorBlock(nn.Module):
         )
 
         if inner_skip == "linear":
-            self.inner_skip = nn.Conv2d(embed_dim, embed_dim, 1, 1)
+            self.inner_skip = nn.Conv2d(embed_dim_sfno, embed_dim_sfno, 1, 1)
         elif inner_skip == "identity":
             self.inner_skip = nn.Identity()
 
         self.concat_skip = concat_skip
 
         if concat_skip and inner_skip is not None:
-            self.inner_skip_conv = nn.Conv2d(2 * embed_dim, embed_dim, 1, bias=False)
+            self.inner_skip_conv = nn.Conv2d(2 * embed_dim_sfno, embed_dim_sfno, 1, bias=False)
 
         if filter_type == "linear":
             self.act_layer = act_layer()
@@ -199,9 +199,9 @@ class FourierNeuralOperatorBlock(nn.Module):
         self.norm1 = norm_layer[1]()  # ((h,w))
 
         if mlp_mode != "none": # default distributed
-            mlp_hidden_dim = int(embed_dim * mlp_ratio)
+            mlp_hidden_dim = int(embed_dim_sfno * mlp_ratio)
             self.mlp = MLP(
-                in_features=embed_dim,
+                in_features=embed_dim_sfno,
                 hidden_features=mlp_hidden_dim,
                 act_layer=act_layer,
                 drop_rate=drop_rate,
@@ -209,12 +209,12 @@ class FourierNeuralOperatorBlock(nn.Module):
             )
 
         if outer_skip == "linear":
-            self.outer_skip = nn.Conv2d(embed_dim, embed_dim, 1, 1)
+            self.outer_skip = nn.Conv2d(embed_dim_sfno, embed_dim_sfno, 1, 1)
         elif outer_skip == "identity":
             self.outer_skip = nn.Identity()
 
         if concat_skip and outer_skip is not None:
-            self.outer_skip_conv = nn.Conv2d(2 * embed_dim, embed_dim, 1, bias=False)
+            self.outer_skip_conv = nn.Conv2d(2 * embed_dim_sfno, embed_dim_sfno, 1, bias=False)
 
     def forward(self, x):
         residual = x
@@ -254,7 +254,7 @@ class FourierNeuralOperatorBlock_Filmed(nn.Module):
         self,
         forward_transform,
         inverse_transform,
-        embed_dim,
+        embed_dim_sfno,
         filter_type="linear",
         mlp_ratio=2.0,
         drop_rate=0.0,
@@ -287,7 +287,7 @@ class FourierNeuralOperatorBlock_Filmed(nn.Module):
         self.filter_layer = SpectralFilterLayer(
             forward_transform,
             inverse_transform,
-            embed_dim,
+            embed_dim_sfno,
             filter_type,
             sparsity_threshold,
             use_complex_kernels=use_complex_kernels,
@@ -303,14 +303,14 @@ class FourierNeuralOperatorBlock_Filmed(nn.Module):
         self.block_idx = block_idx
 
         if inner_skip == "linear":
-            self.inner_skip = nn.Conv2d(embed_dim, embed_dim, 1, 1)
+            self.inner_skip = nn.Conv2d(embed_dim_sfno, embed_dim_sfno, 1, 1)
         elif inner_skip == "identity":
             self.inner_skip = nn.Identity()
 
         self.concat_skip = concat_skip
 
         if concat_skip and inner_skip is not None:
-            self.inner_skip_conv = nn.Conv2d(2 * embed_dim, embed_dim, 1, bias=False)
+            self.inner_skip_conv = nn.Conv2d(2 * embed_dim_sfno, embed_dim_sfno, 1, bias=False)
 
         if filter_type == "linear":
             self.act_layer = act_layer()
@@ -322,9 +322,9 @@ class FourierNeuralOperatorBlock_Filmed(nn.Module):
         self.norm1 = norm_layer[1]()  # ((h,w))
 
         if mlp_mode != "none":
-            mlp_hidden_dim = int(embed_dim * mlp_ratio)
+            mlp_hidden_dim = int(embed_dim_sfno * mlp_ratio)
             self.mlp = MLP(
-                in_features=embed_dim,
+                in_features=embed_dim_sfno,
                 hidden_features=mlp_hidden_dim,
                 act_layer=act_layer,
                 drop_rate=drop_rate,
@@ -332,12 +332,12 @@ class FourierNeuralOperatorBlock_Filmed(nn.Module):
             )
 
         if outer_skip == "linear":
-            self.outer_skip = nn.Conv2d(embed_dim, embed_dim, 1, 1)
+            self.outer_skip = nn.Conv2d(embed_dim_sfno, embed_dim_sfno, 1, 1)
         elif outer_skip == "identity":
             self.outer_skip = nn.Identity()
 
         if concat_skip and outer_skip is not None:
-            self.outer_skip_conv = nn.Conv2d(2 * embed_dim, embed_dim, 1, bias=False)
+            self.outer_skip_conv = nn.Conv2d(2 * embed_dim_sfno, embed_dim_sfno, 1, bias=False)
 
     def forward(self, x, gamma, beta, scale=1):
         residual = x
@@ -395,7 +395,7 @@ class FourierNeuralOperatorNet(nn.Module):
         scale_factor=6,
         in_chans=73,
         out_chans=73,
-        embed_dim=256,
+        embed_dim_sfno=256,
         num_layers=12,
         mlp_mode="distributed",
         mlp_ratio=2.0,
@@ -431,7 +431,7 @@ class FourierNeuralOperatorNet(nn.Module):
         self.scale_factor = scale_factor
         self.in_chans = in_chans
         self.out_chans = out_chans
-        self.embed_dim = self.num_features = embed_dim
+        self.embed_dim_sfno = self.num_features = embed_dim_sfno
         self.num_layers = num_layers
         self.num_blocks = num_blocks
         self.hard_thresholding_fraction = hard_thresholding_fraction
@@ -472,42 +472,42 @@ class FourierNeuralOperatorNet(nn.Module):
         elif self.normalization_layer == "instance_norm":
             self.norm_layer0 = partial(
                 nn.InstanceNorm2d,
-                num_features=self.embed_dim,
+                num_features=self.embed_dim_sfno,
                 eps=1e-6,
                 affine=True,
                 track_running_stats=False,
             )
             self.norm_layer1 = self.norm_layer0
         # elif self.normalization_layer == "batch_norm":
-        #     norm_layer = partial(nn.InstanceNorm2d, num_features=self.embed_dim, eps=1e-6, affine=True, track_running_stats=False)
+        #     norm_layer = partial(nn.InstanceNorm2d, num_features=self.embed_dim_sfno, eps=1e-6, affine=True, track_running_stats=False)
         else:
             raise NotImplementedError(
                 f"Error, normalization {self.normalization_layer} not implemented."
             )
 
         # ENCODER is just an MLP?
-        encoder_hidden_dim = self.embed_dim
+        encoder_hidden_dim = self.embed_dim_sfno
         encoder_act = nn.GELU
 
         # encoder0 = nn.Conv2d(self.in_chans, encoder_hidden_dim, 1, bias=True)
-        # encoder1 = nn.Conv2d(encoder_hidden_dim, self.embed_dim, 1, bias=False)
+        # encoder1 = nn.Conv2d(encoder_hidden_dim, self.embed_dim_sfno, 1, bias=False)
         # encoder_act = nn.GELU()
         # self.encoder = nn.Sequential(encoder0, encoder_act, encoder1, self.norm_layer0())
 
         self.encoder = MLP(
             in_features=self.in_chans,
             hidden_features=encoder_hidden_dim,
-            out_features=self.embed_dim,
+            out_features=self.embed_dim_sfno,
             output_bias=False,
             act_layer=encoder_act,
             drop_rate=0.0,
             checkpointing_mlp=checkpointing_mlp,
         )
 
-        # self.input_encoding = nn.Conv2d(self.in_chans, self.embed_dim, 1)
+        # self.input_encoding = nn.Conv2d(self.in_chans, self.embed_dim_sfno, 1)
         # self.pos_embed = nn.Parameter(torch.zeros(1, self.pos_embed_dim, self.img_size[0], self.img_size[1]))
         self.pos_embed = nn.Parameter(
-            torch.zeros(1, self.embed_dim, self.img_size[0], self.img_size[1])
+            torch.zeros(1, self.embed_dim_sfno, self.img_size[0], self.img_size[1])
         )
 
         # prepare the SHT
@@ -573,7 +573,7 @@ class FourierNeuralOperatorNet(nn.Module):
             block = FourierNeuralOperatorBlock(
                 forward_transform,
                 inverse_transform,
-                self.embed_dim,
+                self.embed_dim_sfno,
                 filter_type=self.filter_type,
                 mlp_ratio=mlp_ratio,
                 drop_rate=drop_rate,
@@ -595,16 +595,16 @@ class FourierNeuralOperatorNet(nn.Module):
             self.blocks.append(block)
 
         # DECODER is also an MLP
-        decoder_hidden_dim = self.embed_dim
+        decoder_hidden_dim = self.embed_dim_sfno
         decoder_act = nn.GELU
 
-        # decoder0 = nn.Conv2d(self.embed_dim + self.big_skip*self.in_chans, decoder_hidden_dim, 1, bias=True)
+        # decoder0 = nn.Conv2d(self.embed_dim_sfno + self.big_skip*self.in_chans, decoder_hidden_dim, 1, bias=True)
         # decoder1 = nn.Conv2d(decoder_hidden_dim, self.out_chans, 1, bias=False)
         # decoder_act = nn.GELU()
         # self.decoder = nn.Sequential(decoder0, decoder_act, decoder1)
 
         self.decoder = MLP(
-            in_features=self.embed_dim + self.big_skip * self.in_chans,
+            in_features=self.embed_dim_sfno + self.big_skip * self.in_chans,
             hidden_features=decoder_hidden_dim,
             out_features=self.out_chans,
             output_bias=False,
@@ -718,7 +718,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
             block = FourierNeuralOperatorBlock_Filmed(
                 forward_transform,
                 inverse_transform,
-                self.embed_dim,
+                self.embed_dim_sfno,
                 filter_type=self.filter_type,
                 mlp_ratio=mlp_ratio,
                 drop_rate=drop_rate,
@@ -744,7 +744,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         if kwargs["film_gen_type"] == "gcn":
             self.film_gen = GCN(self.batch_size,device,depth=self.cfg.model_depth,embed_dim=self.cfg.embed_dim,num_layers=self.film_layers,assets=os.path.join(self.cfg.assets,"gcn"))# num layers is 1 for now
         elif kwargs["film_gen_type"] == "transformer":
-            self.film_gen = ViT(patch_size=4, num_classes=256, dim=self.cfg.embed_dim, depth=self.cfg.model_depth, heads=16, mlp_dim = self.cfg.mlp_dim, dropout = 0.1, channels =1, device=device, num_layers=self.film_layers)
+            self.film_gen = ViT(patch_size=4, num_classes=256, dim=self.cfg.embed_dim, depth=self.cfg.model_depth, heads=16, mlp_dim = self.cfg.mlp_dim_film, dropout = 0.1, channels =1, device=device, num_layers=self.film_layers)
         else:
             self.film_gen = GCN_custom(self.batch_size,device,depth=self.cfg.model_depth,embed_dim=self.cfg.embed_dim,num_layers=self.film_layers,assets=os.path.join(self.cfg.assets,"gcn"))# num layers is 1 for now
     
