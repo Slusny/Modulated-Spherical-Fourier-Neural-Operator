@@ -529,13 +529,6 @@ def _main():
         action="store",
         type=str
     )
-    evaluate.add_argument(
-        "--eval-skip-checkpoints",
-        help="evaluate model list of checkpoints for autoregressive forecast",
-        action="store",
-        type=int,
-        default=0,
-    )
 
     # Logging
     logging_parser = parser.add_argument_group('Logging')

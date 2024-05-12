@@ -1268,7 +1268,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         wb_ref = True
 
         self.load_statistics()
-        self.set_seed()
+        self.set_seed(42)
         plot = True
         
         dataset_validation = ERA5_galvani(

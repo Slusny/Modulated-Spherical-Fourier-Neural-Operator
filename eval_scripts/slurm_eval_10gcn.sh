@@ -39,5 +39,5 @@
 #SBATCH --mail-user=lennart.slusny@student.uni-tuebingen.de
 # your mail address
 
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version film --validation-epochs 300 --training-workers 5 --batch-size 1 --multi-step-validation 5 --validation-step-skip 5 --eval-models-autoregressive --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/floral-eon-52 --film-gen gcn --eval-checkpoints 500 2000 2500 --eval-sfno  #--eval-checkpoint-num 5 #--eval-checkpoints
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version film --validation-epochs 15 --training-workers 7 --batch-size 1 --multi-step-validation 5 --validation-step-skip 5 --eval-models-autoregressive --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/sfno_film_gcn_20240512T0427 --film-gen gcn --eval-checkpoint-num 3  #--eval-checkpoint-num 5 #--eval-checkpoints
 echo DONE!
