@@ -100,9 +100,9 @@ def _main():
     parser.add_argument(
         "--assets-sub-directory",
         action='store',
-        default="S2S_on_SFNO/Assets",
-        help="Load assets from a subdirectory of this module based on the name of the model. \
-              Defaults to ./S2S_on_SFNO/Assets/{model}. Gets overwritten by --assets",
+        default=None,
+        # help="Load assets from a subdirectory of this module based on the name of the model. \
+        #       Defaults to ./S2S_on_SFNO/Assets/{model}. Gets overwritten by --assets",
     )
     parser.add_argument(
         "--output-path",
