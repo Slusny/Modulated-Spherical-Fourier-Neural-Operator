@@ -150,9 +150,9 @@ class ERA5_galvani(Dataset):
                     sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean().to_numpy()
                 # if self.coarse_level > 1:
                 #     sst = sst.to_numpy()[:-1:self.coarse_level,::self.coarse_level] # or numpy at the end
-                return (data,torch.from_numpy(sst),time)
+                return (data.float(),torch.from_numpy(sst).float(),time)
             else:
-                return (data,time)
+                return (data.float(),time)
         
         if self.auto_regressive_steps > 0:
             data = []
@@ -232,7 +232,7 @@ class SST_galvani(Dataset):
             time = torch.tensor(int(time[0:4]+time[5:7]+time[8:10]+time[11:13])) # time in format YYYYMMDDHH  
             if self.coarse_level > 1:
                 sst = input.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean()
-            return torch.from_numpy(sst.to_numpy()), time
+            return torch.from_numpy(sst.to_numpy()).float(), time
         if self.gt:
             g_truth = self.dataset.isel(time=slice(self.start_idx+idx+1, self.start_idx+idx+1 + self.temporal_step))[["sea_surface_temperature"]].to_array()
             return format(input), format(g_truth)
@@ -258,7 +258,7 @@ class Trainer():
     def train(self):
         self.setup()
         while self.epoch < self.cfg.training_epochs:
-            # self.pre_epoch()
+            self.pre_epoch()
             self.train_epoch() 
             self.post_epoch() 
         self.finalise()
@@ -349,7 +349,9 @@ class Trainer():
                 batch_loss = 0
   
         # end of epoch
-        
+    
+    def pre_epoch(self):
+        self.util.set_seed(self.epoch)   
     
     def post_epoch(self):
         self.epoch += 1
@@ -392,8 +394,7 @@ class Trainer():
     def ready_model(self):
         self.util.load_model(self.util.checkpoint_path)
         self.model.train()
-        self.util.load_statistics()
-        # self.util.set_seed(42)    
+        self.util.load_statistics() 
 
     def create_sheduler(self):
         # Scheduler
@@ -576,8 +577,8 @@ class Trainer():
         
         # log film parameters gamma/beta
         if self.cfg.advanced_logging and self.cfg.model_version == "film":
-            gamma_np = self.model.gamma.cpu().numpy()
-            beta_np  = self.model.beta.cpu().numpy()
+            gamma_np = self.model.gamma.cpu().clone().detach().numpy()
+            beta_np  = self.model.beta.cpu().clone().detach().numpy()
             print("gamma values mean : ",round(gamma_np.mean(),6),"+/-",round(gamma_np.std(),6))
             print("beta values mean  : ",round(beta_np.mean(),6),"+/-",round(beta_np.std(),6))
             val_log["gamma"] = round(gamma_np.mean(),6)
@@ -629,8 +630,8 @@ class Trainer():
 
         # Gamma Beta
         if self.cfg.advanced_logging and self.cfg.model_version == "film":
-            gamma_np = self.model.gamma.cpu().numpy()
-            beta_np  = self.model.beta.cpu().numpy()
+            gamma_np = self.model.gamma.cpu().clone().detach().numpy()
+            beta_np  = self.model.beta.cpu().clone().detach().numpy()
             np.save(os.path.join( self.cfg.save_path,"gamma_{}.npy".format(self.step)),gamma_np)
             np.save(os.path.join( self.cfg.save_path,"beta_{}.npy".format(self.step)),beta_np)
 

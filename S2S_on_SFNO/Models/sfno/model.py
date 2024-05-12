@@ -1169,8 +1169,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
                         val_loss_value_pervar = torch.stack(loss_pervar_list).mean(dim=0)
                         for idx_var,var_name in enumerate(self.ordering):
                             print("    ",var_name," = ",round(val_loss_value_pervar[idx_var].item(),5))
-                        gamma_np = model.gamma.cpu().numpy()
-                        beta_np  = model.beta.cpu().numpy()
+                        gamma_np = model.gamma.cpu().clone().detach().numpy()
+                        beta_np  = model.beta.cpu().clone().detach().numpy()
                         print("gamma values mean : ",round(gamma_np.mean(),5),"+/-",round(gamma_np.std(),5))
                         print("beta values mean  : ",round(beta_np.mean(),5),"+/-",round(beta_np.std(),5))
                     if wandb_run :
