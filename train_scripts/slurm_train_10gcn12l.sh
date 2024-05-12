@@ -39,7 +39,7 @@
 #SBATCH --mail-user=lennart.slusny@student.uni-tuebingen.de
 # your mail address
 
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version film --train --validation-interval 2 --validation-epochs 3 --training-workers 6 --batch-size 1 --learning-rate 0.000005 --multi-step-training 1 --training-step-skip 0 --film-gen gcn --film-layers 12 --save-checkpoint-interval 5 --advanced-logging --accumulation-steps 100 --loss-fn L2Sphere --scheduler CosineAnnealingLR --scheduler-horizon 432440 --training-epochs 8 --trainingset-start-year 1979 --trainingset-end-year 2016 --validationset-start-year 2016 --validationset-end-year 2018 --wandb --jobID $SLURM_JOB_ID 
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version film --train --validation-interval 2 --validation-epochs 3 --training-workers 6 --batch-size 1 --learning-rate 0.000005 --multi-step-training 1 --training-step-skip 0 --film-gen gcn --film-layers 12 --save-checkpoint-interval 5 --advanced-logging --accumulation-steps 100 --loss-fn L2Sphere --scheduler CosineAnnealingLR --scheduler-horizon 432440 --training-epochs 8 --trainingset-start-year 1979 --trainingset-end-year 2016 --validationset-start-year 2016 --validationset-end-year 2018 --jobID $SLURM_JOB_ID 
 
 
 echo DONE!
