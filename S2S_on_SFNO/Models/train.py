@@ -566,7 +566,7 @@ class Trainer():
         if self.cfg.advanced_logging and self.mse_all_vars and self.cfg.model_type != "mae":
             print("MSE for each variable:")
             val_loss_value_pervar = torch.stack(loss_pervar_list).mean(dim=0)
-            for idx_var,var_name in enumerate(self.ordering):
+            for idx_var,var_name in enumerate(self.util.ordering):
                 print("    ",var_name," = ",round(val_loss_value_pervar[idx_var].item(),5))
                 val_log["MSE "+var_name] = round(val_loss_value_pervar[idx_var].item(),5)
         
