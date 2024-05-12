@@ -159,6 +159,12 @@ def _main():
         help="Show the fields needed as input for the model",
         action="store_true",
     )
+    parser.add_argument(
+        "--jobID",
+        help="log the slurm JobID",
+        action="store",
+        default=None,
+    )
 
     # Data
     data = parser.add_argument_group('Data and Data Sources')
@@ -827,6 +833,7 @@ def _main():
         print("")
         print("Started training ")
         LOG.info("Process ID: %s", os.getpid())
+        if args.jobID is not None: LOG.info("Slurm Job ID: %s", args.jobID)
         kwargs = vars(args)
 
         trainer = Trainer(model,kwargs)
