@@ -283,7 +283,7 @@ class Trainer():
                     notes=self.cfg.notes,
                     tags=self.cfg.tags)
             # create checkpoint folder for run name
-            if self.cfg.jobID is not None:  file_name = wandb_run.name+"-(sID"+self.cfg.jobID+")"
+            if self.cfg.jobID is not None:  file_name = wandb_run.name+"-sID{"+self.cfg.jobID+"}"
             else:                           file_name = wandb_run.name
             new_save_path = os.path.join(self.cfg.save_path,file_name)
             os.mkdir(new_save_path)
@@ -293,7 +293,7 @@ class Trainer():
             if self.cfg.film_gen_type: film_gen_str = "_"+self.cfg.film_gen_type
             else:                  film_gen_str = ""
             file_name = self.cfg.model_type+"_"+self.cfg.model_version+film_gen_str+"_"+self.cfg.timestr
-            if self.cfg.jobID is not None:  file_name = file_name+"-(sID"+self.cfg.jobID+")"
+            if self.cfg.jobID is not None:  file_name = file_name+"-{sID"+self.cfg.jobID+"}"
             new_save_path = os.path.join(self.cfg.save_path,file_name)
             os.mkdir(new_save_path)
             self.cfg.save_path = new_save_path
