@@ -3,7 +3,7 @@
 #a) Define slurm job parameters
 ####
 
-#SBATCH --job-name=sfnoee
+#SBATCH --job-name=sfnovl
 
 #resources:
 
@@ -27,10 +27,10 @@
 # the maximum time the scripts needs to run
 # "minutes:seconds", "hours:minutes:seconds", "days-hours","days-hours:minutes" and "days-hours:minutes:seconds"
 
-#SBATCH --error=/home/goswami/gkd965/jobs/job.sfnoee.%J.err
+#SBATCH --error=/home/goswami/gkd965/jobs/job.sfnodoctor.%J.err
 # write the error output to job.*jobID*.err
 
-#SBATCH --output=/home/goswami/gkd965/jobs/job.sfnoee.%J.out
+#SBATCH --output=/home/goswami/gkd965/jobs/job.sfnodoctor.%J.out
 # write the standard output to job.*jobID*.out
 
 #SBATCH --mail-type=ALL
@@ -39,5 +39,6 @@
 #SBATCH --mail-user=lennart.slusny@student.uni-tuebingen.de
 # your mail address
 
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --validation-epochs 50 --training-workers 5 --batch-size 1 --multi-step-validation 5 --validation-step-skip 5 --eval-model --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/sfno/emissary-enterprise-8 --eval-checkpoint-num 5
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --validation-epochs 10 --training-workers 5 --batch-size 1 --eval-model --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/vivid-lion-15
+#--eval-checkpoint-num 3
 echo DONE!

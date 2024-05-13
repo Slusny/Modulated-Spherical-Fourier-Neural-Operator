@@ -39,5 +39,5 @@
 #SBATCH --mail-user=lennart.slusny@student.uni-tuebingen.de
 # your mail address
 
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version latest --validation-epochs 300 --training-workers 5 --batch-size 1 --multi-step-validation 5 --validation-step-skip 5 --eval-models-autoregressive --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/sfno/fine-sunset-13 #--eval-checkpoints
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --validation-epochs 300 --training-workers 5 --batch-size 1 --multi-step-validation 5 --validation-step-skip 5 --eval-model --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/sfno/fine-sunset-13 #--eval-checkpoints
 echo DONE!

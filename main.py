@@ -56,28 +56,6 @@ def _main():
         help="execute test code",
         )
     parser.add_argument(
-        "--model",
-        action="store",
-        required=True,
-        #choices=available_models(),
-        choices=["sfno","fcn","mae"],
-        dest="model_type",
-        help="Specify the model to run",
-    )
-    parser.add_argument(
-        "--model-version",
-        default="latest",
-        help="Model versions: \n    SFNO: [0, film]\n    Fourcastnet: [0, 1]",
-    )
-    parser.add_argument(
-        "--film-gen",
-        default=None,
-        type=str,
-        dest="film_gen_type",
-        help="Which type of film generator to use in the filmed model.",
-        choices=["none","gcn","gcn_custom","transformer"]
-    )
-    parser.add_argument(
         "--assets",
         action="store",
         help="Absolute path to directory containing the weights and other assets of the Model. \
@@ -569,6 +547,28 @@ def _main():
     )
     # Architecture
     architecture_parser = parser.add_argument_group('Architecture')
+    architecture_parser.add_argument(
+        "--model",
+        action="store",
+        required=True,
+        #choices=available_models(),
+        choices=["sfno","fcn","mae"],
+        dest="model_type",
+        help="Specify the model to run",
+    )
+    architecture_parser.add_argument(
+        "--model-version",
+        default="latest",
+        help="Model versions: \n    SFNO: [0, film]\n    Fourcastnet: [0, 1]",
+    )
+    architecture_parser.add_argument(
+        "--film-gen",
+        default=None,
+        type=str,
+        dest="film_gen_type",
+        help="Which type of film generator to use in the filmed model.",
+        choices=["none","gcn","gcn_custom","transformer"]
+    )
     architecture_parser.add_argument(
         '--film-layers', 
         action='store',
