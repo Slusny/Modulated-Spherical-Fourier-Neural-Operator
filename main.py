@@ -550,11 +550,11 @@ def _main():
     architecture_parser.add_argument(
         "--model",
         action="store",
-        required=True,
         #choices=available_models(),
         choices=["sfno","fcn","mae"],
         dest="model_type",
         help="Specify the model to run",
+        required=True,
     )
     architecture_parser.add_argument(
         "--model-version",
@@ -648,20 +648,34 @@ def _main():
     # else:
     #     args.assets = os.path.join(Path(".").absolute(),args.model_type)
 
-    # Format Output path
-    timestr = time.strftime("%Y%m%dT%H%M")
-    # save_string to save output data if model.run is called (only for runs not for training)
-    save_string = "leadtime_"+str(args.lead_time)+"_startDate_"+str(args.date)+str(args.time) +"_createdOn_"+timestr
-    if args.path is None:
-        outputDirPath = os.path.join(Path(".").absolute(),"S2S_on_SFNO/outputs",args.model_type)
-    else:
-        outputDirPath = os.path.join(args.path,args.model_type)
     
-    args.path  = os.path.join(outputDirPath,save_string+".grib")
-    # timestring for logging and saveing purposes
-    args.timestr = timestr
-    if not os.path.exists(args.path):
-        os.makedirs(os.path.dirname(args.path), exist_ok=True)
+    if args.requests_extra:
+        if not args.retrieve_requests and not args.archive_requests:
+            parser.error(
+                "You need to specify --retrieve-requests or --archive-requests"
+            )
+    
+    if not args.fields and not args.retrieve_requests:
+        logging.basicConfig(
+            level="DEBUG" if args.debug else "INFO",
+            format="%(asctime)s %(levelname)s %(message)s",
+        )
+
+    if args.file is not None:
+        args.input = "file"
+
+    if args.metadata is None:
+        args.metadata = []
+
+    if args.expver is not None:
+        args.metadata["expver"] = args.expver
+
+    if args.class_ is not None:
+        args.metadata["class"] = args.class_
+
+
+    # Manipulation on args
+    if args.metadata: args.metadata = dict(kv.split("=") for kv in args.metadata)
 
     # Add extra steps to multi_step_training if we want to skip steps
     if args.training_step_skip > 0:
@@ -675,24 +689,6 @@ def _main():
         else:
             print("multi-step-skip given but no multi-step-validation = 0. Specify the number of steps in multi-step-validation larger 0.")
 
-    if args.file is not None:
-        args.input = "file"
-
-    if not args.fields and not args.retrieve_requests:
-        logging.basicConfig(
-            level="DEBUG" if args.debug else "INFO",
-            format="%(asctime)s %(levelname)s %(message)s",
-        )
-
-    if args.metadata is None:
-        args.metadata = []
-
-    if args.expver is not None:
-        args.metadata["expver"] = args.expver
-
-    if args.class_ is not None:
-        args.metadata["class"] = args.class_
-
     # set film_gen_type if model version film is selected but no generator to default value
     if args.film_gen_type:
         if args.film_gen_type.lower() == "none" : args.film_gen_type = None
@@ -702,7 +698,21 @@ def _main():
     # scheduler is updated in every validation interval. To arive at the total horizon in standard iters we divide by the validation interval
     args.scheduler_horizon = args.scheduler_horizon//args.validation_interval
 
-    
+    # Format Output path
+    timestr = time.strftime("%Y%m%dT%H%M")
+    # save_string to save output data if model.run is called (only for runs not for training)
+    save_string = "leadtime_"+str(args.lead_time)+"_startDate_"+str(args.date)+str(args.time) +"_createdOn_"+timestr
+    if args.path is None:
+        outputDirPath = os.path.join(Path(".").absolute(),"S2S_on_SFNO/outputs",args.model_type)
+    else:
+        outputDirPath = os.path.join(args.path,args.model_type)
+    args.path  = os.path.join(outputDirPath,save_string+".grib")
+    # timestring for logging and saveing purposes
+    args.timestr = timestr
+    if not os.path.exists(args.path):
+        os.makedirs(os.path.dirname(args.path), exist_ok=True)
+
+
     # init wandb and create directory for saveing training results
     # if args.train:
     #     if args.wandb   : 
@@ -734,9 +744,6 @@ def _main():
     #         args.save_path = new_save_path
     #         print("")
     #         print("no wandb")
-
-    # Manipulation on args
-    args.metadata = dict(kv.split("=") for kv in args.metadata)
     
     #Print args
     print("Script called with the following parameters")
@@ -747,6 +754,7 @@ def _main():
             print("    ",k," : ",v)
         print("")
 
+    # Load parameters from checkpoint if given and load model
     resume_cp = args.resume_checkpoint
     if args.eval_model:
         resume_cp = list(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len))[-1]
@@ -776,13 +784,6 @@ def _main():
     if args.fields:
         model.print_fields()
         sys.exit(0)
-
-    if args.requests_extra:
-        if not args.retrieve_requests and not args.archive_requests:
-            parser.error(
-                "You need to specify --retrieve-requests or --archive-requests"
-            )
-            
 
     # This logic is a bit convoluted, but it is for backwards compatibility.
     if args.retrieve_requests or (args.requests_extra and not args.archive_requests):

@@ -40,4 +40,8 @@
 # your mail address
 
 singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --validation-epochs 15 --training-workers 7 --batch-size 1 --multi-step-validation 5 --validation-step-skip 5 --eval-model --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/sfno_film_gcn_20240512T0427 --eval-checkpoint-num 3  #--eval-checkpoint-num 5 #--eval-checkpoints
+
+#local 
+# main.py --validation-epochs 15 --training-workers 7 --batch-size 1 --multi-step-validation 5 --validation-step-skip 5 --eval-model --eval-checkpoint-path /media/lenny/V/Master/checkpoints/apricot-smoke-15 --eval-checkpoint-num 2 --trainingset-start-year 2001 --trainingset-end-year 2002 --validationset-start-year 2002 --validationset-end-year 2003 --trainingdata-path /media/lenny/V/wb2_2001-2003.zarr --assets /mnt/ssd2/Master/S2S_on_SFNO/Assets 
+
 echo DONE!

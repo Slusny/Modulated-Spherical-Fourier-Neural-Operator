@@ -975,11 +975,17 @@ class FourCastNetv2_filmed(FourCastNetv2):
         #  Load Filmed weights
         if self.checkpoint_path_film:
             checkpoint_film = torch.load(self.checkpoint_path_film)
-            print("not yet implemented")
-            sys.exit()
             # needs to extract only film_gen weights if the whole model was saved
             # model.film_gen.load_state_dict(checkpoint_film["model_state"])
-            model.film_gen.load_state_dict(checkpoint_film)
+            try:
+                model.film_gen.load_state_dict(checkpoint_film)
+            except RuntimeError as e:
+                LOG.error(e)
+                print("--- !! ---")
+                print("Film Gen: loading state dict with strict=False, please verify if the right model is loaded and strict=False is desired")
+                print("--- !! ---")
+                model.load_state_dict(checkpoint_film,strict=False)
+
             del checkpoint_film
         else:
             pass
@@ -1500,7 +1506,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
             plt.close(fig)
 
     def get_parameters(self):
-        return self.model.film_gen.parameters()
+        return self.model.film_gen.get_parameters()
 
     def plot_skillscores(self,mean,std,save_path,variables,checkpoint,val_epochs):
         

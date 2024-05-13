@@ -10,3 +10,6 @@ for f in $(find $1 -type f); do
         rm -f $f
     fi
 done
+
+# find DIRECTORY -type f ! -size 0c | parallel -X --progress truncate -s0
+# rm -rf DIRECTORY

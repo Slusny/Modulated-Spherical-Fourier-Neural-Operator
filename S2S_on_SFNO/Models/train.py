@@ -658,14 +658,15 @@ class Trainer():
             self.util.load_statistics()
             self.util.set_seed(42)  
             for cp_idx, checkpoint in enumerate(checkpoint_list):
+                cp_name = checkpoint.split("/")[-1].split(".")[0]
                 cp = self.util.load_model(checkpoint)
-                self.save_path = save_path
+                # self.save_path = save_path
                 for i, data in enumerate(self.validation_loader):
-                    for step in range(self.cfg.multi_step_validation+1):
+                    for step in range(1): #range(self.cfg.multi_step_validation+1):
                         if step == 0 : input = self.util.normalise(data[step][0]).to(self.util.device)
                         else: input = output
                         output, gt = self.model_forward(input,data,step)
-                        self.util.plot(output, gt, int(cp["iter"])*int(cp["epoch"]),checkpoint)
+                        self.util.plot(output, gt, int(cp["iter"])*int(cp["epoch"]),cp_name,save_path)
                     break
                 
             print("done")

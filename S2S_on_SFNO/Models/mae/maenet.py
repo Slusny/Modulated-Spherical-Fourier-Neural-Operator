@@ -92,6 +92,7 @@ class ContextCast(nn.Module):
                  dropout: float = 0., 
                  predict_std: bool = True,
                  layer_scale: float = None,
+                 embed_dim = None,
                  **kwargs):
         """
         Args:
@@ -118,8 +119,11 @@ class ContextCast(nn.Module):
         self.grid_size = (grid_size[0] // self.patch_size[0], grid_size[1] // self.patch_size[1], grid_size[2] // self.patch_size[2]) #grid size in latent space
         self.num_patches = self.grid_size[0] * self.grid_size[1] * self.grid_size[2] #number of tokens in latent space
         self.patch_dim = self.patch_size[0] * self.patch_size[1] * self.patch_size[2] * data_dim #patch dimension
-        self.encoder_dim = encoder_dim #encoder dimension
+        if embed_dim is not None:
+            encoder_dim = embed_dim
+            decoder_dim = embed_dim
         self.decoder_dim = decoder_dim #decoder dimension
+        self.encoder_dim = encoder_dim #encoder dimension
 
         print("Architecture: MAE")
         print("    Number of patches: ", self.num_patches)

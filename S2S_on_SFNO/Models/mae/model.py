@@ -85,7 +85,7 @@ class MAE(Model):
             self.validation()
             model.train()
 
-    def plot(self, data, gt, training_examples,checkpoint):
+    def plot(self, data, gt, training_examples,checkpoint,save_path):
         """Plot data using matplotlib"""
         pred = data[0][0].cpu().numpy().squeeze()
         gt = gt.cpu().numpy().squeeze()
@@ -108,7 +108,7 @@ class MAE(Model):
             fig.colorbar(im_gt, ax=ax[0],shrink=0.7)
             fig.colorbar(img_std, ax=ax[1],shrink=0.7) 
             fig.suptitle("MAE reconstruction after ("+str(training_examples)+" training examples)")
-            plt.savefig(os.path.join(self.save_path,'figures','MAE_'+checkpoint+"_time_{}.pdf".format(time)))
+            plt.savefig(os.path.join(save_path,'MAE_'+checkpoint+"_time_{}.pdf".format(time)))
             plt.close()
 
     def finalise(self):
@@ -317,3 +317,39 @@ def get_model(**kwargs):
     #     model.train()
     #     if kwargs["advanced_logging"] and mem_log_not_done : 
     #         print("mem after validation : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
+
+
+class MAE_film(Model):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        # init model
+        self.model = ContextCast( self.cfg, data_dim=1, **kwargs)
+        # self.params = kwargs
+        # self.timestr = kwargs["timestr"]
+        # self.assets = kwargs["assets"]
+        # self.save_path = kwargs["save_path"]
+
+        if self.resume_checkpoint:
+            self.checkpoint_path = self.resume_checkpoint
+        else:
+            self.checkpoint_path = None
+    
+    def load_model(self, checkpoint_file):
+        
+        if checkpoint_file is not None:
+            checkpoint = torch.load(checkpoint_file)
+            if "model_state" in checkpoint.keys(): weights = checkpoint["model_state"]
+            else: weights = checkpoint
+            try:
+                self.model.load_state_dict(weights)
+            except RuntimeError as e:
+                LOG.error(e)
+                print("--- !! ---")
+                print("loading state dict with strict=False, please verify if the right model is loaded and strict=False is desired")
+                print("--- !! ---")
+                self.model.load_state_dict(weights,strict=False)
+        self.model.eval()
+        self.model.zero_grad()
+        self.model.to(self.device)
+        return checkpoint if checkpoint_file is not None else None

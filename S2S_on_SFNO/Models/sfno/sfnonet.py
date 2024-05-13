@@ -741,13 +741,8 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
             self.blocks.append(block)
         
         # coarse level =  4 default, could be changed by coarse_level in film_gen arguments
-        if kwargs["film_gen_type"] == "gcn":
-            self.film_gen = GCN(self.batch_size,device,depth=self.cfg.model_depth,embed_dim=self.cfg.embed_dim,num_layers=self.film_layers,assets=os.path.join(self.cfg.assets,"gcn"))# num layers is 1 for now
-        elif kwargs["film_gen_type"] == "transformer":
-            self.film_gen = ViT(patch_size=4, num_classes=256, dim=self.cfg.embed_dim, depth=self.cfg.model_depth, heads=16, mlp_dim = self.cfg.mlp_dim_film, dropout = 0.1, channels =1, device=device, num_layers=self.film_layers)
-        else:
-            self.film_gen = GCN_custom(self.batch_size,device,depth=self.cfg.model_depth,embed_dim=self.cfg.embed_dim,num_layers=self.film_layers,assets=os.path.join(self.cfg.assets,"gcn"))# num layers is 1 for now
-    
+        self.film_gen = Film_wrapper(device,cfg)
+
     def cp_forward(self, module):
         def custom_forward(*inputs):
             inputs = module(*inputs)
@@ -807,6 +802,9 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         return x
     
 
+    # weighting sst by grid cell size
+    # nino index lat=(-5,5) or lat=(-31,33)
+    
 class Nino_Index(nn.Module):
     def __init__(self,device,clim_path,temporal_step):
         super().__init__()
@@ -821,3 +819,57 @@ class Nino_Index(nn.Module):
         gb = tos_nino34.tos.groupby('time.month')
         tos_nino34_anom = gb - gb.mean(dim='time')
         index_nino34 = tos_nino34_anom.weighted(tos_nino34.areacello).mean(dim=['lat', 'lon'])
+
+
+class Film_wrapper(nn.Module):
+    def __init__(self,device,cfg):
+        super().__init__()
+        self.device = device
+        self.cfg = cfg
+
+        num_film_features=256
+
+        if self.cfg.film_gen_type == "gcn":
+            self.film_gen = GCN(self.cfg.batch_size,self.device,depth=self.cfg.model_depth,embed_dim=self.cfg.embed_dim,num_layers=self.cfg.film_layers,assets=os.path.join(self.cfg.assets,"gcn"))# num layers is 1 for now
+        elif self.cfg.film_gen_type == "transformer":
+            self.film_gen = ViT(patch_size=self.cfg.patch_size[-1], num_classes=num_film_features, dim=self.cfg.embed_dim, depth=self.cfg.model_depth, heads=16, mlp_dim = self.cfg.mlp_dim, dropout = 0.1, channels =1, device=self.device, num_layers=self.cfg.film_layers)
+        elif self.cfg.film_gen_type == "mae":
+            self.film_gen = ContextCast(self.batch_size,self.device,embed_dim=self.cfg.embed_dim,num_layers=self.cfg.film_layers,assets=os.path.join(self.cfg.assets,"mae"))
+            # self.film_head = nn.Linear(self.cfg.embed_dim,num_film_features*self.cfg.num_layers*2)
+            self.film_head = FeedForward(dim=self.cfg.embed_dim, hidden_dim=self.cfg.mlp_dim, dropout=0.1, out_dim=num_film_features*self.cfg.num_layers*2)
+        
+            # init
+            self.film_head.weight = nn.Parameter(torch.zeros_like(self.film_head.weight))
+            self.film_head.bias = nn.Parameter(torch.zeros_like(self.film_head.bias))
+        
+        else:
+            self.film_gen = GCN_custom(self.cfg.batch_size,self.device,depth=self.cfg.model_depth,embed_dim=self.cfg.embed_dim,num_layers=self.cfg.film_layers,assets=os.path.join(self.cfg.assets,"gcn"))# num layers is 1 for now
+    
+    def get_parameters(self):
+        if self.cfg.film_gen_type == "mae":
+            return self.film_head.parameters()
+        return self.film_gen.parameters()
+
+    def forward(self,sst):
+       # Mae
+        if self.cfg.film_gen_type == "mae":
+            with torch.no_grad():
+                cls = self.film_gen(sst)[-1]
+            self.film_head(cls)
+        else:
+            self.film_gen(sst)
+
+
+class FeedForward(nn.Module):
+    def __init__(self, dim, hidden_dim, dropout = 0.,out_dim=256):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.LayerNorm(dim),
+            nn.Linear(dim, hidden_dim),
+            nn.GELU(),
+            # nn.Dropout(dropout),
+            nn.Linear(hidden_dim, out_dim),
+        )
+
+    def forward(self, x):
+        return self.net(x)
