@@ -759,9 +759,9 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
             self.beta = beta
         
         # repeat for each block
-        if gamma.shape[0] != self.num_layers:
-            gamma = gamma.repeat(self.num_layers,1)
-            beta = beta.repeat(self.num_layers,1)
+        if gamma.shape[0] != self.film_layers:
+            gamma = gamma.repeat(self.film_layers,1)
+            beta = beta.repeat(self.film_layers,1)
         
         # save big skip
         if self.big_skip:
@@ -830,20 +830,20 @@ class Film_wrapper(nn.Module):
         num_film_features=256
 
         if self.cfg.film_gen_type == "gcn":
-            self.film_gen = GCN(self.cfg.batch_size,self.device,depth=self.cfg.model_depth,embed_dim=self.cfg.embed_dim,num_layers=self.cfg.film_layers,assets=os.path.join(self.cfg.assets,"gcn"))# num layers is 1 for now
+            self.film_gen = GCN(self.cfg.batch_size,self.device,depth=self.cfg.model_depth,embed_dim=self.cfg.embed_dim,film_layers=self.cfg.film_layers,assets=os.path.join(self.cfg.assets,"gcn"))# num layers is 1 for now
         elif self.cfg.film_gen_type == "transformer":
-            self.film_gen = ViT(patch_size=self.cfg.patch_size[-1], num_classes=num_film_features, dim=self.cfg.embed_dim, depth=self.cfg.model_depth, heads=16, mlp_dim = self.cfg.mlp_dim, dropout = 0.1, channels =1, device=self.device, num_layers=self.cfg.film_layers)
+            self.film_gen = ViT(patch_size=self.cfg.patch_size[-1], num_classes=num_film_features, dim=self.cfg.embed_dim, depth=self.cfg.model_depth, heads=16, mlp_dim = self.cfg.mlp_dim, dropout = 0.1, channels =1, device=self.device, film_layers=self.cfg.film_layers)
         elif self.cfg.film_gen_type == "mae":
-            self.film_gen = ContextCast(self.batch_size,self.device,embed_dim=self.cfg.embed_dim,num_layers=self.cfg.film_layers,assets=os.path.join(self.cfg.assets,"mae"))
-            # self.film_head = nn.Linear(self.cfg.embed_dim,num_film_features*self.cfg.num_layers*2)
-            self.film_head = FeedForward(dim=self.cfg.embed_dim, hidden_dim=self.cfg.mlp_dim, dropout=0.1, out_dim=num_film_features*self.cfg.num_layers*2)
+            self.film_gen = ContextCast(self.batch_size,self.device,embed_dim=self.cfg.embed_dim,film_layers=self.cfg.film_layers,assets=os.path.join(self.cfg.assets,"mae"))
+            # self.film_head = nn.Linear(self.cfg.embed_dim,num_film_features*self.cfg.film_layers*2)
+            self.film_head = FeedForward(dim=self.cfg.embed_dim, hidden_dim=self.cfg.mlp_dim, dropout=0.1, out_dim=num_film_features*self.cfg.film_layers*2)
         
             # init
             self.film_head.weight = nn.Parameter(torch.zeros_like(self.film_head.weight))
             self.film_head.bias = nn.Parameter(torch.zeros_like(self.film_head.bias))
         
         else:
-            self.film_gen = GCN_custom(self.cfg.batch_size,self.device,depth=self.cfg.model_depth,embed_dim=self.cfg.embed_dim,num_layers=self.cfg.film_layers,assets=os.path.join(self.cfg.assets,"gcn"))# num layers is 1 for now
+            self.film_gen = GCN_custom(self.cfg.batch_size,self.device,depth=self.cfg.model_depth,embed_dim=self.cfg.embed_dim,film_layers=self.cfg.film_layers,assets=os.path.join(self.cfg.assets,"gcn"))# num layers is 1 for now
     
     def get_parameters(self):
         if self.cfg.film_gen_type == "mae":
@@ -855,9 +855,9 @@ class Film_wrapper(nn.Module):
         if self.cfg.film_gen_type == "mae":
             with torch.no_grad():
                 cls = self.film_gen(sst)[-1]
-            self.film_head(cls)
+            return self.film_head(cls)
         else:
-            self.film_gen(sst)
+            return self.film_gen(sst)
 
 
 class FeedForward(nn.Module):

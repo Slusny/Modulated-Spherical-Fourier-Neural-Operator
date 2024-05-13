@@ -390,6 +390,7 @@ class Trainer():
     def finalise(self):
         self.local_log.save("training_log.npy")
         self.save_checkpoint()
+        wandb.finish()
 
     def ready_model(self):
         self.util.load_model(self.util.checkpoint_path)
@@ -411,9 +412,10 @@ class Trainer():
         if self.cfg.scheduler_type == 'ReduceLROnPlateau':
             self.scheduler.step(valid_mean)
         elif self.cfg.scheduler_type == 'CosineAnnealingLR':
-            self.scheduler.step()
+            self.scheduler.step(self.step)
             if (self.step) >= self.cfg.scheduler_horizon:
                 LOG.info("Terminating training after reaching params.max_epochs while LR scheduler is set to CosineAnnealingLR") 
+                self.finalise()
         elif self.cfg.scheduler_type == 'CosineAnnealingWarmRestarts':
             self.scheduler.step(self.step)
         
@@ -527,10 +529,6 @@ class Trainer():
                         val_log["std " + k] = round(val_loss_array.std(),5)
                     break
         
-        #scheduler
-        valid_mean = list(val_log.values())[0]
-        self.step_scheduler(valid_mean)
-
         # change scale value based on validation loss
         # if valid_mean < kwargs["val_loss_threshold"] and scale < 1.0:
         if self.scale < 1.0 and self.cfg.model_version == "film":
@@ -538,6 +536,11 @@ class Trainer():
             self.scale = self.scale + 0.002 # 5e-5 #
 
         self.valid_log(val_log,loss_pervar_list)
+        
+        #scheduler
+        valid_mean = list(val_log.values())[0]
+        self.step_scheduler(valid_mean)
+
         
 
         # save model and training statistics for checkpointing

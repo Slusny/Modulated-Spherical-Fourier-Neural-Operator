@@ -20,7 +20,7 @@ import torch
 from ..train import SST_galvani
 from ..losses import CosineMSELoss, L2Sphere, NormalCRPS
 
-LOG = logging.getLogger('S2S_on_SFNO')
+LOG = logging.getLogger(__name__)
 
 class MAE(Model):
     def __init__(self, **kwargs):

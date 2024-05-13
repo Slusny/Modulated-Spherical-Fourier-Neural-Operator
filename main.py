@@ -35,7 +35,7 @@ from S2S_on_SFNO.outputs import available_outputs
 from S2S_on_SFNO.Models.train import Trainer
 
 # LOG = logging.getLogger(__name__)
-LOG = logging.getLogger('S2S_on_SFNO')
+LOG = logging.getLogger(__name__)
 
 print("cuda available? : ",torch.cuda.is_available(),flush=True)
 
@@ -545,6 +545,12 @@ def _main():
         action='store_true',
         help='Log more values like the gamma, beta activations. Consumes more GPU memory.'
     )
+    logging_parser.add_argument(
+        '--log-file', 
+        action='store',
+        default=None,
+        help='Log stdout/err to file (for module logging, some logs are printed so a redirect > log_file )'
+    )
     # Architecture
     architecture_parser = parser.add_argument_group('Architecture')
     architecture_parser.add_argument(
@@ -634,6 +640,12 @@ def _main():
         group_dict={a.dest:getattr(args,a.dest,None) for a in group._group_actions}
         arg_groups[group.title]=argparse.Namespace(**group_dict)
 
+
+    # can also log to file if needed
+    if args.log_file:logging.basicConfig(level=logging.INFO, filename=args.log_file,filemode="a")
+    # use Slurm ID in checkpoint_save path and log to stdout to better find corresponding stdout from slurm job
+    if args.jobID is not None: LOG.info("Slurm Job ID: %s", args.jobID)
+    
     
     if args.debug: #new
         pdb.set_trace()
@@ -827,7 +839,7 @@ def _main():
         print("")
         print("Started training ")
         LOG.info("Process ID: %s", os.getpid())
-        if args.jobID is not None: LOG.info("Slurm Job ID: %s", args.jobID)
+
         kwargs = vars(args)
 
         trainer = Trainer(model,kwargs)

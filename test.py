@@ -239,24 +239,33 @@
 # trainer.util.plot(outputs, gt, "1","test")
 
 
-class test():
-    def __init__(self,a=1,b=2,**kwargs):
-        self.a = a
-        self.b = b
-        print(kwargs)
-    def __getitem__(self,key):
-        return self.a
-    def __setitem__(self,key,value):
-        self.a = value
+# class test():
+#     def __init__(self,a=1,b=2,**kwargs):
+#         self.a = a
+#         self.b = b
+#         print(kwargs)
+#     def __getitem__(self,key):
+#         return self.a
+#     def __setitem__(self,key,value):
+#         self.a = value
 
-class test2():
-    def __init__(self,**kwargs):
-        self.kwargs = kwargs
-        self.t = test(**kwargs)
-    def __getitem__(self,key):
-        return self.a
-    def __setitem__(self,key,value):
-        self.a = value
+# class test2():
+#     def __init__(self,**kwargs):
+#         self.kwargs = kwargs
+#         self.t = test(**kwargs)
+#     def __getitem__(self,key):
+#         return self.a
+#     def __setitem__(self,key,value):
+#         self.a = value
 
-kwargs = {"a":3,"b":4,"c":5,"d":6}
-t = test2(**kwargs)
+# kwargs = {"a":3,"b":4,"c":5,"d":6}
+# t = test2(**kwargs)
+import os
+import logging
+
+LOG = logging.getLogger(__name__)
+print("test1")
+print("test2")
+# LOG.info("Process ID: %s", os.getpid())
+LOG.info("inf")
+LOG.error("err")
