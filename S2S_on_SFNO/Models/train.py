@@ -536,7 +536,7 @@ class Trainer():
             self.scale = self.scale + 0.002 # 5e-5 #
 
         self.valid_log(val_log,loss_pervar_list)
-        
+
         #scheduler
         valid_mean = list(val_log.values())[0]
         self.step_scheduler(valid_mean)
@@ -544,7 +544,7 @@ class Trainer():
         
 
         # save model and training statistics for checkpointing
-        if (self.iter+1) % (self.cfg.validation_interval*self.cfg.save_checkpoint_interval) == 0:
+        if (self.iter+1) % (self.cfg.validation_interval*self.cfg.save_checkpoint_interval) == 0 and self.cfg.save_checkpoint_interval > 0:
             self.save_checkpoint()
         
         # return to training
