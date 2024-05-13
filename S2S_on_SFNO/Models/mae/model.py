@@ -10,6 +10,7 @@ import os
 import numpy as np
 import sys
 import matplotlib.pyplot as plt
+import random
 
 ultra_advanced_logging=False
 local_logging = False
@@ -92,7 +93,8 @@ class MAE(Model):
         mask = data[1][0].cpu().numpy().squeeze()
         vmin = np.min(np.concatenate((pred[~np.isnan(pred)],gt[~np.isnan(gt)])))
         vmax = np.max(np.concatenate((pred[~np.isnan(pred)],gt[~np.isnan(gt)])))
-        for time in range(pred.shape[0]):
+        num_time_plots = 3
+        for time in random.sample(range(pred.shape[0]),num_time_plots):
             fig, ax = plt.subplots(2, 2, figsize=(10, 5))
             ax[0][0].imshow(pred[time],vmin=vmin, vmax=vmax,)
             ax[0][0].set_title("Predicted SST")

@@ -649,6 +649,7 @@ class Trainer():
             for i, data in enumerate(self.training_loader):
                 pass
 
+    # only plots MAE results at the moment
     def evaluate_model(self, checkpoint_list,save_path):
         """Evaluate model using checkpoint list"""
         self.cfg.batch_size = 1
@@ -665,7 +666,7 @@ class Trainer():
                         else: input = output
                         output, gt = self.model_forward(input,data,step)
                         self.util.plot(output, gt, int(cp["iter"])*int(cp["epoch"]),checkpoint)
-                        break
+                    break
                 
             print("done")
             
