@@ -835,13 +835,15 @@ class Film_wrapper(nn.Module):
         elif self.cfg.film_gen_type == "transformer":
             self.film_gen = ViT(patch_size=self.cfg.patch_size[-1], num_classes=num_film_features, dim=self.cfg.embed_dim, depth=self.cfg.model_depth, heads=16, mlp_dim = self.cfg.mlp_dim, dropout = 0.1, channels =1, device=self.device, film_layers=self.cfg.film_layers)
         elif self.cfg.film_gen_type == "mae":
-            self.film_gen = ContextCast(self.cfg,self.device,embed_dim=self.cfg.embed_dim,film_layers=self.cfg.film_layers,assets=os.path.join(self.cfg.assets,"mae"))
+            self.film_gen = ContextCast(self.cfg,data_dim=1,patch_size=self.cfg.patch_size, embed_dim=self.cfg.embed_dim,film_layers=self.cfg.film_layers,assets=os.path.join(self.cfg.assets,"mae"))
             # self.film_head = nn.Linear(self.cfg.embed_dim,num_film_features*self.cfg.film_layers*2)
             self.film_head = FeedForward(dim=self.cfg.embed_dim, hidden_dim=self.cfg.mlp_dim, dropout=0.1, out_dim=num_film_features*self.cfg.film_layers*2)
         
             # init
-            self.film_head.weight = nn.Parameter(torch.zeros_like(self.film_head.weight))
-            self.film_head.bias = nn.Parameter(torch.zeros_like(self.film_head.bias))
+            for x in self.film_head.net: 
+                if type(x) == torch.nn.modules.linear.Linear:
+                    nn.init.constant_(x.weight, 0)
+                    nn.init.constant_(x.bias, 0)
         
         else:
             self.film_gen = GCN_custom(self.cfg.batch_size,self.device,depth=self.cfg.model_depth,embed_dim=self.cfg.embed_dim,film_layers=self.cfg.film_layers,assets=os.path.join(self.cfg.assets,"gcn"))# num layers is 1 for now

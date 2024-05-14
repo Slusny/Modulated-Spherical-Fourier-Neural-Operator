@@ -954,6 +954,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 if name != "ged":
                     new_state_dict[name] = v
             try:
+                print("\n - loading weights for SFNO")
                 model.load_state_dict(new_state_dict)
             except RuntimeError as e:
                 LOG.error(e)
@@ -964,6 +965,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
         else:
             try:
+                print(" - loading weights for SFNO")
                 model.load_state_dict(weights)
             except RuntimeError as e:
                 LOG.error(e)
@@ -975,10 +977,19 @@ class FourCastNetv2_filmed(FourCastNetv2):
         #  Load Filmed weights
         if self.checkpoint_path_film:
             checkpoint_film = torch.load(self.checkpoint_path_film)
+            film_weights = checkpoint_film["model_state"]
+            if next(iter(film_weights.keys()))[0:9] != 'film_gen.':
+            # Try adding model weights as dictionary
+                new_state_dict = dict()
+                # for k, v in checkpoint_sfno["model_state"].items():
+                for k, v in film_weights.items():
+                    new_state_dict['film_gen.'+k] = v
+                film_weights = new_state_dict
             # needs to extract only film_gen weights if the whole model was saved
             # model.film_gen.load_state_dict(checkpoint_film["model_state"])
             try:
-                model.film_gen.load_state_dict(checkpoint_film)
+                print("\n - loading weights for Film Gen")
+                model.film_gen.load_state_dict(film_weights)
             except RuntimeError as e:
                 LOG.error(e)
                 print("--- !! ---")

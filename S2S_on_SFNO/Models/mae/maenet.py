@@ -2,7 +2,6 @@
 import torch
 import torch.nn as nn
 from einops.layers.torch import Rearrange
-from functools import reduce
 from S2S_on_SFNO.utils import Attributes
 
 class MHA(nn.Module):
@@ -127,7 +126,7 @@ class ContextCast(nn.Module):
 
         print("Architecture: MAE")
         print("    Number of patches: ", self.num_patches)
-        print("    Datapoints per patches: ", reduce(lambda x, y: x*y, self.patch_size))
+        print("    Datapoints per patches: ", self.patch_dim)
         #patch embedding
         # self.to_patch = Rearrange('b c (t pt) (h ph) (w pw) -> b (t h w) (c pt ph pw)', 
         #                           pt = self.patch_size[0], ph = self.patch_size[1], pw = self.patch_size[2])  
@@ -324,6 +323,9 @@ class Transformer_patch_embedding(nn.Module):
         return x
 
     def forward(self, x):
+        if len(x.shape) == 3:
+            # add data dimension if not present (features in data)
+            x.unsqueeze_(1)
         x = self.rearrange(x)
         x = self.rm_embed_nan(x)
         x = self.norm1(x)

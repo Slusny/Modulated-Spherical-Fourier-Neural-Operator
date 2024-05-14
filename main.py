@@ -797,7 +797,7 @@ def _main():
                             model_args[k] = v
                 del film_cp
             del cp
-            print("Script updated with Checkpoint parameters:")
+            print("\nScript updated with Checkpoint parameters:")
             for k,v in model_args.items():
                 print("    ",k," : ",v)
             kwargs = model_args
@@ -815,6 +815,10 @@ def _main():
                     if k in vars(arg_groups["Architecture Film Gen"]).keys(): 
                         kwargs[k] = v
             del film_cp
+        
+        print("\nScript updated with Checkpoint parameters:")
+        for k,v in kwargs.items():
+             print("    ",k," : ",v)
         model = load_model(args.model_type, kwargs)
 
     if args.fields:
