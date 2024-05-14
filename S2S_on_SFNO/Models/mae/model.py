@@ -116,7 +116,7 @@ class MAE(Model):
     def finalise(self):
         print("Fin")
 
-    def run(self):
+    def running(self):
         '''Run model on validation data and save cls tokens for encoder and decoder'''
         print("Use Validation Data to run model:")
         dataset_validation = SST_galvani(

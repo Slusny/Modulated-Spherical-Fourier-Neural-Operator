@@ -921,7 +921,7 @@ def _main():
     elif args.run:
 
         try:
-            model.run()
+            model.running()
         except FileNotFoundError as e:
             LOG.exception(e)
             LOG.error(
