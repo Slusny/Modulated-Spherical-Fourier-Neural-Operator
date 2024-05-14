@@ -307,7 +307,7 @@ class Trainer():
         batch_loss = 0
         self.mem_log("loading data")
         for i, data in enumerate(self.training_loader):
-            if (i+1) % (self.cfg.validation_interval*(self.cfg.accumulation_steps + 1)) == 0:
+            if (self.iter+1) % (self.cfg.validation_interval) == 0:
                 self.validation()
             loss = 0
             discount_factor = 1
@@ -391,6 +391,7 @@ class Trainer():
         self.local_log.save("training_log.npy")
         self.save_checkpoint()
         wandb.finish()
+        sys.exit(0)
 
     def ready_model(self):
         self.util.load_model(self.util.checkpoint_path)
@@ -412,12 +413,12 @@ class Trainer():
         if self.cfg.scheduler_type == 'ReduceLROnPlateau':
             self.scheduler.step(valid_mean)
         elif self.cfg.scheduler_type == 'CosineAnnealingLR':
-            self.scheduler.step(self.step)
-            if (self.step) >= self.cfg.scheduler_horizon:
+            self.scheduler.step()
+            if (self.iter/self.cfg.validation_interval) >= self.cfg.scheduler_horizon:
                 LOG.info("Terminating training after reaching params.max_epochs while LR scheduler is set to CosineAnnealingLR") 
                 self.finalise()
         elif self.cfg.scheduler_type == 'CosineAnnealingWarmRestarts':
-            self.scheduler.step(self.step)
+            self.scheduler.step()
         
     def create_optimizer(self):
         self.optimizer = torch.optim.Adam(self.util.get_parameters(), lr=self.cfg.learning_rate)# store the optimizer and scheduler in the model class

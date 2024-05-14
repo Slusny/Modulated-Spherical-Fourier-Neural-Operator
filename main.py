@@ -573,37 +573,38 @@ def _main():
         type=str,
         dest="film_gen_type",
         help="Which type of film generator to use in the filmed model.",
-        choices=["none","gcn","gcn_custom","transformer"]
+        choices=["none","gcn","gcn_custom","transformer","mae"]
     )
-    architecture_parser.add_argument(
+    architecture_film_parser = parser.add_argument_group('Architecture Film Gen')
+    architecture_film_parser.add_argument(
         '--film-layers', 
         action='store',
         type=int,
         default=1,
         help='How many sfno blocks should be modulated with a dedicated film layer. Default: 1',
     )
-    architecture_parser.add_argument(
+    architecture_film_parser.add_argument(
         '--model-depth', 
         action='store',
         type=int,
         default=6,
         help='Number of layers for film generator',
     )
-    architecture_parser.add_argument(
+    architecture_film_parser.add_argument(
         '--temporal-step', 
         action='store',
         type=int,
         default=28,
         help='How many 6 hr steps should be included in the temporal dimension for the mae model',
     )
-    architecture_parser.add_argument(
+    architecture_film_parser.add_argument(
         '--nan-mask-threshold',  
         action='store',
         type=float,
         default=0.5,
         help='token with a ratio of nan values higher than this threshold are masked',
     )
-    architecture_parser.add_argument(
+    architecture_film_parser.add_argument(
         '--patch-size', 
         action='store',
         type=int,
@@ -611,14 +612,14 @@ def _main():
         default=[28,9,9],
         help='Define the patch sizes for the MAE (temporal, lat, lon) and Transfomrer (lat,long)',
     )
-    architecture_parser.add_argument(
+    architecture_film_parser.add_argument(
         '--embed-dim', 
         action='store',
         type=int,
         default=512,
         help='',
     )
-    architecture_parser.add_argument(
+    architecture_film_parser.add_argument(
         '--mlp-dim', 
         action='store',
         type=int,
@@ -708,7 +709,7 @@ def _main():
         print("using film generator: gcn_custom")
         args.film_gen_type = "gcn_custom"
     # scheduler is updated in every validation interval. To arive at the total horizon in standard iters we divide by the validation interval
-    args.scheduler_horizon = args.scheduler_horizon//args.validation_interval
+    args.scheduler_horizon = args.scheduler_horizon//args.validation_interval//args.batch_size
 
     # Format Output path
     timestr = time.strftime("%Y%m%dT%H%M")
@@ -758,7 +759,7 @@ def _main():
     #         print("no wandb")
     
     #Print args
-    print("Script called with the following parameters")
+    print("Script called with the following parameters:")
     for group,value in arg_groups.items():
         if group == 'positional arguments': continue
         print(" --",group)
@@ -776,22 +777,45 @@ def _main():
             print("couldn't load model configuration from checkpoint")
             model = load_model(args.model_type, vars(args))
         else:
-            model_args = cp["hyperparameters"]
+            model_args = cp["hyperparameters"].copy()
             
             # overwrite checkpoint parameters with given parameters, attention, ignores default values, only specified ones
             for passed_arg in sys.argv[1:]:
                 if passed_arg.startswith("--"):
                     dest = next(x for x in parser._actions if x.option_strings[0] == passed_arg).dest
                     # skip Architectural changes
-                    if dest in vars(arg_groups["Architecture"]).keys(): continue
+                    if dest in (list(vars(arg_groups["Architecture"]).keys())+list(vars(arg_groups["Architecture Film Gen"]).keys())): continue # do we want to skip Architecture as well?
                     model_args[dest] = vars(args)[dest]
 
-            print("Checkpoint called with the following parameters")
+            if args.film_weights:
+                film_cp = torch.load(args.film_weights)
+                if not 'hyperparameters' in cp.keys(): 
+                    print("couldn't load film model configuration from checkpoint")
+                else:
+                    for k,v in film_cp["hyperparameters"].items():
+                        if k in vars(arg_groups["Architecture Film Gen"]).keys(): 
+                            model_args[k] = v
+                del film_cp
+            del cp
+            print("Script updated with Checkpoint parameters:")
             for k,v in model_args.items():
                 print("    ",k," : ",v)
-            model = load_model(model_args["model_type"], model_args)
+            kwargs = model_args
+            model = load_model(model_args["model_type"], kwargs)
+            # trainer is still called with the original args not model_args but model_args should only modify architecture - do it nevertheless
     else:
-        model = load_model(args.model_type, vars(args))
+        # if only film weights are given, load film model
+        kwargs = vars(args)
+        if args.film_weights:
+            film_cp = torch.load(args.film_weights)
+            if not 'hyperparameters' in film_cp.keys(): 
+                print("couldn't load film model configuration from checkpoint")
+            else:
+                for k,v in film_cp["hyperparameters"].items():
+                    if k in vars(arg_groups["Architecture Film Gen"]).keys(): 
+                        kwargs[k] = v
+            del film_cp
+        model = load_model(args.model_type, kwargs)
 
     if args.fields:
         model.print_fields()
@@ -840,7 +864,6 @@ def _main():
         print("Started training ")
         LOG.info("Process ID: %s", os.getpid())
 
-        kwargs = vars(args)
 
         trainer = Trainer(model,kwargs)
         try:

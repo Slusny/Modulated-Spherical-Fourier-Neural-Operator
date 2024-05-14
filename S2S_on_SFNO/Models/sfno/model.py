@@ -984,7 +984,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 print("--- !! ---")
                 print("Film Gen: loading state dict with strict=False, please verify if the right model is loaded and strict=False is desired")
                 print("--- !! ---")
-                model.load_state_dict(checkpoint_film,strict=False)
+                model.film_gen.load_state_dict(checkpoint_film,strict=False)
 
             del checkpoint_film
         else:

@@ -5,6 +5,7 @@
 from functools import partial
 import torch
 import torch.nn as nn
+import xarray as xr
 
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
@@ -834,7 +835,7 @@ class Film_wrapper(nn.Module):
         elif self.cfg.film_gen_type == "transformer":
             self.film_gen = ViT(patch_size=self.cfg.patch_size[-1], num_classes=num_film_features, dim=self.cfg.embed_dim, depth=self.cfg.model_depth, heads=16, mlp_dim = self.cfg.mlp_dim, dropout = 0.1, channels =1, device=self.device, film_layers=self.cfg.film_layers)
         elif self.cfg.film_gen_type == "mae":
-            self.film_gen = ContextCast(self.batch_size,self.device,embed_dim=self.cfg.embed_dim,film_layers=self.cfg.film_layers,assets=os.path.join(self.cfg.assets,"mae"))
+            self.film_gen = ContextCast(self.cfg,self.device,embed_dim=self.cfg.embed_dim,film_layers=self.cfg.film_layers,assets=os.path.join(self.cfg.assets,"mae"))
             # self.film_head = nn.Linear(self.cfg.embed_dim,num_film_features*self.cfg.film_layers*2)
             self.film_head = FeedForward(dim=self.cfg.embed_dim, hidden_dim=self.cfg.mlp_dim, dropout=0.1, out_dim=num_film_features*self.cfg.film_layers*2)
         
