@@ -11,6 +11,8 @@ import numpy as np
 import sys
 import matplotlib.pyplot as plt
 import random
+from  ..data import SST_galvani
+from tqdm import tqdm
 
 ultra_advanced_logging=False
 local_logging = False
@@ -115,7 +117,30 @@ class MAE(Model):
         print("Fin")
 
     def run(self):
-        raise NotImplementedError("Filmed model run not implemented yet. Needs to considder sst input.")
+        '''Run model on validation data and save cls tokens for encoder and decoder'''
+        print("Use Validation Data to run model:")
+        dataset_validation = SST_galvani(
+            path=self.cfg.trainingdata_path, 
+            start_year=self.cfg.validationset_start_year,
+            end_year=self.cfg.validationset_end_year,
+            temporal_step=self.cfg.temporal_step)
+        dataloader = DataLoader(dataset_validation,shuffle=False,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
+        self.load_model(self.cfg.checkpoint_path) # checkpoint_path
+        self.model.eval()
+        self.load_statistics()
+        self.model.to(self.device)
+        cls_encoder_list = []
+        cls_decoder_list = []
+        with torch.no_grad():
+            for i, data in tqdm(enumerate(dataloader)):
+                input_sst  = self.normalise(data[0][0]).to(self.device)
+                output, masks, cls_encoder, cls_decoder  = self.model(input_sst, np.random.uniform(0.4,0.8))
+                cls_encoder_list.append(cls_encoder.flatten().cpu().numpy())
+                cls_decoder_list.append(cls_decoder.flatten().cpu().numpy())
+        np.save(os.path.join(self.save_path,"cls_encoder.npy"),np.array(cls_encoder_list))
+        np.save(os.path.join(self.save_path,"cls_decoder.npy"),np.array(cls_decoder_list))
+
+            
 
     def get_parameters(self):
         return self.model.parameters()
