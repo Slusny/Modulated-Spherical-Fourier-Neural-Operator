@@ -250,7 +250,8 @@ class ContextCast(nn.Module):
         #patch      : (B, M, dim)
         #calculate patch embedding
         patches, self.nan_mask, self.nan_mask_th = self.to_patch(observation)
-        
+        self.num_patches = patches.shape[-2]
+
         #calculate random masks
         keep_idcs, mask, restore_idcs = self.random_masking(patches, mask_ratio)
         #encode
