@@ -137,8 +137,9 @@ class MAE(Model):
         self.cls_encoder_list = []
         self.cls_decoder_list = []
         with torch.no_grad():
-            for i, data in tqdm(enumerate(dataloader)): #in enumerate(dataloader):
+            for i, data in enumerate(dataloader): #in enumerate(dataloader): # tqdm(enumerate(dataloader))
                 input_sst  = self.normalise(data[0][0]).to(self.device)
+                if (i+1) % (len(dataset_validation)//10) == 0: print((i+1)/len(dataset_validation),"% done")
                 self.mem_log("")
                 output, masks, cls_encoder, cls_decoder  = self.model(input_sst, 0.)
                 self.mem_log("",fin=i>1)
