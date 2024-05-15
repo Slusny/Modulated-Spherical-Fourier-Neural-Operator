@@ -63,7 +63,7 @@ class MAE(Model):
 
     def load_statistics(self):
         # if assets path is already in the mae subfolder don drill down further
-        if not (self.assets[-4] == "/mae" or self.assets[-4] == "mae/"):
+        if (self.assets[-4:] == "/mae" or self.assets[-4:] == "mae/"):
             mae=""
         else:
             mae = "mae"
