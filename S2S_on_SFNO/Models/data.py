@@ -45,6 +45,7 @@ class ERA5_galvani(Dataset):
             coarse_level=4,
             uv100=True,
             temporal_step=28,
+            cls=None,
             auto_regressive_steps=0
         ):
         self.model = model
@@ -68,6 +69,10 @@ class ERA5_galvani(Dataset):
             if v100_path.endswith(".zarr"): self.dataset_v100 = xr.open_zarr(v100_path,chunks=None)
             else:                           self.dataset_v100 = xr.open_mfdataset(v100_path,chunks=None) # sd: 1959-01-01 end date: 2023-10-31
 
+        if cls:
+            self.cls = torch.from_numpy(np.load(cls))
+        else:
+            self.cls = None
         # check if the 100uv-datasets and era5 have same start and end date
         # Check if set Start date to be viable
         startdate = np.array([self.dataset.time[0].to_numpy() ,self.dataset_v100.time[0].to_numpy() ,self.dataset_u100.time[0].to_numpy()])
@@ -109,7 +114,7 @@ class ERA5_galvani(Dataset):
         level_list = self.model.param_level_pl[1].copy()
         level_list.reverse()
 
-        def format(sample,sst):
+        def format(sample,sst=None):
             scf = sample[self.model.param_sfc_ERA5].to_array().to_numpy()
             pl = sample[list(self.model.levels_per_pl.keys())].sel(level=level_list).to_array().to_numpy()
             pl = pl.reshape((pl.shape[0]*pl.shape[1], pl.shape[2], pl.shape[3]))
@@ -131,44 +136,29 @@ class ERA5_galvani(Dataset):
                     pl)))
             else: 
                 data = torch.from_numpy(np.vstack((scf,pl))) # transpose to have the same shape as expected by SFNO (lat,long)
-            if self.sst:
-                sst = sample["sea_surface_temperature"]
-                if self.coarse_level > 1:
-                    sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean().to_numpy()
-                # if self.coarse_level > 1:
-                #     sst = sst.to_numpy()[:-1:self.coarse_level,::self.coarse_level] # or numpy at the end
-                return (data.float(),torch.from_numpy(sst).float(),time)
-            else:
-                return (data.float(),time)
+            
+            return [data.float(),time]
         
-        def get_sst(self,idx):
-            sst = None
+        def get_sst(idx):
+            # temporal step 0 for normal sst output
+            slice_idx = self.temporal_step -1
+            sst = self.dataset.isel(time=slice(self.start_idx + idx -slice_idx ,self.start_idx + idx +self.auto_regressive_steps+2))["sea_surface_temperature"]
+            sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean().to_numpy()
+            return torch.from_numpy(sst)
+
+        if self.sst:
+            sst = get_sst(idx)
+
+        data = []
+        for i in range(0, self.auto_regressive_steps+2):
+            era5 = format(self.dataset.isel(time=self.start_idx + idx + i))
             if self.sst:
-                sst = self.dataset.isel(time=slice(self.start_idx + idx -self.temporal_step ,self.start_idx + idx +self.auto_regressive_steps+2))["sea_surface_temperature"]
-                sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean().to_numpy()
-            return sst
+                era5.insert(1,(sst[i:i+self.temporal_step]).float())
+            elif self.cls is not None:
+                era5.insert(1,(self.cls[idx+i]).float())
+            data.append(era5)
 
-        sst = get_sst()
-        if self.auto_regressive_steps > 0:
-            data = []
-            for i in range(self.auto_regressive_steps+2):
-                data.append(format(self.dataset.isel(time=self.start_idx + idx + i)),sst[i:i+self.temporal_step])
-            return data
-        else:
-            input = self.dataset.isel(time=self.start_idx + idx)
-            g_truth = self.dataset.isel(time=self.start_idx + idx+1)
-            return format(input,sst[0:0+self.temporal_step]), format(g_truth,sst[1:1+self.temporal_step])
-
-    def autoregressive_sst(self,idx):
-        ssts = []
-        for step in range(1,self.auto_regressive_steps):
-            sst = self.dataset.isel(time=self.start_idx + idx + step)["sea_surface_temperature"]
-            if self.coarse_level > 1:
-                sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean()
-                # if self.coarse_level > 1:
-                #     sst = sst.to_numpy()[:-1:self.coarse_level,::self.coarse_level] # or numpy at the end
-            ssts.append(torch.from_numpy(sst.to_numpy()))
-        return ssts
+        return data
 
 class SST_galvani(Dataset):
     def __init__(

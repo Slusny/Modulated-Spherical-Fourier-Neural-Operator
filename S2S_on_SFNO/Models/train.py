@@ -53,18 +53,29 @@ class Trainer():
             # config_wandb = vars(args).copy()
             # for key in ['notes','tags','wandb']:del config_wandb[key]
             # del config_wandb
+            if os.environ.get("SCRATCH") is not None:
+                wandb_dir = os.path.join(os.environ["SCRATCH"],"wandb")
+                if not os.path.exists(wandb_dir): os.mkdir(wandb_dir)
+            elif os.path.exists("/mnt/qb/work2/goswami0/gkd965/wandb"):
+                wandb_dir = "/mnt/qb/work2/goswami0/gkd965/wandb"
+            else:
+                wandb_dir = "./wandb"
             if self.cfg.wandb_resume is not None :
                 wandb_run = wandb.init(project=self.cfg.model_type + " - " +self.cfg.model_version, 
                     config=self.cfg.__dict__,
                     notes=self.cfg.notes,
                     tags=self.cfg.tags,
                     resume="must",
-                    id=self.cfg.wandb_resume)
+                    id=self.cfg.wandb_resume,
+                    dir=wandb_dir,
+                    )
             else:
                 wandb_run = wandb.init(project=self.cfg.model_type + " - " +self.cfg.model_version, 
                     config=self.cfg.__dict__,
                     notes=self.cfg.notes,
-                    tags=self.cfg.tags)
+                    tags=self.cfg.tags,
+                    dir=wandb_dir,
+                    )
             # create checkpoint folder for run name
             if self.cfg.jobID is not None:  file_name = wandb_run.name+"-sID{"+self.cfg.jobID+"}"
             else:                           file_name = wandb_run.name
@@ -146,11 +157,15 @@ class Trainer():
     def model_forward(self,input,data,step):
         self.mem_log("forward pass")
         if self.cfg.model_type == 'sfno' and self.cfg.model_version == "film" :
-            input_sst  = self.util.normalise_film(data[step+1][1]).to(self.util.device)
+            if self.cfg.film_gen_type == "mae" and self.cfg.cls is not None:
+                # class token doesn't need normalisation
+                input_sst  = data[step+1][1].to(self.util.device)
+            else:
+                input_sst  = self.util.normalise_film(data[step+1][1]).to(self.util.device)
             gt = self.util.normalise(data[step+1][0]).to(self.util.device)
             outputs = self.model(input,input_sst,self.scale)
         elif self.cfg.model_type == "mae":
-            gt = input
+            gt = input # input is already normalised
             outputs = self.model(input,np.random.uniform(0.4,0.8)) # outputs = (mean, std), mask, cls
         else:
             gt = self.util.normalise(data[step+1][0]).to(self.util.device)
@@ -232,7 +247,7 @@ class Trainer():
                 end_year=self.cfg.validationset_end_year,
                 temporal_step=self.cfg.temporal_step)
         else:
-            if self.cfg.model_version == 'film':
+            if self.cfg.model_version == 'film' and self.cfg.cls is None:
                 sst = True
             else:
                 sst = False
@@ -246,7 +261,9 @@ class Trainer():
                 start_year=self.cfg.trainingset_start_year,
                 end_year=self.cfg.trainingset_end_year,
                 auto_regressive_steps=self.cfg.multi_step_training,
-                sst=sst
+                sst=sst,
+                temporal_step=self.cfg.temporal_step,
+                cls=self.cfg.cls,
             )
             print("Validation Data:")
             self.dataset_validation = ERA5_galvani(
@@ -257,7 +274,9 @@ class Trainer():
                 start_year=self.cfg.validationset_start_year,
                 end_year=self.cfg.validationset_end_year,
                 auto_regressive_steps=self.cfg.multi_step_validation,
-                sst=sst
+                sst=sst,
+                temporal_step=self.cfg.temporal_step,
+                cls=self.cfg.cls,
             )
         self.training_loader = DataLoader(self.dataset,shuffle=True,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
         self.validation_loader = DataLoader(self.dataset_validation,shuffle=True,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)

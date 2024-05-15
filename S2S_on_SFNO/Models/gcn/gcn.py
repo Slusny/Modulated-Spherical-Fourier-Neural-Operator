@@ -94,7 +94,7 @@ class GCN(torch.nn.Module):
 
 # Blowes up STD (7 layers -> std=8.3)
 class GCN_custom(nn.Module):
-    def __init__(self,batch_size,device,depth,embed_dim=512, out_features=256,film_layers=12,coarse_level=4,graph_asset_path="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
+    def __init__(self,batch_size,device,depth,embed_dim=512, out_features=256,film_layers=12,coarse_level=4,assets="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
         """
         Paramters: last lin layer: 131072, conv hidden layer (sparse): 262144
         But Pararmeters SFNO: 
@@ -135,7 +135,7 @@ class GCN_custom(nn.Module):
 
         ## Prepare Graph
         # load sparse adjacentcy matrix from file ( shape: num_node x num_nodes )
-        self.adj = torch.load(os.path.join(graph_asset_path,"adj_coarsen_"+str(coarse_level)+"_sparse.pt")).to(device)
+        self.adj = torch.load(os.path.join(assets,"adj_coarsen_"+str(coarse_level)+"_sparse.pt")).to(device)
         # sparse adj needs 0.01  GB on memory
         # dense 7
         
@@ -143,7 +143,7 @@ class GCN_custom(nn.Module):
         # # adj matrix takes 8.16 GB on memory
         
         # nan mask masks out every nan value on land ( shape: 180x360 for 1° data )
-        self.nan_mask = np.load(os.path.join(graph_asset_path,"nan_mask_coarsen_"+str(coarse_level)+"_notflatten.npy"))
+        self.nan_mask = np.load(os.path.join(assets,"nan_mask_coarsen_"+str(coarse_level)+"_notflatten.npy"))
         # repeat nan mask in batch size dimension ( shape: batch_sizex180x360 )
         self.batch_nan_mask = np.repeat(self.nan_mask[ np.newaxis,: ], batch_size, axis=0)
         

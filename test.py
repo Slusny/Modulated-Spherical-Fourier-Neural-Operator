@@ -260,12 +260,25 @@
 
 # kwargs = {"a":3,"b":4,"c":5,"d":6}
 # t = test2(**kwargs)
-import os
-import logging
+# import os
+# import logging
 
-LOG = logging.getLogger(__name__)
-print("test1")
-print("test2")
-# LOG.info("Process ID: %s", os.getpid())
-LOG.info("inf")
-LOG.error("err")
+# LOG = logging.getLogger(__name__)
+# print("test1")
+# print("test2")
+# # LOG.info("Process ID: %s", os.getpid())
+# LOG.info("inf")
+# LOG.error("err")
+
+import xarray as xr
+from S2S_on_SFNO.utils import Timer
+
+d = xr.open_dataset("/mnt/qb/goswami/data/era5/weatherbench2/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr")
+
+print("test")
+with Timer("loop"):
+    for i in range(0,10):
+        s = d.isel(time=10+i)["sea_surface_temperature"].to_numpy()
+
+with Timer("slice"):
+    s = d.isel(time=slice(100,110))["sea_surface_temperature"].to_numpy()

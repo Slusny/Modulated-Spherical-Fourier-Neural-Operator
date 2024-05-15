@@ -201,6 +201,12 @@ def _main():
         default=4,
         help=("factor by which the sst data gets reduced in lat, long dimensions"),
     )
+    data.add_argument(
+        "--cls",
+        action="store",
+        default=None,
+        help=("path to numpy file containing cls tokens from MAE model"),
+    )
 
     # Running
     running = parser.add_argument_group('Inference Parameters')
@@ -262,28 +268,28 @@ def _main():
         "--trainingset-start-year",
         help="specify training dataset by start year",
         action="store",
-        default=1959,
+        default=1979,
         type=int
     )
     training.add_argument(
         "--trainingset-end-year",
         help="specify training dataset by end year. No dates from the end year specified and later will be used.",
         action="store",
-        default=2019,
+        default=2016,
         type=int
     )
     training.add_argument(
         "--validationset-start-year",
         help="specify validation dataset by start year",
         action="store",
-        default=2019,
+        default=2016,
         type=int
     )
     training.add_argument(
         "--validationset-end-year",
         help="specify validation dataset by end year. No dates from the end year specified and later will be used.",
         action="store",
-        default=2022,
+        default=2018,
         type=int
     )
     training.add_argument(
@@ -595,7 +601,7 @@ def _main():
         action='store',
         type=int,
         default=28,
-        help='How many 6 hr steps should be included in the temporal dimension for the mae model',
+        help='How many 6 hr steps should be included in the temporal dimension for the mae model. Needs to be larger than 0',
     )
     architecture_film_parser.add_argument(
         '--nan-mask-threshold',  

@@ -21,6 +21,7 @@ import torch
 
 from ..train import SST_galvani
 from ..losses import CosineMSELoss, L2Sphere, NormalCRPS
+from S2S_on_SFNO.utils import Timer
 
 LOG = logging.getLogger(__name__)
 
@@ -122,39 +123,40 @@ class MAE(Model):
 
     def running(self):
         '''Run model on validation data and save cls tokens for encoder and decoder'''
-        print("Use Validation Data to run model:")
-        self.mem_log_not_done = True
-        dataset_validation = SST_galvani(
-            path=self.cfg.trainingdata_path, 
-            start_year=self.cfg.validationset_start_year,
-            end_year=self.cfg.validationset_end_year,
-            temporal_step=self.cfg.temporal_step)
-        dataloader = DataLoader(dataset_validation,shuffle=False,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
-        self.load_model(self.checkpoint_path) # checkpoint_path
-        self.model.eval()
-        self.load_statistics()
-        self.model.to(self.device)
-        self.cls_encoder_list = []
-        self.cls_decoder_list = []
-        with torch.no_grad():
-            for i, data in enumerate(dataloader): #in enumerate(dataloader): # tqdm(enumerate(dataloader))
-                input_sst  = self.normalise(data[0][0]).to(self.device)
-                if (i+1) % (len(dataset_validation)//10) == 0: print((i+1)/len(dataset_validation),"% done")
-                self.mem_log("")
-                output, masks, cls_encoder, cls_decoder  = self.model(input_sst, 0.)
-                self.mem_log("",fin=i>1)
-                self.cls_encoder_list += cls_encoder.squeeze(dim=1).cpu().tolist()
-                self.cls_decoder_list += cls_decoder.squeeze(dim=1).cpu().tolist()
-                if (i+1) % self.cfg.save_checkpoint_interval == 0 and self.cfg.save_checkpoint_interval > 0:
-                    self.save_cls()
-        print("done")
-        self.save_cls()
+        with Timer("calcuate all class tokens for validation data"):
+            print("Use Validation Data to run model:")
+            self.mem_log_not_done = True
+            dataset_validation = SST_galvani(
+                path=self.cfg.trainingdata_path, 
+                start_year=self.cfg.validationset_start_year,
+                end_year=self.cfg.validationset_end_year,
+                temporal_step=self.cfg.temporal_step)
+            dataloader = DataLoader(dataset_validation,shuffle=False,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
+            self.load_model(self.checkpoint_path) # checkpoint_path
+            self.model.eval()
+            self.load_statistics()
+            self.model.to(self.device)
+            self.cls_encoder_list = []
+            self.cls_decoder_list = []
+            with torch.no_grad():
+                for i, data in enumerate(dataloader): #in enumerate(dataloader): # tqdm(enumerate(dataloader))
+                    input_sst  = self.normalise(data[0][0]).to(self.device)
+                    if (i+1) % ((len(dataset_validation)/self.cfg.batch_size)//10) == 0: print((i+1)/len(dataset_validation),"% done")
+                    self.mem_log("")
+                    output, masks, cls_encoder, cls_decoder  = self.model(input_sst, 0.)
+                    self.mem_log("",fin=i>1)
+                    self.cls_encoder_list += cls_encoder.squeeze(dim=1).cpu().tolist()
+                    self.cls_decoder_list += cls_decoder.squeeze(dim=1).cpu().tolist()
+                    if (i+1) % self.cfg.save_checkpoint_interval == 0 and self.cfg.save_checkpoint_interval > 0:
+                        self.save_cls()
+            print("done")
+            self.save_cls()
 
     def save_cls(self):
-        print("save class tokens")
         cp_path = self.checkpoint_path.split(".")[0]
+        print("save class tokens to ",cp_path)
         save_file = "-{}-{}.npy".format(self.cfg.validationset_start_year,self.cfg.validationset_end_year)
-        np.save(os.path.join(cp_path+"-cls_decoder"+save_file),np.array(self.cls_encoder_list))
+        np.save(os.path.join(cp_path+"-cls_encoder"+save_file),np.array(self.cls_encoder_list))
         np.save(os.path.join(cp_path+"-cls_decoder"+save_file),np.array(self.cls_decoder_list))
 
     def mem_log(self,str,fin=False):

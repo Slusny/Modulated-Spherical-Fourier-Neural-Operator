@@ -22,6 +22,7 @@ class Timer:
     def __exit__(self, *args):
         elapsed = time.time() - self.start
         LOG.info("%s: %s.", self.title, seconds(elapsed))
+        print("%s: %s." % (self.title, seconds(elapsed)))
 
     
 class Attributes():

@@ -13,6 +13,7 @@
             "console": "internalConsole", //"integratedTerminal",
             "justMyCode": true,
             // "args": ["--model", "mae", "--run", "--validation-start-year","1979","--validation-end-year","2019","--temporal-step","28","--batch-size","100","--training-workers","6",]
+            "args": ["--model", "mae", "--train","--temporal-step","28","--batch-size","3","--multi-step-training","5"]
             
             //"args":["--model","sfno","--date","20190101","--time","0000","--lead-time","18","--output","netcdf","--input-store", "./S2S_on_SFNO/inputs"]
             // python main.py --model sfno --date 20190101 --time 0000 --lead-time 8760 --output netcdf --file ./S2S_on_SFNO/inputs/ClimateInputData_201901010.grib

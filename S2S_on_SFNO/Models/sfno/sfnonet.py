@@ -759,10 +759,19 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
             self.gamma = gamma
             self.beta = beta
         
-        # repeat for each block
-        if gamma.shape[0] != self.film_layers:
-            gamma = gamma.repeat(self.film_layers,1)
-            beta = beta.repeat(self.film_layers,1)
+        if gamma.shape[0] != self.num_layers:
+            if self.cfg.repeat_film:
+                # same film modulation for each block
+                gamma = gamma.repeat(self.num_layers,1)
+                beta = beta.repeat(self.num_layers,1)
+            else:
+                # only film modulation on the last #film_layers layers
+                gamma_tmp = np.zeros(self.num_layers,*gamma.shape)
+                gamma_tmp[:-gamma.shape[0]]  = gamma
+                gamma = gamma_tmp
+                beta_tmp = np.zeros(self.num_layers,*beta.shape)
+                beta_tmp[:-beta.shape[0]]  = beta
+                beta = beta_tmp
         
         # save big skip
         if self.big_skip:
@@ -835,7 +844,8 @@ class Film_wrapper(nn.Module):
         elif self.cfg.film_gen_type == "transformer":
             self.film_gen = ViT(patch_size=self.cfg.patch_size[-1], num_classes=num_film_features, dim=self.cfg.embed_dim, depth=self.cfg.model_depth, heads=16, mlp_dim = self.cfg.mlp_dim, dropout = 0.1, channels =1, device=self.device, film_layers=self.cfg.film_layers)
         elif self.cfg.film_gen_type == "mae":
-            self.film_gen = ContextCast(self.cfg,data_dim=1,patch_size=self.cfg.patch_size, embed_dim=self.cfg.embed_dim,film_layers=self.cfg.film_layers,assets=os.path.join(self.cfg.assets,"mae"))
+            if self.cfg.cls is None:
+                self.film_gen = ContextCast(self.cfg,data_dim=1,patch_size=self.cfg.patch_size, embed_dim=self.cfg.embed_dim,film_layers=self.cfg.film_layers,)
             # self.film_head = nn.Linear(self.cfg.embed_dim,num_film_features*self.cfg.film_layers*2)
             self.film_head = FeedForward(dim=self.cfg.embed_dim, hidden_dim=self.cfg.mlp_dim, dropout=0.1, out_dim=num_film_features*self.cfg.film_layers*2)
         
@@ -856,9 +866,12 @@ class Film_wrapper(nn.Module):
     def forward(self,sst):
        # Mae
         if self.cfg.film_gen_type == "mae":
-            with torch.no_grad():
-                cls = self.film_gen(sst)[-1]
-            return self.film_head(cls)
+            if self.cfg.cls is None:
+                with torch.no_grad():
+                    cls = self.film_gen(sst)[-1]
+                return self.film_head(cls)
+            else:
+                return self.film_head(sst)
         else:
             return self.film_gen(sst)
 
