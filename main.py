@@ -385,7 +385,7 @@ def _main():
         "--training-workers",
         help="number of workers to use in dataloader for training",
         action="store",
-        default=4,
+        default=6,
         type=int
     )
     training.add_argument(
