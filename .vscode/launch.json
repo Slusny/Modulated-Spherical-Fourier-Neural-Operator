@@ -10,8 +10,9 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
-            "console": "integratedTerminal",
+            "console": "internalConsole", //"integratedTerminal",
             "justMyCode": true,
+            // "args": ["--model", "mae", "--run", "--validation-start-year","1979","--validation-end-year","2019","--temporal-step","28","--batch-size","100","--training-workers","6",]
             
             //"args":["--model","sfno","--date","20190101","--time","0000","--lead-time","18","--output","netcdf","--input-store", "./S2S_on_SFNO/inputs"]
             // python main.py --model sfno --date 20190101 --time 0000 --lead-time 8760 --output netcdf --file ./S2S_on_SFNO/inputs/ClimateInputData_201901010.grib
@@ -49,7 +50,8 @@
 // Eval
 // python main.py --model sfno --model-version film --validation-epochs 30 --training-workers 4 --batch-size 1 --multi-step-validation 5 --validation-step-skip 5 --eval-models-autoregressive --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/devoted-bush-34 --film-gen gcn_custom
 // python main.py --model sfno --model-version film --validation-epochs 3 --training-workers 4 --batch-size 1 --multi-step-validation 5 --validation-step-skip 5 --eval-models-autoregressive --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/efficient-paper-37 --film-gen gcn --eval-sfno --debug
-
+// Eval MAE
+// main.py --validation-epochs 1 --training-workers 5 --batch-size 1 --eval-model --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/glorious-deluge-23 --eval-checkpoint-num 3
 
 //GCN
 
@@ -68,11 +70,11 @@
 // # generate cls tokesn
 // main.py --model mae -- run -- --batch-size 1 
 //MAE - Film - local
-python main.py --model sfno --model-version film --film-gen mae --train --validation-interval 100 --validation-epochs 5 --training-workers 6 --batch-size 1 --accumulation-steps 2 --learning-rate 0.0005 --multi-step-training 1 --training-step-skip 0 --loss-fn L2Sphere --film-layers 12 --save-checkpoint-interval 10 --trainingset-start-year 2001 --trainingset-end-year 2002 --validationset-start-year 2002 --validationset-end-year 2003 --trainingdata-path /media/lenny/V/wb2_2001-2003.zarr --trainingdata-v100-path /media/lenny/V/v100_2001-2003.zarr --trainingdata-u100-path /media/lenny/V/u100_2001-2003.zarr --assets /mnt/ssd2/Master/S2S_on_SFNO/Assets --save-path /mnt/ssd2/Master/S2S_on_SFNO/outputs/mae --advanced-logging --film-weights /media/lenny/V/Master/checkpoints/apricot-smoke-15/checkpoint_mae_latest_None_iter=0_epoch=8.pkl --debug
+// python main.py --model sfno --model-version film --film-gen mae --train --validation-interval 100 --validation-epochs 5 --training-workers 6 --batch-size 1 --accumulation-steps 2 --learning-rate 0.0005 --multi-step-training 1 --training-step-skip 0 --loss-fn L2Sphere --film-layers 12 --save-checkpoint-interval 10 --trainingset-start-year 2001 --trainingset-end-year 2002 --validationset-start-year 2002 --validationset-end-year 2003 --trainingdata-path /media/lenny/V/wb2_2001-2003.zarr --trainingdata-v100-path /media/lenny/V/v100_2001-2003.zarr --trainingdata-u100-path /media/lenny/V/u100_2001-2003.zarr --assets /mnt/ssd2/Master/S2S_on_SFNO/Assets --save-path /mnt/ssd2/Master/S2S_on_SFNO/outputs/mae --advanced-logging --film-weights /media/lenny/V/Master/checkpoints/apricot-smoke-15/checkpoint_mae_latest_None_iter=0_epoch=8.pkl --debug
 //MAE - Film - cluster
-python main.py --model sfno --model-version film --film-gen mae --train --validation-interval 100 --validation-epochs 5 --training-workers 6 --batch-size 1 --accumulation-steps 2 --learning-rate 0.0005 --multi-step-training 1 --training-step-skip 0 --loss-fn L2Sphere --film-layers 12 --save-checkpoint-interval 10 --trainingset-start-year 1979 --trainingset-end-year 2016 --validationset-start-year 2016 --validationset-end-year 2018 --advanced-logging --film-weights /media/lenny/V/Master/checkpoints/apricot-smoke-15/checkpoint_mae_latest_None_iter=0_epoch=8.pkl --debug
+// python main.py --model sfno --model-version film --film-gen mae --train --validation-interval 100 --validation-epochs 5 --training-workers 6 --batch-size 1 --accumulation-steps 2 --learning-rate 0.0005 --multi-step-training 1 --training-step-skip 0 --loss-fn L2Sphere --film-layers 12 --save-checkpoint-interval 10 --trainingset-start-year 1979 --trainingset-end-year 2016 --validationset-start-year 2016 --validationset-end-year 2018 --advanced-logging --film-weights /media/lenny/V/Master/checkpoints/apricot-smoke-15/checkpoint_mae_latest_None_iter=0_epoch=8.pkl --debug
 
 //plot
 // self.plot_variable(loss_sphere_value[0][id],loss_fn_pervar(outputs.to("cpu"), val_g_truth_era5_normalised)[0,id],save_path,"SphericalLoss_SFNO",self.ordering[id],ids,sfno=True)
 
-echo DONE!
+// echo DONE!

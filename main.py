@@ -921,7 +921,7 @@ def _main():
     elif args.run:
 
         try:
-            model.run()
+            model.running()
         except FileNotFoundError as e:
             LOG.exception(e)
             LOG.error(
@@ -934,6 +934,8 @@ def _main():
                 "   %s",
                 shlex.join([sys.argv[0], "--download-assets"] + sys.argv[1:]), ## download assets call not nessessary
             )
+            if kwargs["model_type"] == "mae":
+                model.save_cls()
             sys.exit(1)
     else:
         print("No action specified (--train or --run). Exiting.")

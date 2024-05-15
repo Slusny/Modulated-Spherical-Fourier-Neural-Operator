@@ -11,6 +11,8 @@ import numpy as np
 import sys
 import matplotlib.pyplot as plt
 import random
+from  ..data import SST_galvani
+from tqdm import tqdm
 
 ultra_advanced_logging=False
 local_logging = False
@@ -60,10 +62,14 @@ class MAE(Model):
     ## common
 
     def load_statistics(self):
-            
-        self.means_film = np.load(os.path.join(self.assets,self.model_type, "global_means_sst.npy"))
+        # if assets path is already in the mae subfolder don drill down further
+        if not (self.assets[-4] == "/mae" or self.assets[-4] == "mae/"):
+            mae=""
+        else:
+            mae = "mae"
+        self.means_film = np.load(os.path.join(self.assets,mae, "global_means_sst.npy"))
         self.means_film = self.means_film.astype(np.float32)
-        self.stds_film = np.load(os.path.join(self.assets,self.model_type, "global_stds_sst.npy"))
+        self.stds_film = np.load(os.path.join(self.assets,mae, "global_stds_sst.npy"))
         self.stds_film = self.stds_film.astype(np.float32)
     
     def normalise(self, data, reverse=False):
@@ -114,9 +120,50 @@ class MAE(Model):
     def finalise(self):
         print("Fin")
 
-    def run(self):
-        raise NotImplementedError("Filmed model run not implemented yet. Needs to considder sst input.")
+    def running(self):
+        '''Run model on validation data and save cls tokens for encoder and decoder'''
+        print("Use Validation Data to run model:")
+        self.mem_log_not_done = True
+        dataset_validation = SST_galvani(
+            path=self.cfg.trainingdata_path, 
+            start_year=self.cfg.validationset_start_year,
+            end_year=self.cfg.validationset_end_year,
+            temporal_step=self.cfg.temporal_step)
+        dataloader = DataLoader(dataset_validation,shuffle=False,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
+        self.load_model(self.checkpoint_path) # checkpoint_path
+        self.model.eval()
+        self.load_statistics()
+        self.model.to(self.device)
+        self.cls_encoder_list = []
+        self.cls_decoder_list = []
+        with torch.no_grad():
+            for i, data in enumerate(dataloader): #in enumerate(dataloader): # tqdm(enumerate(dataloader))
+                input_sst  = self.normalise(data[0][0]).to(self.device)
+                if (i+1) % (len(dataset_validation)//10) == 0: print((i+1)/len(dataset_validation),"% done")
+                self.mem_log("")
+                output, masks, cls_encoder, cls_decoder  = self.model(input_sst, 0.)
+                self.mem_log("",fin=i>1)
+                self.cls_encoder_list += cls_encoder.squeeze(dim=1).cpu().tolist()
+                self.cls_decoder_list += cls_decoder.squeeze(dim=1).cpu().tolist()
+                if (i+1) % self.cfg.save_checkpoint_interval == 0 and self.cfg.save_checkpoint_interval > 0:
+                    self.save_cls()
+        print("done")
+        self.save_cls()
 
+    def save_cls(self):
+        print("save class tokens")
+        cp_path = self.checkpoint_path.split(".")[0]
+        save_file = "-{}-{}.npy".format(self.cfg.validationset_start_year,self.cfg.validationset_end_year)
+        np.save(os.path.join(cp_path+"-cls_decoder"+save_file),np.array(self.cls_encoder_list))
+        np.save(os.path.join(cp_path+"-cls_decoder"+save_file),np.array(self.cls_decoder_list))
+
+    def mem_log(self,str,fin=False):
+        if self.cfg.advanced_logging and self.mem_log_not_done:
+            print("VRAM used before "+str+" : ",round(torch.cuda.memory_allocated(self.device)/10**9,2),
+                  " GB, reserved: ",round(torch.cuda.memory_reserved(self.device)/10**9,2)," GB")
+            if fin:
+                self.mem_log_not_done = False 
+                
     def get_parameters(self):
         return self.model.parameters()
 

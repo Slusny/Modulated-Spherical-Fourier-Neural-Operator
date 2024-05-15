@@ -251,16 +251,18 @@ class ContextCast(nn.Module):
         #calculate patch embedding
         patches, self.nan_mask, self.nan_mask_th = self.to_patch(observation)
         self.num_patches = patches.shape[-2]
+
         #calculate random masks
         keep_idcs, mask, restore_idcs = self.random_masking(patches, mask_ratio)
         #encode
         z = self.forward_encoder(patches, keep_idcs)
+        cls_encoder = z[:, :1].clone()
         #decode
-        (mean, std), cls = self.forward_decoder(z, restore_idcs)
+        (mean, std), cls_decoder = self.forward_decoder(z, restore_idcs)
         #mask to image
         nan_tokens = self.from_patch(torch.ones_like(mask,dtype=torch.bool),self.nan_mask,self.nan_mask_th,fill=False) # 1 where a loss should not be computed aka. at nan values
         mask = self.from_patch(mask,self.nan_mask,self.nan_mask_th,fill=0)
-        return (mean, std), (mask,nan_tokens), cls
+        return (mean, std), (mask,nan_tokens), cls_encoder, cls_decoder
 
     # def add_masked_nans(x):
     #     self.nan_mask

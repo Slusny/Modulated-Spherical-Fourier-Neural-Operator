@@ -291,7 +291,7 @@ class FourCastNetv2(ATMModel):
             new_data = (data - self.means_film) / self.stds_film
         return new_data
 
-    def run(self):
+    def running(self):
         self.load_statistics()
 
         if self.input_type == "localERA5":
