@@ -753,25 +753,23 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
     def forward(self, x,sst,scale=1):
 
         # calculate gammas and betas for film layers
-        gamma,beta = self.film_gen(sst)# None for transformer
+        film_mod = self.film_gen(sst)# None for transformer
+        if film_mod.shape[2] != self.num_layers: 
+            if self.cfg.repeat_film:
+                # same film modulation for each block
+                film_mod = film_mod.expand(-1,-1,self.num_layers,-1)
+            else:
+                # only film modulation on the last #film_layers layers
+                # probably unessessary compute ?? for do we still run backward on earlier layers?
+                shape = list(film_mod.shape)
+                shape[2] = self.num_layers
+                film_mod_temp = torch.zeros(shape).to(self.device)
+                film_mod_temp[:,:,-film_mod.shape[2]:] = film_mod
+        gamma,beta = film_mod[:,0],film_mod[:,1] 
         # save gamma and beta in model for validation
         if self.advanced_logging:
             self.gamma = gamma
             self.beta = beta
-        
-        if gamma.shape[0] != self.num_layers:
-            if self.cfg.repeat_film:
-                # same film modulation for each block
-                gamma = gamma.repeat(self.num_layers,1)
-                beta = beta.repeat(self.num_layers,1)
-            else:
-                # only film modulation on the last #film_layers layers
-                gamma_tmp = np.zeros(self.num_layers,*gamma.shape)
-                gamma_tmp[:-gamma.shape[0]]  = gamma
-                gamma = gamma_tmp
-                beta_tmp = np.zeros(self.num_layers,*beta.shape)
-                beta_tmp[:-beta.shape[0]]  = beta
-                beta = beta_tmp
         
         # save big skip
         if self.big_skip:
@@ -792,12 +790,12 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         if self.checkpointing_block: #self.checkpointing:
             for i, blk in enumerate(self.blocks):
                 # if i < 11: # don't want to checkpoint everything? All is needed to be able to go to 4 steps (1|2)
-                x = checkpoint(blk,x,gamma[i],beta[i],scale,use_reentrant=False)
+                x = checkpoint(blk,x,gamma[:,i],beta[:,i],scale,use_reentrant=False)
                 # else:
                 #     x = blk(x,gamma[i],beta[i],scale)
         else:
             for i, blk in enumerate(self.blocks):
-                x = blk(x,gamma[i],beta[i],scale)
+                x = blk(x,gamma[:,i],beta[:,i],scale)
 
         # concatenate the big skip
         if self.big_skip:
@@ -838,11 +836,12 @@ class Film_wrapper(nn.Module):
         self.cfg = cfg
 
         num_film_features=256
+        self.num_film_features = num_film_features
 
         if self.cfg.film_gen_type == "gcn":
-            self.film_gen = GCN(self.cfg.batch_size,self.device,depth=self.cfg.model_depth,embed_dim=self.cfg.embed_dim,film_layers=self.cfg.film_layers,assets=os.path.join(self.cfg.assets,"gcn"))# num layers is 1 for now
+            self.film_gen = GCN(self.cfg.batch_size,self.device,out_features=num_film_features*self.cfg.film_layers*2 , depth=self.cfg.model_depth,embed_dim=self.cfg.embed_dim,assets=os.path.join(self.cfg.assets,"gcn"))# num layers is 1 for now
         elif self.cfg.film_gen_type == "transformer":
-            self.film_gen = ViT(patch_size=self.cfg.patch_size[-1], num_classes=num_film_features, dim=self.cfg.embed_dim, depth=self.cfg.model_depth, heads=16, mlp_dim = self.cfg.mlp_dim, dropout = 0.1, channels =1, device=self.device, film_layers=self.cfg.film_layers)
+            self.film_gen = ViT(patch_size=self.cfg.patch_size[-1], num_classes=num_film_features*self.cfg.film_layers*2, dim=self.cfg.embed_dim, depth=self.cfg.model_depth, heads=16, mlp_dim = self.cfg.mlp_dim, dropout = 0.1, channels =1, device=self.device)
         elif self.cfg.film_gen_type == "mae":
             if self.cfg.cls is None:
                 self.film_gen = ContextCast(self.cfg,data_dim=1,patch_size=self.cfg.patch_size, embed_dim=self.cfg.embed_dim,film_layers=self.cfg.film_layers,)
@@ -856,7 +855,7 @@ class Film_wrapper(nn.Module):
                     nn.init.constant_(x.bias, 0)
         
         else:
-            self.film_gen = GCN_custom(self.cfg.batch_size,self.device,depth=self.cfg.model_depth,embed_dim=self.cfg.embed_dim,film_layers=self.cfg.film_layers,assets=os.path.join(self.cfg.assets,"gcn"))# num layers is 1 for now
+            self.film_gen = GCN_custom(self.cfg.batch_size,self.device,out_features=num_film_features*self.cfg.film_layers*2, depth=self.cfg.model_depth,embed_dim=self.cfg.embed_dim,assets=os.path.join(self.cfg.assets,"gcn"))# num layers is 1 for now
     
     def get_parameters(self):
         if self.cfg.film_gen_type == "mae":
@@ -869,16 +868,18 @@ class Film_wrapper(nn.Module):
             if self.cfg.cls is None:
                 with torch.no_grad():
                     cls = self.film_gen(sst)[-1]
-                return self.film_head(cls)
+                    x = self.film_head(cls)
             else:
-                return self.film_head(sst)
+                x = self.film_head(sst)
         else:
-            return self.film_gen(sst)
+            x = self.film_gen(sst)
+        return x.reshape(self.cfg.batch_size,2,self.cfg.film_layers,self.num_film_features)
 
 
 class FeedForward(nn.Module):
     def __init__(self, dim, hidden_dim, dropout = 0.,out_dim=256):
         super().__init__()
+        self.out_features = out_dim
         self.net = nn.Sequential(
             nn.LayerNorm(dim),
             nn.Linear(dim, hidden_dim),
@@ -889,3 +890,4 @@ class FeedForward(nn.Module):
 
     def forward(self, x):
         return self.net(x)
+        

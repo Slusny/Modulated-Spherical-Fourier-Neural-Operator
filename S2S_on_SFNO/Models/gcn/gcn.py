@@ -10,19 +10,18 @@ import numpy as np
 from .layers import GraphConvolution
 
 class GCN(torch.nn.Module):
-    def __init__(self,batch_size,device,depth=8,embed_dim=512, out_features=256,film_layers=12,coarse_level=4,assets="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
+    def __init__(self,batch_size,device,depth=8,embed_dim=512, out_features=256,coarse_level=4,assets="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
         super().__init__()
 
         # Model
         self.batch_size = batch_size
-        self.film_layers = film_layers
         self.hidden_size = embed_dim
         self.out_features = out_features
         self.activation = nn.LeakyReLU()
         self.conv1 = GCNConv(1, self.hidden_size,cached=True)
         self.perceptive_field = depth
         self.conv_layers = nn.ModuleList([GCNConv(self.hidden_size, self.hidden_size,cached=True) for _ in range(self.perceptive_field)])
-        self.head_film = nn.Linear(self.hidden_size, 2*out_features*self.film_layers)
+        self.head_film = nn.Linear(self.hidden_size,out_features )
 
         # with torch.no_grad():
         self.head_film.weight = nn.Parameter(torch.zeros_like(self.head_film.weight))
@@ -88,13 +87,13 @@ class GCN(torch.nn.Module):
         # # x = x + self.conv2(x, self.edge_index_batch)
         # x =  self.conv2(x, self.edge_index_batch)
         # x = global_mean_pool(x, self.batch)
-        return self.head_film(x).reshape(2,self.film_layers,self.batch_size,self.out_features)#.squeeze()
+        return self.head_film(x)#.squeeze()
         
 
 
 # Blowes up STD (7 layers -> std=8.3)
 class GCN_custom(nn.Module):
-    def __init__(self,batch_size,device,depth,embed_dim=512, out_features=256,film_layers=12,coarse_level=4,assets="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
+    def __init__(self,batch_size,device,depth,embed_dim=512, out_features=256,coarse_level=4,assets="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
         """
         Paramters: last lin layer: 131072, conv hidden layer (sparse): 262144
         But Pararmeters SFNO: 
@@ -117,14 +116,13 @@ class GCN_custom(nn.Module):
         super().__init__()
         self.batch_size = batch_size
         self.device = device
-        self.film_layers = film_layers
         self.hidden_size = embed_dim
         self.out_features = out_features
         self.conv1 = GraphConvolution(1, self.hidden_size)
         self.perceptive_field = depth # 3
         self.conv_layers = nn.ModuleList([GraphConvolution(self.hidden_size, self.hidden_size) for _ in range(self.perceptive_field)])
         self.activation = nn.LeakyReLU() # change parameter for leaky relu also in initalization of GraphConvolution layer
-        self.head_film = nn.Linear(self.hidden_size, 2*out_features*self.film_layers)
+        self.head_film = nn.Linear(self.hidden_size, out_features)
 
         # Set film weights to 0
         # with torch.no_grad():
@@ -164,5 +162,5 @@ class GCN_custom(nn.Module):
         x = x.mean(dim=-2)
     
         # Film Heads
-        return self.head_film(x).reshape(2,self.film_layers,self.batch_size,self.out_features)#.squeeze()
+        return self.head_film(x)#.squeeze()
     

@@ -121,13 +121,12 @@ class ViT(nn.Module):
     Doesn't look at temporal dim
     '''
     # simple vit doesn't have dropout, different pos emb and no cls token
-    def __init__(self, *, patch_size, num_classes, dim, depth, heads, mlp_dim, pool = 'mean', channels = 3, dim_head = 64, dropout = 0., emb_dropout = 0., coarse_level=4,device="cpu", film_layers=1):
+    def __init__(self, *, patch_size, num_classes, dim, depth, heads, mlp_dim, pool = 'mean', channels = 3, dim_head = 64, dropout = 0., emb_dropout = 0., coarse_level=4,device="cpu"):
         super().__init__()
         image_height, image_width = 721//coarse_level, 1440//coarse_level #pair(image_size)
         patch_height, patch_width = pair(patch_size)
         self.device = device
         self.dim = dim
-        self.film_layers = film_layers
 
         assert image_height % patch_height == 0 and image_width % patch_width == 0, 'Image dimensions must be divisible by the patch size.'
 
@@ -162,7 +161,7 @@ class ViT(nn.Module):
         self.pool = pool
         self.to_latent = nn.Identity()
 
-        self.head_film = nn.Linear(dim, num_classes*film_layers*2) 
+        self.head_film = nn.Linear(dim, num_classes) 
 
         # Set weights of head film to 0
         self.head_film.weight = nn.Parameter(torch.zeros_like(self.head_film.weight))

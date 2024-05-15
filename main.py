@@ -632,6 +632,11 @@ def _main():
         default=1024,
         help='',
     )
+    architecture_film_parser.add_argument(
+        '--repeat-film', 
+        action='store_true',
+        help='repeat the same film modulation arcoss all sfno blocks',
+    )
     
 
     # !! args from parser become model properties (whatch that no conflicting model properties/methods exist)
