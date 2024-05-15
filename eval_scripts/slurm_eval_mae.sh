@@ -41,4 +41,8 @@
 
 singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965 /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --validation-epochs 10 --training-workers 5 --batch-size 1 --eval-model --eval-checkpoint-path /mnt/qb/work2/goswami0/gkd965/checkpoints/vivid-lion-15
 #--eval-checkpoint-num 3
+
+# gen cls tokens
+python /home/goswami/gkd965/MasterML/main.py --model mae --run --save-checkpoint-interval -1 --training-workers 6 --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/mae/wise-spaceship-24/checkpoint_mae_latest_None_iter=0_epoch=8.pkl --batch-size 48 --validationset-start-year 1979 --validationset-end-year 2019 --temporal-step 28 --log-file /home/goswami/gkd965/jobs/gencls.wise-spaceship.28,15,30.log &>> /home/goswami/gkd965/jobs/gencls.wise-spaceship.28,15,30.log
+
 echo DONE!
