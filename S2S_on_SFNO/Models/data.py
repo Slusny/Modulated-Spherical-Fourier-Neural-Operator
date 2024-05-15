@@ -44,6 +44,7 @@ class ERA5_galvani(Dataset):
             sst=True,
             coarse_level=4,
             uv100=True,
+            temporal_step=28,
             auto_regressive_steps=0
         ):
         self.model = model
@@ -51,6 +52,7 @@ class ERA5_galvani(Dataset):
         self.auto_regressive_steps = auto_regressive_steps
         self.coarse_level = coarse_level
         self.uv100 = uv100
+        self.temporal_step = temporal_step
         if path.endswith(".zarr"):  self.dataset = xr.open_zarr(path,chunks=None)
         else:                       self.dataset = xr.open_dataset(path,chunks=None)
         if self.uv100:
@@ -107,7 +109,7 @@ class ERA5_galvani(Dataset):
         level_list = self.model.param_level_pl[1].copy()
         level_list.reverse()
 
-        def format(sample):
+        def format(sample,sst):
             scf = sample[self.model.param_sfc_ERA5].to_array().to_numpy()
             pl = sample[list(self.model.levels_per_pl.keys())].sel(level=level_list).to_array().to_numpy()
             pl = pl.reshape((pl.shape[0]*pl.shape[1], pl.shape[2], pl.shape[3]))
@@ -139,15 +141,23 @@ class ERA5_galvani(Dataset):
             else:
                 return (data.float(),time)
         
+        def get_sst(self,idx):
+            sst = None
+            if self.sst:
+                sst = self.dataset.isel(time=slice(self.start_idx + idx -self.temporal_step ,self.start_idx + idx +self.auto_regressive_steps+2))["sea_surface_temperature"]
+                sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean().to_numpy()
+            return sst
+
+        sst = get_sst()
         if self.auto_regressive_steps > 0:
             data = []
             for i in range(self.auto_regressive_steps+2):
-                data.append(format(self.dataset.isel(time=self.start_idx + idx + i)))
+                data.append(format(self.dataset.isel(time=self.start_idx + idx + i)),sst[i:i+self.temporal_step])
             return data
         else:
             input = self.dataset.isel(time=self.start_idx + idx)
             g_truth = self.dataset.isel(time=self.start_idx + idx+1)
-            return format(input), format(g_truth)
+            return format(input,sst[0:0+self.temporal_step]), format(g_truth,sst[1:1+self.temporal_step])
 
     def autoregressive_sst(self,idx):
         ssts = []
