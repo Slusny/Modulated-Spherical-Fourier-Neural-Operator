@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import random
 from  ..data import SST_galvani
 from tqdm import tqdm
+import torch.nn as nn
 
 ultra_advanced_logging=False
 local_logging = False
@@ -169,10 +170,136 @@ class MAE(Model):
     def get_parameters(self):
         return self.model.parameters()
 
+
+class Linear_probing(Model):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        # init model
+        self.model = nn.Linear(self.cfg.embed_dim, 1)
+        # self.params = kwargs
+        # self.timestr = kwargs["timestr"]
+        # self.assets = kwargs["assets"]
+        # self.save_path = kwargs["save_path"]
+
+        if self.resume_checkpoint:
+            self.checkpoint_path = self.resume_checkpoint
+        else:
+            self.checkpoint_path = None
+    
+    def load_model(self, checkpoint_file):
+        
+        if checkpoint_file is not None:
+            checkpoint = torch.load(checkpoint_file)
+            if "model_state" in checkpoint.keys(): weights = checkpoint["model_state"]
+            else: weights = checkpoint
+            try:
+                self.model.load_state_dict(weights)
+            except RuntimeError as e:
+                LOG.error(e)
+                print("--- !! ---")
+                print("loading state dict with strict=False, please verify if the right model is loaded and strict=False is desired")
+                print("--- !! ---")
+                self.model.load_state_dict(weights,strict=False)
+        self.model.eval()
+        self.model.zero_grad()
+        self.model.to(self.device)
+        return checkpoint if checkpoint_file is not None else None
+
+    ## common
+
+    def load_statistics(self):
+        # if assets path is already in the mae subfolder don drill down further
+
+        return
+
+        if (self.assets[-4:] == "/mae" or self.assets[-4:] == "mae/"):
+            mae=""
+        else:
+            mae = "mae"
+        self.means_film = np.load(os.path.join(self.assets,mae, "global_means_cls.npy"))
+        self.means_film = self.means_film.astype(np.float32)
+        self.stds_film = np.load(os.path.join(self.assets,mae, "global_stds_cls.npy"))
+        self.stds_film = self.stds_film.astype(np.float32)
+    
+    def normalise(self, data, reverse=False):
+        """Normalise data using pre-saved global statistics"""
+
+        return data
+
+        if reverse:
+            new_data = data * self.stds_film + self.means_film
+        else:
+            new_data = (data - self.means_film) / self.stds_film
+        return new_data
+
+    def evaluate_model(self, checkpoint_list,save_path):
+        """Evaluate model using checkpoint list"""
+        for cp_idx, checkpoint in enumerate(checkpoint_list):
+            self.checkpoint_path = checkpoint
+            model = self.load_model(self.checkpoint_path)
+            model.eval()
+            model.to(self.device)
+            self.save_path = save_path
+            self.validation()
+            model.train()
+
+    def finalise(self):
+        print("Fin")
+
+    def running(self):
+        '''Run model on validation data and save cls tokens for encoder and decoder'''
+        with Timer("calcuate all class tokens for validation data"):
+            print("Use Validation Data to run model:")
+            self.mem_log_not_done = True
+            dataset_validation = SST_galvani(
+                path=self.cfg.trainingdata_path, 
+                start_year=self.cfg.validationset_start_year,
+                end_year=self.cfg.validationset_end_year,
+                temporal_step=self.cfg.temporal_step)
+            dataloader = DataLoader(dataset_validation,shuffle=False,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
+            self.load_model(self.checkpoint_path) # checkpoint_path
+            self.model.eval()
+            self.load_statistics()
+            self.model.to(self.device)
+            self.cls_encoder_list = []
+            self.cls_decoder_list = []
+            with torch.no_grad():
+                for i, data in enumerate(dataloader): #in enumerate(dataloader): # tqdm(enumerate(dataloader))
+                    input_sst  = self.normalise(data[0][0]).to(self.device)
+                    if (i+1) % ((len(dataset_validation)/self.cfg.batch_size)//10) == 0: print((i+1)/len(dataset_validation),"% done")
+                    self.mem_log("")
+                    output, masks, cls_encoder, cls_decoder  = self.model(input_sst, 0.)
+                    self.mem_log("",fin=i>1)
+                    self.cls_encoder_list += cls_encoder.squeeze(dim=1).cpu().tolist()
+                    self.cls_decoder_list += cls_decoder.squeeze(dim=1).cpu().tolist()
+                    if (i+1) % self.cfg.save_checkpoint_interval == 0 and self.cfg.save_checkpoint_interval > 0:
+                        self.save_cls()
+            print("done")
+            self.save_cls()
+
+    def save_cls(self):
+        cp_path = self.checkpoint_path.split(".")[0]
+        print("save class tokens to ",cp_path)
+        save_file = "-{}-{}.npy".format(self.cfg.validationset_start_year,self.cfg.validationset_end_year)
+        np.save(os.path.join(cp_path+"-cls_encoder"+save_file),np.array(self.cls_encoder_list))
+        np.save(os.path.join(cp_path+"-cls_decoder"+save_file),np.array(self.cls_decoder_list))
+
+    def mem_log(self,str,fin=False):
+        if self.cfg.advanced_logging and self.mem_log_not_done:
+            print("VRAM used before "+str+" : ",round(torch.cuda.memory_allocated(self.device)/10**9,2),
+                  " GB, reserved: ",round(torch.cuda.memory_reserved(self.device)/10**9,2)," GB")
+            if fin:
+                self.mem_log_not_done = False 
+                
+    def get_parameters(self):
+        return self.model.parameters()
+
         
 def get_model(**kwargs):
     models = {
         "latest": MAE,
+        "lin_prob":Linear_probing,
     }
     return models[kwargs["model_version"]](**kwargs)
     
@@ -366,39 +493,3 @@ def get_model(**kwargs):
     #     model.train()
     #     if kwargs["advanced_logging"] and mem_log_not_done : 
     #         print("mem after validation : ",round(torch.cuda.memory_allocated(self.device)/10**9,2)," GB")
-
-
-class MAE_film(Model):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-        # init model
-        self.model = ContextCast( self.cfg, data_dim=1, **kwargs)
-        # self.params = kwargs
-        # self.timestr = kwargs["timestr"]
-        # self.assets = kwargs["assets"]
-        # self.save_path = kwargs["save_path"]
-
-        if self.resume_checkpoint:
-            self.checkpoint_path = self.resume_checkpoint
-        else:
-            self.checkpoint_path = None
-    
-    def load_model(self, checkpoint_file):
-        
-        if checkpoint_file is not None:
-            checkpoint = torch.load(checkpoint_file)
-            if "model_state" in checkpoint.keys(): weights = checkpoint["model_state"]
-            else: weights = checkpoint
-            try:
-                self.model.load_state_dict(weights)
-            except RuntimeError as e:
-                LOG.error(e)
-                print("--- !! ---")
-                print("loading state dict with strict=False, please verify if the right model is loaded and strict=False is desired")
-                print("--- !! ---")
-                self.model.load_state_dict(weights,strict=False)
-        self.model.eval()
-        self.model.zero_grad()
-        self.model.to(self.device)
-        return checkpoint if checkpoint_file is not None else None

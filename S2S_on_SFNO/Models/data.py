@@ -5,6 +5,7 @@ from calendar import isleap
 import xarray as xr
 import numpy as np
 import os
+from datetime import datetime
 import sys
 
 class ERA5_galvani(Dataset):
@@ -45,6 +46,7 @@ class ERA5_galvani(Dataset):
             coarse_level=4,
             uv100=True,
             temporal_step=28,
+            future=False,
             cls=None,
             auto_regressive_steps=0
         ):
@@ -164,20 +166,39 @@ class SST_galvani(Dataset):
     def __init__(
             self, 
             path = "/mnt/qb/goswami/data/era5/weatherbench2/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr", # start date: 1959-01-01 end date : 2023-01-10T18:00
+            path_clim = "/mnt/qb/goswami/data/era5/weatherbench2/1990-2019_6h_1440x721.zarr",
             start_year=2000,
             end_year=2022,
             steps_per_day=4,
             coarse_level=4,
             temporal_step=6,
+            future=False,
+            clim=False,
+            oni=False,
+            cls = None,
             ground_truth=False,
             precompute_temporal_average=False
         ):
         self.temporal_step = temporal_step
+        self.future = future
+        self.clim = clim
         self.gt = ground_truth
         self.coarse_level = coarse_level
         if path.endswith(".zarr"):  self.dataset = xr.open_zarr(path,chunks=None)
         else:                       self.dataset = xr.open_dataset(path,chunks=None)
+        if self.clim:
+            if path_clim.endswith(".zarr"):  self.dataset_clim = xr.open_zarr(path_clim,chunks=None)
+            else:                           self.dataset_clim = xr.open_dataset(path_clim,chunks=None)
         
+        if cls:
+            self.cls = torch.from_numpy(np.load(cls))
+        else:
+            self.cls = None
+
+        if self.temporal_step % 4 != 0:
+            print("Temporal step needs to be a multiple of 4")
+            sys.exit(0)
+
         startdate = np.array([self.dataset.time[0].to_numpy()])
         possible_startdate = startdate.max()
         if not (startdate == startdate[0]).all(): 
@@ -211,16 +232,63 @@ class SST_galvani(Dataset):
         return self.end_idx - self.start_idx
 
     def __getitem__(self,idx):
-        input = self.dataset.isel(time=slice(self.start_idx+idx, self.start_idx+idx + self.temporal_step))[["sea_surface_temperature"]].to_array()
+        if self.future:# default
+            input = self.dataset.isel(time=slice(self.start_idx+idx, self.start_idx+idx + self.temporal_step))[["sea_surface_temperature"]].to_array()
+        else:
+            input = self.dataset.isel(time=slice(self.start_idx+idx -self.temporal_step -1 , self.start_idx+idx + 1))[["sea_surface_temperature"]].to_array()
+            
         def format(input):
             time = str(input.time.to_numpy()[0])
             time = torch.tensor(int(time[0:4]+time[5:7]+time[8:10]+time[11:13])) # time in format YYYYMMDDHH  
             if self.coarse_level > 1:
                 sst = input.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean()
-            return torch.from_numpy(sst.to_numpy()).float(), time
+            return [torch.from_numpy(sst.to_numpy()).float(), time ]
+        
+        def sst_to_nino(data):
+            return_data = []
+            for datapoint in data:
+                time = datapoint.item()
+                yday = datetime.strptime(str(time), '%Y%m%d%H').timetuple().tm_yday
+                hour = int(str(time)[-2:])
+                if self.future:# default
+                    if hour == 0:
+                        # self.temporal_step//4 -1 : typically the slice end needs to be one more than the start to get a slice, but because for each dayofyear we have 4 hours the slice(n,n) still returns data for day n and 4 hours, if we only have the time dimension like in the weatherbenc2 era5 we would return 0
+                        input_clim = self.dataset_clim.sel(dayofyear=slice(yday, yday + self.temporal_step//4-1))[["sea_surface_temperature"]].to_array().to_numpy()
+                    else:
+                        # here we need to remove the hours that have been overselected by a slice in dayofyear (no need if the selection starts at hour 0)
+                        input_clim = self.dataset_clim.sel(dayofyear=slice(yday, yday + self.temporal_step//4))[["sea_surface_temperature"]].to_array().to_numpy()
+                        # remove dayofyear dimension and only have (hour, lat, long)
+                        input_clim = np.swapaxes(input_clim,0,1).reshape(-1, input_clim.shape[-2], input_clim.shape[-1])
+                        # remove hours before the current hour and hours over the temporal step at the end
+                        input_clim = input_clim[hour//6:-(4-hour//6)]
+                    input_clim = input_clim.mean(axis=0)      
+                else:
+                    input_clim = self.dataset_clim.isel(dayofyear=slice(self.start_idx+idx -self.temporal_step -1 , self.start_idx+idx + 1))[["sea_surface_temperature"]].to_array()
+            
+                sst = data[0]
+                sst = sst.sel(lat=slice(-5, 5), lon=slice(190, 240)).mean(dim="time").to_numpy()
+                nino34_anom = (sst - input_clim).mean()
+                return_data.append([nino34_anom, time ])
+            return return_data
+
+
         if self.gt:
             g_truth = self.dataset.isel(time=slice(self.start_idx+idx+1, self.start_idx+idx+1 + self.temporal_step))[["sea_surface_temperature"]].to_array()
-            return format(input), format(g_truth)
+            data = [ format(input), format(g_truth)]
         else:
-            return [format(input)]
+            data =  [format(input)]
+        
+        if self.oni:
+            data = sst_to_nino(data)
+
+
+        if self.cls is not None:
+                # for d in data:
+                #     d.insert(0,(self.cls[idx]).float())
+            data.insert(0,[(self.cls[idx]).float()]) # for self.cls and self oni: [[cls], [oni, time] ]
+
+        return data
+        
+       
+
         # precompute_temporal_average not implemented

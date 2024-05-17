@@ -416,6 +416,8 @@ def load_model(name, kwargs):
         from .sfno.model import get_model
     if name == 'mae':
         from .mae.model import get_model
+    if name == "mae_probe":
+        from .mae.model import get_model
     
     return get_model(**kwargs)
     # return available_models()[name].load()(**kwargs)

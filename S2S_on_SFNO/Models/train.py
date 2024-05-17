@@ -238,14 +238,17 @@ class Trainer():
                 path=self.cfg.trainingdata_path, 
                 start_year=self.cfg.trainingset_start_year,
                 end_year=self.cfg.trainingset_end_year,
-                temporal_step=self.cfg.temporal_step
+                temporal_step=self.cfg.temporal_step,
+                cls=self.cfg.cls,
             )
             print("Validation Data:")
             self.dataset_validation = SST_galvani(
                 path=self.cfg.trainingdata_path, 
                 start_year=self.cfg.validationset_start_year,
                 end_year=self.cfg.validationset_end_year,
-                temporal_step=self.cfg.temporal_step)
+                temporal_step=self.cfg.temporal_step,
+                cls=self.cfg.cls,
+                )
         else:
             if self.cfg.model_version == 'film' and self.cfg.cls is None:
                 sst = True
@@ -458,7 +461,8 @@ class Trainer():
     # only plots MAE results at the moment
     def evaluate_model(self, checkpoint_list,save_path):
         """Evaluate model using checkpoint list"""
-        self.cfg.batch_size = 1
+        # self.cfg.batch_size = 1
+        plot = False
         with torch.no_grad():
             self.set_dataloader()
             self.util.load_statistics()
@@ -472,17 +476,20 @@ class Trainer():
                         if step == 0 : input = self.util.normalise(data[step][0]).to(self.util.device)
                         else: input = output
                         output, gt = self.model_forward(input,data,step)
-                        self.util.plot(output, gt, int(cp["iter"])*int(cp["epoch"]),cp_name,save_path)
-                    break
+                        if plot:
+                            self.util.plot(output, gt, int(cp["iter"])*int(cp["epoch"]),cp_name,save_path)
+                            break
+                    if plot: break
                 
             print("done")
-            
-        
+    
+    
+    
+#     def evaluate_mae_cls():
 
-
-class MAETrainer(Trainer):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+# class MAETrainer(Trainer):
+#     def __init__(self, **kwargs):
+#         super().__init__(**kwargs)
 
 
 

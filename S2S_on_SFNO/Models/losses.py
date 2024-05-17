@@ -26,7 +26,7 @@ class CosineMSELoss():
             return loss  # B, C
 
 class L2Sphere(torch.nn.Module):
-    def __init__(self, relative=True, squared=False,reduction="sum"):
+    def __init__(self, relative=True, squared=False,reduction="sum",dampening=None):
         super(L2Sphere, self).__init__()
         
         self.relative = relative
