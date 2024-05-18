@@ -715,7 +715,6 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         
         # new SFNO-Block with Film Layer
         self.blocks = nn.ModuleList([])
-        self.blocks_film = nn.ModuleList([])
        
         for i in range(self.num_layers):
             first_layer = i == 0
@@ -756,7 +755,6 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
                     spectral_layers=self.spectral_layers,
                     checkpointing_mlp=self.checkpointing_mlp,
                 )
-                self.blocks_film.append(block) # blocks_film
             else:
                 block = FourierNeuralOperatorBlock(
                     forward_transform,
@@ -779,7 +777,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
                     spectral_layers=self.spectral_layers,
                     checkpointing_mlp=self.checkpointing_mlp,
                 )
-                self.blocks.append(block)
+            self.blocks.append(block)
             
         # coarse level =  4 default, could be changed by coarse_level in film_gen arguments
         self.film_gen = Film_wrapper(device,cfg)
@@ -826,13 +824,23 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
 
             # forward features
             x = self.pos_drop(x)
-
-        with torch.no_grad():
+        
+        if self.checkpointing_block: #self.checkpointing:
             for i, blk in enumerate(self.blocks):
-                x = blk(x)
-
-        for i, blk in enumerate(self.blocks_film):
-            x = blk(x,gamma[:,i],beta[:,i],scale)
+                # if i < 11: # don't want to checkpoint everything? All is needed to be able to go to 4 steps (1|2)
+                if self.cfg.repeat_film or i >= self.num_layers - self.film_layers:
+                    x = checkpoint(blk,x,gamma[:,i],beta[:,i],scale,first_filmlayer=(film_idx==0),use_reentrant=False)
+                else:
+                    with torch.no_grad():
+                        x =checkpoint(blk,x)
+        else:
+            for i, blk in enumerate(self.blocks):
+                if self.cfg.repeat_film or i >= self.num_layers - self.film_layers:
+                    film_idx = i - (self.num_layers - self.film_layers)
+                    x = blk(x,gamma[:,film_idx],beta[:,film_idx],scale,first_filmlayer=(film_idx==0))
+                else:
+                    with torch.no_grad():
+                        x = blk(x)
 
 
         # x = self.film(x,gamma[:,0],beta[:,0], 1.0)
