@@ -101,7 +101,7 @@ class SpectralFilterLayer(nn.Module):
                 bias=False,
             )
 
-        elif filter_type == "linear" and isinstance(forward_transform, RealSHT):
+        elif filter_type == "linear" and isinstance(forward_transform, harmonics.RealSHT):
             self.filter = SpectralConvS2(
                 forward_transform,
                 inverse_transform,
@@ -217,7 +217,7 @@ class FourierNeuralOperatorBlock(nn.Module):
         if concat_skip and outer_skip is not None:
             self.outer_skip_conv = nn.Conv2d(2 * embed_dim_sfno, embed_dim_sfno, 1, bias=False)
 
-    def forward(self, x):
+    def forward(self, x, *overflow):
         residual = x
 
         x = self.norm0(x)
@@ -260,7 +260,6 @@ class FourierNeuralOperatorBlock_Filmed(nn.Module):
         mlp_ratio=2.0,
         drop_rate=0.0,
         drop_path=0.0,
-        block_idx=0,
         act_layer=nn.GELU,
         norm_layer=(nn.LayerNorm, nn.LayerNorm),
         # num_blocks = 8,
@@ -301,8 +300,6 @@ class FourierNeuralOperatorBlock_Filmed(nn.Module):
             drop_rate=drop_rate,
         )
 
-        self.block_idx = block_idx
-
         if inner_skip == "linear":
             self.inner_skip = nn.Conv2d(embed_dim_sfno, embed_dim_sfno, 1, 1)
         elif inner_skip == "identity":
@@ -340,9 +337,7 @@ class FourierNeuralOperatorBlock_Filmed(nn.Module):
         if concat_skip and outer_skip is not None:
             self.outer_skip_conv = nn.Conv2d(2 * embed_dim_sfno, embed_dim_sfno, 1, bias=False)
 
-    def forward(self, x, gamma, beta, scale=1):
-        residual = x
-        
+    def global_conv(self,x,residual):
         x = self.norm0(x)
         x = self.filter_layer(x).contiguous()
 
@@ -357,6 +352,61 @@ class FourierNeuralOperatorBlock_Filmed(nn.Module):
             x = self.act_layer(x)
 
         x = self.norm1(x)
+        return x
+
+
+    def forward(self, x, gamma, beta, scale=1, first_filmlayer=False):
+        
+        residual = x
+        # def before_film(x):
+        # with torch.no_grad():
+        # x = self.norm0(x)
+        # x = self.filter_layer(x).contiguous()
+
+        # if hasattr(self, "inner_skip"):
+        #     if self.concat_skip:
+        #         x = torch.cat((x, self.inner_skip(residual)), dim=1)
+        #         x = self.inner_skip_conv(x)
+        #     else:
+        #         x = x + self.inner_skip(residual)
+
+        # if hasattr(self, "act_layer"):
+        #     x = self.act_layer(x)
+
+        # x = self.norm1(x)
+            # return x
+        
+        if first_filmlayer:
+            with torch.no_grad():
+                x = self.norm0(x)
+                x = self.filter_layer(x).contiguous()
+
+                if hasattr(self, "inner_skip"):
+                    if self.concat_skip:
+                        x = torch.cat((x, self.inner_skip(residual)), dim=1)
+                        x = self.inner_skip_conv(x)
+                    else:
+                        x = x + self.inner_skip(residual)
+
+                if hasattr(self, "act_layer"):
+                    x = self.act_layer(x)
+
+                x = self.norm1(x)
+        else:
+            x = self.norm0(x)
+            x = self.filter_layer(x).contiguous()
+
+            if hasattr(self, "inner_skip"):
+                if self.concat_skip:
+                    x = torch.cat((x, self.inner_skip(residual)), dim=1)
+                    x = self.inner_skip_conv(x)
+                else:
+                    x = x + self.inner_skip(residual)
+
+            if hasattr(self, "act_layer"):
+                x = self.act_layer(x)
+
+            x = self.norm1(x)
 
         x = self.film(x,gamma,beta, scale)
 
@@ -698,6 +748,85 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         
         # new SFNO-Block with Film Layer
         self.blocks = nn.ModuleList([])
+        self.blocks_film = nn.ModuleList([])
+        # ## film
+        # for i in range(self.film_layers):
+        #     last_layer = i == self.film_layers - 1
+
+        #     inverse_transform = self.itrans_up if last_layer else self.itrans
+        #     forward_transform = self.trans
+
+        #     inner_skip = "linear" if i < self.film_layers - 1 else None
+        #     outer_skip = "identity" if i < self.film_layers - 1 else None
+        #     mlp_mode = self.mlp_mode if not last_layer else "none"
+
+        #     if last_layer:
+        #         norm_layer = (self.norm_layer1, self.norm_layer0)
+        #     else:
+        #         norm_layer = (self.norm_layer1, self.norm_layer1)
+        #     block = FourierNeuralOperatorBlock_Filmed(
+        #         forward_transform,
+        #         inverse_transform,
+        #         self.embed_dim_sfno,
+        #         filter_type=self.filter_type,
+        #         mlp_ratio=mlp_ratio,
+        #         drop_rate=drop_rate,
+        #         drop_path=self.dpr[i],
+        #         norm_layer=norm_layer,
+        #         sparsity_threshold=sparsity_threshold,
+        #         use_complex_kernels=use_complex_kernels,
+        #         inner_skip=inner_skip,
+        #         outer_skip=outer_skip,
+        #         mlp_mode=mlp_mode,
+        #         compression=self.compression,
+        #         rank=self.rank,
+        #         complex_network=self.complex_network,
+        #         complex_activation=self.complex_activation,
+        #         spectral_layers=self.spectral_layers,
+        #         checkpointing_mlp=self.checkpointing_mlp,
+        #     )
+        #     self.blocks_film.append(block)
+        
+        # ## normal block
+        # for i in range(self.num_layers - self.film_layers):
+        #     first_layer = i == 0
+
+        #     forward_transform = self.trans_down if first_layer else self.trans
+        #     inverse_transform = self.itrans
+
+        #     inner_skip = "linear" if 0 < i else None
+        #     outer_skip = "identity" if 0 < i else None
+        #     mlp_mode = self.mlp_mode
+
+        #     if first_layer:
+        #         norm_layer = (self.norm_layer0, self.norm_layer1)
+        #     else:
+        #         norm_layer = (self.norm_layer1, self.norm_layer1)
+
+        #     block = FourierNeuralOperatorBlock(
+        #         forward_transform,
+        #         inverse_transform,
+        #         self.embed_dim_sfno,
+        #         filter_type=self.filter_type,
+        #         mlp_ratio=mlp_ratio,
+        #         drop_rate=drop_rate,
+        #         drop_path=self.dpr[i],
+        #         norm_layer=norm_layer,
+        #         sparsity_threshold=sparsity_threshold,
+        #         use_complex_kernels=use_complex_kernels,
+        #         inner_skip=inner_skip,
+        #         outer_skip=outer_skip,
+        #         mlp_mode=mlp_mode,
+        #         compression=self.compression,
+        #         rank=self.rank,
+        #         complex_network=self.complex_network,
+        #         complex_activation=self.complex_activation,
+        #         spectral_layers=self.spectral_layers,
+        #         checkpointing_mlp=self.checkpointing_mlp,
+        #     )
+        #     self.blocks.append(block)
+
+        # original
         for i in range(self.num_layers):
             first_layer = i == 0
             last_layer = i == self.num_layers - 1
@@ -715,56 +844,121 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
                 norm_layer = (self.norm_layer1, self.norm_layer0)
             else:
                 norm_layer = (self.norm_layer1, self.norm_layer1)
+            if self.cfg.repeat_film or i >= self.num_layers - self.film_layers:
+                block = FourierNeuralOperatorBlock_Filmed(
+                    forward_transform,
+                    inverse_transform,
+                    self.embed_dim_sfno,
+                    filter_type=self.filter_type,
+                    mlp_ratio=mlp_ratio,
+                    drop_rate=drop_rate,
+                    drop_path=self.dpr[i],
+                    norm_layer=norm_layer,
+                    sparsity_threshold=sparsity_threshold,
+                    use_complex_kernels=use_complex_kernels,
+                    inner_skip=inner_skip,
+                    outer_skip=outer_skip,
+                    mlp_mode=mlp_mode,
+                    compression=self.compression,
+                    rank=self.rank,
+                    complex_network=self.complex_network,
+                    complex_activation=self.complex_activation,
+                    spectral_layers=self.spectral_layers,
+                    checkpointing_mlp=self.checkpointing_mlp,
+                )
+                self.blocks_film.append(block) # blocks_film
+            else:
+                block = FourierNeuralOperatorBlock(
+                    forward_transform,
+                    inverse_transform,
+                    self.embed_dim_sfno,
+                    filter_type=self.filter_type,
+                    mlp_ratio=mlp_ratio,
+                    drop_rate=drop_rate,
+                    drop_path=self.dpr[i],
+                    norm_layer=norm_layer,
+                    sparsity_threshold=sparsity_threshold,
+                    use_complex_kernels=use_complex_kernels,
+                    inner_skip=inner_skip,
+                    outer_skip=outer_skip,
+                    mlp_mode=mlp_mode,
+                    compression=self.compression,
+                    rank=self.rank,
+                    complex_network=self.complex_network,
+                    complex_activation=self.complex_activation,
+                    spectral_layers=self.spectral_layers,
+                    checkpointing_mlp=self.checkpointing_mlp,
+                )
+                self.blocks.append(block)
+            # self.blocks.append(block)
+        
+        # ## only blocks
+        # self.blocks = nn.ModuleList([])
+        # for i in range(self.num_layers):
+        #     first_layer = i == 0
+        #     last_layer = i == self.num_layers - 1
 
-            block = FourierNeuralOperatorBlock_Filmed(
-                forward_transform,
-                inverse_transform,
-                self.embed_dim_sfno,
-                filter_type=self.filter_type,
-                mlp_ratio=mlp_ratio,
-                drop_rate=drop_rate,
-                drop_path=self.dpr[i],
-                block_idx = i,
-                norm_layer=norm_layer,
-                sparsity_threshold=sparsity_threshold,
-                use_complex_kernels=use_complex_kernels,
-                inner_skip=inner_skip,
-                outer_skip=outer_skip,
-                mlp_mode=mlp_mode,
-                compression=self.compression,
-                rank=self.rank,
-                complex_network=self.complex_network,
-                complex_activation=self.complex_activation,
-                spectral_layers=self.spectral_layers,
-                checkpointing_mlp=self.checkpointing_mlp,
-            )
+        #     forward_transform = self.trans_down if first_layer else self.trans
+        #     inverse_transform = self.itrans_up if last_layer else self.itrans
 
-            self.blocks.append(block)
+        #     inner_skip = "linear" if 0 < i < self.num_layers - 1 else None
+        #     outer_skip = "identity" if 0 < i < self.num_layers - 1 else None
+        #     mlp_mode = self.mlp_mode if not last_layer else "none"
+
+        #     if first_layer:
+        #         norm_layer = (self.norm_layer0, self.norm_layer1)
+        #     elif last_layer:
+        #         norm_layer = (self.norm_layer1, self.norm_layer0)
+        #     else:
+        #         norm_layer = (self.norm_layer1, self.norm_layer1)
+
+        #     block = FourierNeuralOperatorBlock(
+        #         forward_transform,
+        #         inverse_transform,
+        #         self.embed_dim_sfno,
+        #         filter_type=self.filter_type,
+        #         mlp_ratio=mlp_ratio,
+        #         drop_rate=drop_rate,
+        #         drop_path=self.dpr[i],
+        #         norm_layer=norm_layer,
+        #         sparsity_threshold=sparsity_threshold,
+        #         use_complex_kernels=use_complex_kernels,
+        #         inner_skip=inner_skip,
+        #         outer_skip=outer_skip,
+        #         mlp_mode=mlp_mode,
+        #         compression=self.compression,
+        #         rank=self.rank,
+        #         complex_network=self.complex_network,
+        #         complex_activation=self.complex_activation,
+        #         spectral_layers=self.spectral_layers,
+        #         checkpointing_mlp=self.checkpointing_mlp,
+        #     )
+
+        #     self.blocks.append(block)
         
         # coarse level =  4 default, could be changed by coarse_level in film_gen arguments
         self.film_gen = Film_wrapper(device,cfg)
+        # self.film = FiLM()
 
-    def cp_forward(self, module):
-        def custom_forward(*inputs):
-            inputs = module(*inputs)
-            return inputs
-        return custom_forward
-    
     def forward(self, x,sst,scale=1):
 
         # calculate gammas and betas for film layers
         film_mod = self.film_gen(sst)# None for transformer
-        if film_mod.shape[2] != self.num_layers: 
-            if self.cfg.repeat_film:
-                # same film modulation for each block
-                film_mod = film_mod.expand(-1,-1,self.num_layers,-1)
-            else:
+        # film_mod = checkpoint(self.film_gen,sst,use_reentrant=False)
+
+        # if film_mod.shape[2] != self.num_layers: 
+        #     if self.cfg.repeat_film:
+        #         # same film modulation for each block
+        #         film_mod = film_mod.expand(-1,-1,self.num_layers,-1)
+        #     else:
+        #         pass
                 # only film modulation on the last #film_layers layers
                 # probably unessessary compute ?? for do we still run backward on earlier layers?
-                shape = list(film_mod.shape)
-                shape[2] = self.num_layers
-                film_mod_temp = torch.zeros(shape).to(self.device)
-                film_mod_temp[:,:,-film_mod.shape[2]:] = film_mod
+                # insead of checking index in block loop just and 0 and let the gamma/beta values unconsidert in normal block. Does is increase mem/compute or does the compute graph realizes that we don't need that then? Err on the save side.
+                # shape = list(film_mod.shape)
+                # shape[2] = self.num_layers
+                # film_mod_temp = torch.zeros(shape).to(self.device)
+                # film_mod_temp[:,:,-film_mod.shape[2]:] = film_mod
         gamma,beta = film_mod[:,0],film_mod[:,1] 
         # save gamma and beta in model for validation
         if self.advanced_logging:
@@ -776,33 +970,54 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
             residual = x
 
         # encoder
-        if self.checkpointing_encoder:
-            x = checkpoint(self.encoder,x,use_reentrant=False)
-        else:
-            x = self.encoder(x)
+        with torch.no_grad():
+            if self.checkpointing_encoder:
+                x = checkpoint(self.encoder,x,use_reentrant=False)
+            else:
+                x = self.encoder(x)
 
-        # do positional embedding
-        x = x + self.pos_embed
+            # do positional embedding
+            x = x + self.pos_embed
 
-        # forward features
-        x = self.pos_drop(x)
+            # forward features
+            x = self.pos_drop(x)
 
-        if self.checkpointing_block: #self.checkpointing:
+        # if self.checkpointing_block: #self.checkpointing:
+        #     for i, blk in enumerate(self.blocks):
+        #         # if i < 11: # don't want to checkpoint everything? All is needed to be able to go to 4 steps (1|2)
+        #         if self.cfg.repeat_film or i >= self.num_layers - self.film_layers:
+        #             x = checkpoint(blk,x,gamma[:,i],beta[:,i],scale,first_filmlayer=(film_idx==0),use_reentrant=False)
+        #         else:
+        #             with torch.no_grad():
+        #                 x =checkpoint(blk,x)
+        # else:
+        #     for i, blk in enumerate(self.blocks):
+        #         if self.cfg.repeat_film or i >= self.num_layers - self.film_layers:
+        #             film_idx = i - (self.num_layers - self.film_layers)
+        #             x = blk(x,gamma[:,film_idx],beta[:,film_idx],scale,first_filmlayer=(film_idx==0))
+        #         else:
+        #             with torch.no_grad():
+        #                 x = blk(x)
+
+
+        with torch.no_grad():
             for i, blk in enumerate(self.blocks):
-                # if i < 11: # don't want to checkpoint everything? All is needed to be able to go to 4 steps (1|2)
-                x = checkpoint(blk,x,gamma[:,i],beta[:,i],scale,use_reentrant=False)
-                # else:
-                #     x = blk(x,gamma[i],beta[i],scale)
-        else:
-            for i, blk in enumerate(self.blocks):
-                x = blk(x,gamma[:,i],beta[:,i],scale)
+                x = blk(x)
+
+        # with torch.no_grad():
+        for i, blk in enumerate(self.blocks_film):
+            x = blk(x,gamma[:,i],beta[:,i],scale,first_filmlayer=(i==0))
+
+
+        # x = self.film(x,gamma[:,0],beta[:,0], 1.0)
+
 
         # concatenate the big skip
         if self.big_skip:
             x = torch.cat((x, residual), dim=1)
 
         # decoder
-        if self.checkpointing_encoder:
+        if self.checkpointing_decoder:
              x = checkpoint(self.decoder,x,use_reentrant=False)
         else:
             x = self.decoder(x)
@@ -810,136 +1025,136 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
         return x
     
 
-class FourierNeuralOperatorNet_last_Filmed(FourierNeuralOperatorNet):
-    def __init__(
-            self,
-            device,
-            cfg,
-            mlp_ratio=2.0,
-            drop_rate=0.0,
-            sparsity_threshold=0.0,
-            use_complex_kernels=True,
-            **kwargs
-        ):
-        super().__init__(device,cfg,**kwargs)
+# class FourierNeuralOperatorNet_last_Filmed(FourierNeuralOperatorNet):
+#     def __init__(
+#             self,
+#             device,
+#             cfg,
+#             mlp_ratio=2.0,
+#             drop_rate=0.0,
+#             sparsity_threshold=0.0,
+#             use_complex_kernels=True,
+#             **kwargs
+#         ):
+#         super().__init__(device,cfg,**kwargs)
 
-        # save gamma and beta in model if advanced logging is required
-        self.advanced_logging = kwargs["advanced_logging"]
-        self.film_layers = kwargs["film_layers"]
-        self.depth = kwargs["model_depth"]
+#         # save gamma and beta in model if advanced logging is required
+#         self.advanced_logging = kwargs["advanced_logging"]
+#         self.film_layers = kwargs["film_layers"]
+#         self.depth = kwargs["model_depth"]
         
-        # new SFNO-Block with Film Layer
-        self.blocks = nn.ModuleList([])
-        for i in range(self.num_layers):
-            first_layer = i == 0
-            last_layer = i == self.num_layers - 1
+#         # new SFNO-Block with Film Layer
+#         self.blocks = nn.ModuleList([])
+#         for i in range(self.num_layers):
+#             first_layer = i == 0
+#             last_layer = i == self.num_layers - 1
 
-            forward_transform = self.trans_down if first_layer else self.trans
-            inverse_transform = self.itrans_up if last_layer else self.itrans
+#             forward_transform = self.trans_down if first_layer else self.trans
+#             inverse_transform = self.itrans_up if last_layer else self.itrans
 
-            inner_skip = "linear" if 0 < i < self.num_layers - 1 else None
-            outer_skip = "identity" if 0 < i < self.num_layers - 1 else None
-            mlp_mode = self.mlp_mode if not last_layer else "none"
+#             inner_skip = "linear" if 0 < i < self.num_layers - 1 else None
+#             outer_skip = "identity" if 0 < i < self.num_layers - 1 else None
+#             mlp_mode = self.mlp_mode if not last_layer else "none"
 
-            if first_layer:
-                norm_layer = (self.norm_layer0, self.norm_layer1)
-            elif last_layer:
-                norm_layer = (self.norm_layer1, self.norm_layer0)
-            else:
-                norm_layer = (self.norm_layer1, self.norm_layer1)
+#             if first_layer:
+#                 norm_layer = (self.norm_layer0, self.norm_layer1)
+#             elif last_layer:
+#                 norm_layer = (self.norm_layer1, self.norm_layer0)
+#             else:
+#                 norm_layer = (self.norm_layer1, self.norm_layer1)
 
-            block = FourierNeuralOperatorBlock_Filmed(
-                forward_transform,
-                inverse_transform,
-                self.embed_dim_sfno,
-                filter_type=self.filter_type,
-                mlp_ratio=mlp_ratio,
-                drop_rate=drop_rate,
-                drop_path=self.dpr[i],
-                block_idx = i,
-                norm_layer=norm_layer,
-                sparsity_threshold=sparsity_threshold,
-                use_complex_kernels=use_complex_kernels,
-                inner_skip=inner_skip,
-                outer_skip=outer_skip,
-                mlp_mode=mlp_mode,
-                compression=self.compression,
-                rank=self.rank,
-                complex_network=self.complex_network,
-                complex_activation=self.complex_activation,
-                spectral_layers=self.spectral_layers,
-                checkpointing_mlp=self.checkpointing_mlp,
-            )
+#             block = FourierNeuralOperatorBlock_Filmed(
+#                 forward_transform,
+#                 inverse_transform,
+#                 self.embed_dim_sfno,
+#                 filter_type=self.filter_type,
+#                 mlp_ratio=mlp_ratio,
+#                 drop_rate=drop_rate,
+#                 drop_path=self.dpr[i],
+#                 block_idx = i,
+#                 norm_layer=norm_layer,
+#                 sparsity_threshold=sparsity_threshold,
+#                 use_complex_kernels=use_complex_kernels,
+#                 inner_skip=inner_skip,
+#                 outer_skip=outer_skip,
+#                 mlp_mode=mlp_mode,
+#                 compression=self.compression,
+#                 rank=self.rank,
+#                 complex_network=self.complex_network,
+#                 complex_activation=self.complex_activation,
+#                 spectral_layers=self.spectral_layers,
+#                 checkpointing_mlp=self.checkpointing_mlp,
+#             )
 
-            self.blocks.append(block)
+#             self.blocks.append(block)
         
-        # coarse level =  4 default, could be changed by coarse_level in film_gen arguments
-        self.film_gen = Film_wrapper(device,cfg)
+#         # coarse level =  4 default, could be changed by coarse_level in film_gen arguments
+#         self.film_gen = Film_wrapper(device,cfg)
 
-    def cp_forward(self, module):
-        def custom_forward(*inputs):
-            inputs = module(*inputs)
-            return inputs
-        return custom_forward
+#     def cp_forward(self, module):
+#         def custom_forward(*inputs):
+#             inputs = module(*inputs)
+#             return inputs
+#         return custom_forward
     
-    def forward(self, x,sst,scale=1):
+#     def forward(self, x,sst,scale=1):
 
-        # calculate gammas and betas for film layers
-        film_mod = self.film_gen(sst)# None for transformer
-        if film_mod.shape[2] != self.num_layers: 
-            if self.cfg.repeat_film:
-                # same film modulation for each block
-                film_mod = film_mod.expand(-1,-1,self.num_layers,-1)
-            else:
-                # only film modulation on the last #film_layers layers
-                # probably unessessary compute ?? for do we still run backward on earlier layers?
-                shape = list(film_mod.shape)
-                shape[2] = self.num_layers
-                film_mod_temp = torch.zeros(shape).to(self.device)
-                film_mod_temp[:,:,-film_mod.shape[2]:] = film_mod
-        gamma,beta = film_mod[:,0],film_mod[:,1] 
-        # save gamma and beta in model for validation
-        if self.advanced_logging:
-            self.gamma = gamma
-            self.beta = beta
+#         # calculate gammas and betas for film layers
+#         film_mod = self.film_gen(sst)# None for transformer
+#         if film_mod.shape[2] != self.num_layers: 
+#             if self.cfg.repeat_film:
+#                 # same film modulation for each block
+#                 film_mod = film_mod.expand(-1,-1,self.num_layers,-1)
+#             else:
+#                 # only film modulation on the last #film_layers layers
+#                 # probably unessessary compute ?? for do we still run backward on earlier layers?
+#                 shape = list(film_mod.shape)
+#                 shape[2] = self.num_layers
+#                 film_mod_temp = torch.zeros(shape).to(self.device)
+#                 film_mod_temp[:,:,-film_mod.shape[2]:] = film_mod
+#         gamma,beta = film_mod[:,0],film_mod[:,1] 
+#         # save gamma and beta in model for validation
+#         if self.advanced_logging:
+#             self.gamma = gamma
+#             self.beta = beta
         
-        # save big skip
-        if self.big_skip:
-            residual = x
+#         # save big skip
+#         if self.big_skip:
+#             residual = x
 
-        # encoder
-        if self.checkpointing_encoder:
-            x = checkpoint(self.encoder,x,use_reentrant=False)
-        else:
-            x = self.encoder(x)
+#         # encoder
+#         if self.checkpointing_encoder:
+#             x = checkpoint(self.encoder,x,use_reentrant=False)
+#         else:
+#             x = self.encoder(x)
 
-        # do positional embedding
-        x = x + self.pos_embed
+#         # do positional embedding
+#         x = x + self.pos_embed
 
-        # forward features
-        x = self.pos_drop(x)
+#         # forward features
+#         x = self.pos_drop(x)
 
-        if self.checkpointing_block: #self.checkpointing:
-            for i, blk in enumerate(self.blocks):
-                # if i < 11: # don't want to checkpoint everything? All is needed to be able to go to 4 steps (1|2)
-                x = checkpoint(blk,x,gamma[:,i],beta[:,i],scale,use_reentrant=False)
-                # else:
-                #     x = blk(x,gamma[i],beta[i],scale)
-        else:
-            for i, blk in enumerate(self.blocks):
-                x = blk(x,gamma[:,i],beta[:,i],scale)
+#         if self.checkpointing_block: #self.checkpointing:
+#             for i, blk in enumerate(self.blocks):
+#                 # if i < 11: # don't want to checkpoint everything? All is needed to be able to go to 4 steps (1|2)
+#                 x = checkpoint(blk,x,gamma[:,i],beta[:,i],scale,use_reentrant=False)
+#                 # else:
+#                 #     x = blk(x,gamma[i],beta[i],scale)
+#         else:
+#             for i, blk in enumerate(self.blocks):
+#                 x = blk(x,gamma[:,i],beta[:,i],scale)
 
-        # concatenate the big skip
-        if self.big_skip:
-            x = torch.cat((x, residual), dim=1)
+#         # concatenate the big skip
+#         if self.big_skip:
+#             x = torch.cat((x, residual), dim=1)
 
-        # decoder
-        if self.checkpointing_encoder:
-             x = checkpoint(self.decoder,x,use_reentrant=False)
-        else:
-            x = self.decoder(x)
+#         # decoder
+#         if self.checkpointing_encoder:
+#              x = checkpoint(self.decoder,x,use_reentrant=False)
+#         else:
+#             x = self.decoder(x)
 
-        return x
+#         return x
     
 
     # weighting sst by grid cell size
@@ -983,9 +1198,10 @@ class Film_wrapper(nn.Module):
        # Mae
         if self.cfg.film_gen_type == "mae":
             if self.cfg.cls is None:
-                with torch.no_grad():
-                    cls = self.film_gen(sst)[-1]
-                    x = self.film_head(cls)
+                pass
+                # with torch.no_grad():
+                    # cls = self.film_gen(sst)[-1]
+                # x = self.film_head(cls)
             else:
                 x = self.film_head(sst)
         else:

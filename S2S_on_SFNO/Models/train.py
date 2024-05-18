@@ -186,9 +186,10 @@ class Trainer():
         self.set_dataloader()
 
     def finalise(self):
-        self.local_log.save("training_log.npy")
-        self.save_checkpoint()
-        wandb.finish()
+        if not self.cfg.debug:
+            self.local_log.save("training_log.npy")
+            self.save_checkpoint()
+            wandb.finish()
         sys.exit(0)
 
     def ready_model(self):
