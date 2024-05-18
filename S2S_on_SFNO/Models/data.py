@@ -46,7 +46,7 @@ class ERA5_galvani(Dataset):
             coarse_level=4,
             uv100=True,
             temporal_step=28,
-            future=False,
+            past_sst=False,
             cls=None,
             auto_regressive_steps=0
         ):
