@@ -579,7 +579,7 @@ def _main():
     architecture_parser.add_argument(
         "--model-version",
         default="latest",
-        help="Model versions: \n    SFNO: [0, film]\n    Fourcastnet: [0, 1]",
+        help="Model versions: \n    SFNO: [latest, film]\n    Fourcastnet: [0, 1]\n    MAE: [latest, lin-probe]",
     )
     architecture_parser.add_argument(
         "--film-gen",

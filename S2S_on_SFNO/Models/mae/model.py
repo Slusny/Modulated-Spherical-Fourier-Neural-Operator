@@ -123,7 +123,10 @@ class MAE(Model):
         print("Fin")
 
     def running(self):
-        '''Run model on validation data and save cls tokens for encoder and decoder'''
+        '''
+        Run model on validation data and save cls tokens for encoder and decoder
+        The cls token numpy lists can be used as input for a Film-Generator, so the MAE does not to run each training iteration for filmed SFNO.
+        '''
         with Timer("calcuate all class tokens for validation data"):
             print("Use Validation Data to run model:")
             self.mem_log_not_done = True
@@ -177,10 +180,6 @@ class Linear_probing(Model):
 
         # init model
         self.model = nn.Linear(self.cfg.embed_dim, 1)
-        # self.params = kwargs
-        # self.timestr = kwargs["timestr"]
-        # self.assets = kwargs["assets"]
-        # self.save_path = kwargs["save_path"]
 
         if self.resume_checkpoint:
             self.checkpoint_path = self.resume_checkpoint
@@ -235,20 +234,16 @@ class Linear_probing(Model):
 
     def evaluate_model(self, checkpoint_list,save_path):
         """Evaluate model using checkpoint list"""
-        for cp_idx, checkpoint in enumerate(checkpoint_list):
-            self.checkpoint_path = checkpoint
-            model = self.load_model(self.checkpoint_path)
-            model.eval()
-            model.to(self.device)
-            self.save_path = save_path
-            self.validation()
-            model.train()
+        pass
 
     def finalise(self):
         print("Fin")
 
     def running(self):
-        '''Run model on validation data and save cls tokens for encoder and decoder'''
+        '''
+        Run model on validation data and save cls tokens for encoder and decoder
+        The cls token numpy lists can be used as input for a Film-Generator, so the MAE does not to run each training iteration for filmed SFNO.
+        '''
         with Timer("calcuate all class tokens for validation data"):
             print("Use Validation Data to run model:")
             self.mem_log_not_done = True
@@ -299,7 +294,7 @@ class Linear_probing(Model):
 def get_model(**kwargs):
     models = {
         "latest": MAE,
-        "lin_prob":Linear_probing,
+        "lin-probe":Linear_probing,
     }
     return models[kwargs["model_version"]](**kwargs)
     

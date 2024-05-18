@@ -166,8 +166,12 @@ class Trainer():
             gt = self.util.normalise(data[step+1][0]).to(self.util.device)
             outputs = self.model(input,input_sst,self.scale)
         elif self.cfg.model_type == "mae":
-            gt = input # input is already normalised
-            outputs = self.model(input,np.random.uniform(0.4,0.8)) # outputs = (mean, std), mask, cls
+            if self.cfg.model_version == "lin-probe":
+                gt = data[step+1][0].to(self.util.device)
+                outputs = self.model(input)
+            else:
+                gt = input # input is already normalised
+                outputs = self.model(input,np.random.uniform(0.4,0.8)) # outputs = (mean, std), mask, cls
         else:
             gt = self.util.normalise(data[step+1][0]).to(self.util.device)
             outputs = self.model(input)
