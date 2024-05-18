@@ -172,7 +172,7 @@ class SST_galvani(Dataset):
             steps_per_day=4,
             coarse_level=4,
             temporal_step=6,
-            future=False,
+            past_sst=False,
             clim=False,
             oni=False,
             cls = None,
@@ -180,7 +180,7 @@ class SST_galvani(Dataset):
             precompute_temporal_average=False
         ):
         self.temporal_step = temporal_step
-        self.future = future
+        self.past_sst = past_sst
         self.clim = clim
         self.gt = ground_truth
         self.coarse_level = coarse_level
@@ -232,7 +232,7 @@ class SST_galvani(Dataset):
         return self.end_idx - self.start_idx
 
     def __getitem__(self,idx):
-        if self.future:# default
+        if not self.past_sst:# default
             input = self.dataset.isel(time=slice(self.start_idx+idx, self.start_idx+idx + self.temporal_step))[["sea_surface_temperature"]].to_array()
         else:
             input = self.dataset.isel(time=slice(self.start_idx+idx -self.temporal_step -1 , self.start_idx+idx + 1))[["sea_surface_temperature"]].to_array()
@@ -250,7 +250,7 @@ class SST_galvani(Dataset):
                 time = datapoint.item()
                 yday = datetime.strptime(str(time), '%Y%m%d%H').timetuple().tm_yday
                 hour = int(str(time)[-2:])
-                if self.future:# default
+                if not self.past_sst:# default
                     if hour == 0:
                         # self.temporal_step//4 -1 : typically the slice end needs to be one more than the start to get a slice, but because for each dayofyear we have 4 hours the slice(n,n) still returns data for day n and 4 hours, if we only have the time dimension like in the weatherbenc2 era5 we would return 0
                         input_clim = self.dataset_clim.sel(dayofyear=slice(yday, yday + self.temporal_step//4-1))[["sea_surface_temperature"]].to_array().to_numpy()

@@ -207,6 +207,14 @@ def _main():
         default=None,
         help=("path to numpy file containing cls tokens from MAE model"),
     )
+    data.add_argument(
+        "--past-sst",
+        action="store_true",
+        help=("by default the sst data is taken from the future. \
+              If conditioned on a single on a single sst image it is from the day for wich a forcast is done. \
+              In the case of the MAE the sst start from the input date to #temporal-steps into the futre.\
+              By setting this flag the sst data is taken from the past."),
+    )
 
     # Running
     running = parser.add_argument_group('Inference Parameters')

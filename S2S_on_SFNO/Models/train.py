@@ -37,6 +37,7 @@ class Trainer():
         self.scale = 1.0
         self.mse_all_vars = self.cfg.model_type == "sfno"
         self.epoch = 0
+        self.step = 0
 
     def train(self):
         self.setup()
@@ -104,7 +105,7 @@ class Trainer():
             if (self.iter+1) % (self.cfg.validation_interval) == 0:
                 self.validation()
             loss = 0
-            discount_factor = 1
+            discount_factor = 0.99
             with amp.autocast(self.cfg.enable_amp):
                 for step in range(self.cfg.multi_step_training+1):
                     if step == 0 : input = self.util.normalise(data[step][0]).to(self.util.device)
@@ -112,7 +113,7 @@ class Trainer():
                     output, gt = self.model_forward(input,data,step)
                     
                     if step % (self.cfg.training_step_skip+1) == 0:
-                        loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1)/self.cfg.batch_size #*discount_factor**step
+                        loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1)/self.cfg.batch_size *discount_factor**step
                     
                 loss = loss / (self.cfg.accumulation_steps+1)
                 # only for logging the loss for the batch
@@ -267,6 +268,7 @@ class Trainer():
                 auto_regressive_steps=self.cfg.multi_step_training,
                 sst=sst,
                 temporal_step=self.cfg.temporal_step,
+                past_sst = self.cfg.past_sst,
                 cls=self.cfg.cls,
             )
             print("Validation Data:")
@@ -280,6 +282,7 @@ class Trainer():
                 auto_regressive_steps=self.cfg.multi_step_validation,
                 sst=sst,
                 temporal_step=self.cfg.temporal_step,
+                past_sst = self.cfg.past_sst,
                 cls=self.cfg.cls,
             )
         self.training_loader = DataLoader(self.dataset,shuffle=True,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
