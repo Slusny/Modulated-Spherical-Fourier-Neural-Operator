@@ -506,6 +506,36 @@ class Trainer():
         
         print("save done")
 
+    def save_forward(self):
+        self.ready_model()
+        self.set_dataloader()
+        self.model.eval()
+        self.mem_log("loading data")
+        self.output_data = []
+        for i, data in enumerate(self.validation_loader):
+            with amp.autocast(self.cfg.enable_amp):
+                for step in range(self.cfg.multi_step_validation+1):
+                    if step == 0 : input = self.util.normalise(data[step][0]).to(self.util.device)
+                    else: input = output
+                    self.mem_log("loading data")
+                    output, gt = self.model_forward(input,data,step)
+                    self.output_data += [*output]
+           
+            self.mem_log("fin",fin=True)
+                # logging
+            self.iter += 1
+            self.step = self.iter*self.cfg.batch_size+len(self.dataset)*self.epoch
+  
+
+    def save_to_netcdf(self):
+        '''
+        Take the output_data from a inference run and save it as a netcdf file that conforms with the weatherbench2 forcast format, with coordinates:
+        latitude: float64, level: int32, longitude: float64, prediction_timedelta: timedelta64[ns], time: datetime64[ns]
+        '''
+        data_vars = {}
+        for 
+        dataset = xr.Dataset(
+            data
                 
     def test_model_speed(self):
         with Timer("Model speed test"):
