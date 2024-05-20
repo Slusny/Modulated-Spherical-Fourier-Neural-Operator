@@ -48,10 +48,12 @@ class ERA5_galvani(Dataset):
             temporal_step=28,
             past_sst=False,
             cls=None,
-            auto_regressive_steps=0
+            auto_regressive_steps=0,
+            run=False,
         ):
         self.model = model
         self.sst = sst
+        self.run = run
         self.auto_regressive_steps = auto_regressive_steps
         self.coarse_level = coarse_level
         self.uv100 = uv100
@@ -156,7 +158,10 @@ class ERA5_galvani(Dataset):
 
         data = []
         for i in range(0, self.auto_regressive_steps+2):
-            era5 = format(self.dataset.isel(time=self.start_idx + idx + i))
+            if self.run and i > 0:
+                era5 = [[]]
+            else:
+                era5 = format(self.dataset.isel(time=self.start_idx + idx + i))
             if self.sst:
                 era5.insert(1,(sst[i:i+self.temporal_step]).float())
             elif self.cls is not None:

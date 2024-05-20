@@ -48,6 +48,7 @@ class Trainer():
         self.mse_all_vars = self.cfg.model_type == "sfno"
         self.epoch = 0
         self.step = 0
+        self.iter = 0
 
     def train(self):
         self.setup()
@@ -111,7 +112,6 @@ class Trainer():
         self.local_log = LocalLog(self.local_logging,self.cfg.save_path)
 
     def train_epoch(self):
-        self.iter = 0
         batch_loss = 0
 
         self.mem_log("loading data")
@@ -264,7 +264,7 @@ class Trainer():
         else:
             self.loss_fn = torch.nn.MSELoss()
 
-    def set_dataloader(self):
+    def set_dataloader(self,run=False):
         if self.cfg.model_type == "mae":
             if self.cfg.model_version =="lin-probe":
                 oni = True
@@ -307,6 +307,7 @@ class Trainer():
                 temporal_step=self.cfg.temporal_step,
                 past_sst = self.cfg.past_sst,
                 cls=self.cfg.cls,
+                run=run,
             )
             print("Validation Data:")
             self.dataset_validation = ERA5_galvani(
@@ -321,6 +322,7 @@ class Trainer():
                 temporal_step=self.cfg.temporal_step,
                 past_sst = self.cfg.past_sst,
                 cls=self.cfg.cls,
+                run=run,
             )
         shuffle= not self.cfg.no_shuffle
         if self.cfg.ddp:
@@ -509,26 +511,36 @@ class Trainer():
 
     def save_forecast(self):
         self.ready_model()
-        self.set_dataloader()
+        self.set_dataloader(run=True)
         self.model.eval()
         self.mem_log("loading data")
-        self.output_data = []
-        for i, data in enumerate(self.validation_loader):
-            with amp.autocast(self.cfg.enable_amp):
-                for step in range(self.cfg.multi_step_validation+1):
-                    if step == 0 : input = self.util.normalise(data[step][0]).to(self.util.device)
-                    else: input = output
-                    self.mem_log("loading data")
-                    output, gt = self.model_forward(input,data,step)
-                    self.output_data += [*(output.cpu().numpy())]
-                    print(str(i).rjust(6),"/",len(self.validation_loader)," -  ",datetime.strptime(str(time), '%Y%m%d%H').strftime("%d %B %Y"))
-           
-            self.mem_log("fin",fin=True)
-            if i % 100 == 0:
-                system_monitor(printout=True,pids=[os.getpid()],names=["python"])
-                # logging
-            self.iter += 1
-            self.step = self.iter*self.cfg.batch_size+len(self.dataset)*self.epoch
+        self.output_data = [[]]*self.cfg.multi_step_validation # time_delta, time, variable, lat, lon
+        self.time_dim = []
+        self.time_delta = [np.timedelta64(i*6, 'h') for i in range(self.cfg.multi_step_validation+1)]
+        with torch.no_grad():
+            for i, data in enumerate(self.validation_loader):
+                with amp.autocast(self.cfg.enable_amp):
+                    for step in range(self.cfg.multi_step_validation+1):
+                        if step == 0 : 
+                            input = self.util.normalise(data[step][0]).to(self.util.device)
+                            data_time = datetime.strptime(str(data[0][1].item()), '%Y%m%d%H') # ?? doesn't work with batches
+                        else: input = output
+                        if data_time.strftime("%H") == "00":continue
+                        self.time_dim.append(np.datetime64(data_time)) # [ns] ??
+                        self.mem_log("loading data")
+                        output, gt = self.model_forward(input,data,step)
+                        self.output_data[step] += [*(output.cpu().numpy())]
+                        print(str(i).rjust(6),"/",len(self.validation_loader)," -  ",data_time.strftime("%d %B %Y"))
+                        if i%10 == 0:
+                            self.save_to_netcdf()
+                            # logging
+            
+                self.mem_log("fin",fin=True)
+                if i % 100 == 0:
+                    system_monitor(printout=True,pids=[os.getpid()],names=["python"])
+                    # logging
+                self.iter += 1
+                self.step = self.iter*self.cfg.batch_size+len(self.dataset)*self.epoch
   
 
     def save_to_netcdf(self):
@@ -542,6 +554,58 @@ class Trainer():
         #     data
         # )
             pass
+        
+        # cut out 2,3 (100m)
+        wb_ordering_scf = {
+            "10m_u_component_of_wind":0,
+            "10m_v_component_of_wind":1,
+            "2m_temperature":4,
+            "surface_pressure":5,
+            "mean_sea_level_pressure":6,
+            "total_column_water_vapour":7
+        }
+        wb_ordering_pl = {
+            "u_component_of_wind": np.arange(8,21),
+            "v_component_of_wind":np.arange(21,34), 
+            "geopotential":np.arange(34,47), 
+            "temperature":np.arange(47,60), 
+            "relative_humidity":np.arange(60,73),  
+        }
+        level = [1000, 925, 850, 700, 600, 500, 400, 300, 250, 200, 150, 100, 50]
+        level.reverse()
+
+        if self.output_variables == self.owner.ordering and self.owner.model == 'sfno':
+            print("hi")
+        data_dict={}
+        for out_var,idx in wb_ordering_scf.items():
+            # if out_var in self.output_variables:
+            data_dict[out_var] = xr.DataArray(self.output_data[:,:,idx],
+                dims=["prediction_timedelta","time","latitude","longitude"],
+                coords=dict(
+                    prediction_timedelta=("prediction_timedelta",self.time_delta),
+                    time=("time",self.time_dim),
+                    latitude=(["latitude", "longitude"], np.tile(np.arange(-90,90.25,0.25)[::-1],(1440,1)).T),
+                    longitude=(["latitude", "longitude"], np.tile(np.arange(0,360,0.25),(721,1))),
+                )
+            )
+        for out_var,idx in wb_ordering_pl.items():
+            # if out_var in self.output_variables:
+            data_dict[out_var] = xr.DataArray(self.output_data[:,:,idx],
+                dims=["prediction_timedelta","time","latitude","longitude"],
+                coords=dict(
+                    prediction_timedelta=("prediction_timedelta",self.time_delta),
+                    time=("time",self.time_dim),
+                    latitude=(["latitude", "longitude"], np.tile(np.arange(-90,90.25,0.25)[::-1],(1440,1)).T),
+                    longitude=(["latitude", "longitude"], np.tile(np.arange(0,360,0.25),(721,1))),
+                )
+            )
+
+        # dataset = xr.Dataset(data_vars=data_dict,coords=dict(
+        #             latitude=(["latitude"], np.arange(-90,90.25,0.25)[::-1]),
+        #             longitude=([ "longitude"], np.arange(0,360,0.25)),
+        #             step=[np.timedelta64(step*60*60*10**9, 'ns')]
+        #         ))time=np.datetime64(str(year)+'-01-01T00:00:00.000000000') + np.timedelta64(s, 'h'))
+        
                 
     def test_model_speed(self):
         with Timer("Model speed test"):
