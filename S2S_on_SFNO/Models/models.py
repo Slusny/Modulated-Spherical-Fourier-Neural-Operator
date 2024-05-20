@@ -84,6 +84,11 @@ class Model():
     @cached_property
     def device(self):
         import torch
+
+        if self.cfg.ddp:
+            device=self.cfg.rank
+            return device
+
         device = "cpu"
         if torch.backends.mps.is_available() and torch.backends.mps.is_built():
             device = "mps"

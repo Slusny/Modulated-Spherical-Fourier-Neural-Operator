@@ -178,6 +178,7 @@ class SST_galvani(Dataset):
             past_sst=False,
             clim=False,
             oni=False,
+            oni_path=None,
             cls = None,
             ground_truth=False,
             precompute_temporal_average=False
@@ -186,11 +187,15 @@ class SST_galvani(Dataset):
         self.past_sst = past_sst
         self.clim = clim
         self.oni = oni
+        self.oni_path=oni_path
         self.gt = ground_truth
         self.coarse_level = coarse_level
         if path.endswith(".zarr"):  self.dataset = xr.open_zarr(path,chunks=None)
         else:                       self.dataset = xr.open_dataset(path,chunks=None)
-        if self.clim or self.oni:
+        if self.oni_path:
+            self.oni = True
+            self.dataset_oni = torch.from_numpy(np.load(oni_path)) 
+        elif self.clim or self.oni:
             if path_clim.endswith(".zarr"):  self.dataset_clim = xr.open_zarr(path_clim,chunks=None)
             else:                            self.dataset_clim = xr.open_dataset(path_clim,chunks=None)
         
@@ -293,15 +298,18 @@ class SST_galvani(Dataset):
                 return_data.append([nino34_anom, time ])
             return return_data
 
-
-        if self.gt: # not implemented
-            g_truth = self.dataset.isel(time=slice(self.start_idx+idx+1, self.start_idx+idx+1 + self.temporal_step))[["sea_surface_temperature"]].to_array()
-            data = [ format(input), format(g_truth)]
-        else:
-            data =  [format(input)]
         
-        if self.oni:
-            data = sst_to_nino(data)
+        if self.oni_path:
+            data = [[self.dataset_oni[idx].float()]]
+        else:
+            if self.gt: # not implemented
+                g_truth = self.dataset.isel(time=slice(self.start_idx+idx+1, self.start_idx+idx+1 + self.temporal_step))[["sea_surface_temperature"]].to_array()
+                data = [ format(input), format(g_truth)]
+            else:
+                data =  [format(input)]
+            
+            if self.oni:
+                data = sst_to_nino(data)
 
 
         if self.cls is not None:

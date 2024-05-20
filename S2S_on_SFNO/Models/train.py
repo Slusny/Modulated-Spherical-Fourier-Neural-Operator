@@ -1,5 +1,5 @@
 import torch
-from torch.utils.data import BatchSampler, DataLoader, Dataset#, IterableDataset
+from torch.utils.data import RandomSampler,BatchSampler, DataLoader, Dataset#, IterableDataset
 import torch.cuda.amp as amp
 from calendar import isleap
 import xarray as xr
@@ -22,6 +22,15 @@ from ..utils import LocalLog
 
 import logging
 LOG = logging.getLogger('S2S_on_SFNO')
+
+# DataParallel
+
+import torch.distributed as dist
+# import torch.multiprocessing as mp
+from torch.utils.data.distributed import DistributedSampler
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.distributed import  get_rank
+
 
 class Trainer():
     '''
@@ -150,7 +159,10 @@ class Trainer():
         # end of epoch
     
     def pre_epoch(self):
-        self.util.set_seed(self.epoch)   
+        self.util.set_seed(self.epoch)
+        if self.cfg.ddp:
+            self.training_loader.sampler.set_epoch(self.epoch)
+            self.validation_loader.sampler.set_epoch(self.epoch)   
     
     def post_epoch(self):
         self.epoch += 1
@@ -206,6 +218,8 @@ class Trainer():
         self.util.load_model(self.util.checkpoint_path)
         self.model.train()
         self.util.load_statistics() 
+        if self.cfg.ddp:
+            self.model = DDP(self.model,device_ids=[self.util.device])
 
     def create_sheduler(self):
         # Scheduler
@@ -305,8 +319,13 @@ class Trainer():
                 past_sst = self.cfg.past_sst,
                 cls=self.cfg.cls,
             )
-        self.training_loader = DataLoader(self.dataset,shuffle=True,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
-        self.validation_loader = DataLoader(self.dataset_validation,shuffle=True,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
+        if self.cfg.ddp:
+            self.training_loader = DataLoader(self.dataset,shuffle=True,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size,sampler=DistributedSampler(self.dataset))
+            self.validation_loader = DataLoader(self.dataset_validation,shuffle=True,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size,sampler=DistributedSampler(self.dataset_validation))
+
+        else:
+            self.training_loader = DataLoader(self.dataset,shuffle=True,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
+            self.validation_loader = DataLoader(self.dataset_validation,shuffle=True,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
 
         return #training_loader, validation_loader
     
@@ -448,13 +467,19 @@ class Trainer():
                 print("After ", self.step, " Samples - Loss: ", round(batch_loss,5))
     
     def save_checkpoint(self):
+        if self.cfg.ddp:
+            if get_rank() != 0: return
         save_file ="checkpoint_"+self.cfg.model_type+"_"+self.cfg.model_version+"_"+str(self.cfg.film_gen_type)+"_iter={}_epoch={}.pkl".format(self.iter,self.epoch)
         total_save_path = os.path.join( self.cfg.save_path,save_file)
         LOG.info("Saving checkpoint to %s",total_save_path)
        
         if save_file is None: save_file ="checkpoint_"+self.cfg.timestr+"_final.pkl"
+        if self.cfg.ddp:
+            model_state = self.model.module.state_dict()
+        else:
+            model_state = self.model.state_dict()
         save_dict = {
-            "model_state":self.model.state_dict(),
+            "model_state":model_state,
             "epoch":self.epoch,
             "iter":self.iter,
             "optimizer_state_dict":self.optimizer.state_dict(),

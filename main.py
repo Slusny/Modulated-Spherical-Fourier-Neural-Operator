@@ -33,6 +33,23 @@ from S2S_on_SFNO.Models.models import available_models, load_model #########
 from S2S_on_SFNO.utils import Timer
 from S2S_on_SFNO.outputs import available_outputs
 from S2S_on_SFNO.Models.train import Trainer
+from S2S_on_SFNO.utils import Attributes
+
+import torch.multiprocessing as mp
+from torch.distributed import init_process_group, destroy_process_group, get_rank, get_world_size
+
+
+def ddp_setup(rank, world_size):
+    """
+    Args:
+        rank: Unique identifier of each process
+        world_size: Total number of processes
+    """
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = "71350"
+    init_process_group(backend="nccl", rank=rank, world_size=world_size)
+    torch.cuda.set_device(rank)
+    
 
 # LOG = logging.getLogger(__name__)
 LOG = logging.getLogger(__name__)
@@ -43,8 +60,291 @@ print("cuda available? : ",torch.cuda.is_available(),flush=True)
 # global variables
 do_return_trainer = False
 
+def main(rank=0,args={},arg_groups={},world_size=1):
+    # args = Attributes(v)
+    # can also log to file if needed
+    if args.log_file:logging.basicConfig(level=logging.INFO, filename=args.log_file,filemode="a")
+    # use Slurm ID in checkpoint_save path and log to stdout to better find corresponding stdout from slurm job
+    if args.jobID is not None: LOG.info("Slurm Job ID: %s", args.jobID)
+    
+    
+    if args.debug: #new
+        pdb.set_trace()
+        torch.autograd.set_detect_anomaly(True)
+        args.training_workers = 0
+        print("starting debugger") 
+        print("setting training workers to 0 to be able to debug code in ")
 
-def _main():
+    if args.ddp:
+        args.rank = rank
+        args.world_size = world_size
+        ddp_setup(rank,world_size)
+
+    # Format Assets path
+    if args.assets_sub_directory:
+        args.assets = os.path.join(Path(".").absolute(),args.assets_sub_directory)
+    # else:
+    #     args.assets = os.path.join(Path(".").absolute(),args.model_type)
+
+    
+    if args.requests_extra:
+        if not args.retrieve_requests and not args.archive_requests:
+            parser.error(
+                "You need to specify --retrieve-requests or --archive-requests"
+            )
+    
+    if not args.fields and not args.retrieve_requests:
+        logging.basicConfig(
+            level="DEBUG" if args.debug else "INFO",
+            format="%(asctime)s %(levelname)s %(message)s",
+        )
+
+    if args.file is not None:
+        args.input = "file"
+
+    if args.metadata is None:
+        args.metadata = []
+
+    if args.expver is not None:
+        args.metadata["expver"] = args.expver
+
+    if args.class_ is not None:
+        args.metadata["class"] = args.class_
+
+
+    # Manipulation on args
+    if args.metadata: args.metadata = dict(kv.split("=") for kv in args.metadata)
+
+    # Add extra steps to multi_step_training if we want to skip steps
+    if args.training_step_skip > 0:
+        if args.multi_step_training > 0:
+            args.multi_step_training = args.multi_step_training + args.training_step_skip*(args.multi_step_training)
+        else:
+            print("multi-step-skip given but no multi-step-training = 0. Specify the number of steps in multi-step-training larger 0.")
+    if args.validation_step_skip > 0:
+        if args.multi_step_validation > 0:
+            args.multi_step_validation = args.multi_step_validation + args.validation_step_skip*(args.multi_step_validation)
+        else:
+            print("multi-step-skip given but no multi-step-validation = 0. Specify the number of steps in multi-step-validation larger 0.")
+
+    # set film_gen_type if model version film is selected but no generator to default value
+    if args.film_gen_type:
+        if args.film_gen_type.lower() == "none" : args.film_gen_type = None
+    if args.model_version == "film" and args.film_gen_type is None: 
+        print("using film generator: gcn_custom")
+        args.film_gen_type = "gcn_custom"
+    # scheduler is updated in every validation interval. To arive at the total horizon in standard iters we divide by the validation interval
+    args.scheduler_horizon = args.scheduler_horizon//args.validation_interval//args.batch_size
+
+    # Format Output path
+    timestr = time.strftime("%Y%m%dT%H%M")
+    # save_string to save output data if model.run is called (only for runs not for training)
+    save_string = "leadtime_"+str(args.lead_time)+"_startDate_"+str(args.date)+str(args.time) +"_createdOn_"+timestr
+    if args.path is None:
+        outputDirPath = os.path.join(Path(".").absolute(),"S2S_on_SFNO/outputs",args.model_type)
+    else:
+        outputDirPath = os.path.join(args.path,args.model_type)
+    args.path  = os.path.join(outputDirPath,save_string+".grib")
+    # timestring for logging and saveing purposes
+    args.timestr = timestr
+    if not os.path.exists(args.path):
+        os.makedirs(os.path.dirname(args.path), exist_ok=True)
+
+    #Print args
+    print("Script called with the following parameters:")
+    for group,value in arg_groups.items():
+        if group == 'positional arguments': continue
+        print(" --",group)
+        for k,v in sorted(vars(value).items()):
+            print("    ",k," : ",v)
+        print("")
+
+    # Load parameters from checkpoint if given and load model
+    resume_cp = args.resume_checkpoint
+    if args.eval_model:
+        resume_cp = list(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len))[-1]
+    if resume_cp:
+        cp = torch.load(resume_cp)
+        if not 'hyperparameters' in cp.keys(): 
+            print("couldn't load model configuration from checkpoint")
+            model = load_model(args.model_type, vars(args))
+        else:
+            model_args = cp["hyperparameters"].copy()
+            
+            # overwrite checkpoint parameters with given parameters, attention, ignores default values, only specified ones
+            for passed_arg in sys.argv[1:]:
+                if passed_arg.startswith("--"):
+                    dest = next(x for x in parser._actions if x.option_strings[0] == passed_arg).dest
+                    # skip Architectural changes
+                    if dest in (list(vars(arg_groups["Architecture"]).keys())+list(vars(arg_groups["Architecture Film Gen"]).keys())): continue # do we want to skip Architecture as well?
+                    model_args[dest] = vars(args)[dest]
+
+            if args.film_weights:
+                film_cp = torch.load(args.film_weights)
+                if not 'hyperparameters' in cp.keys(): 
+                    print("couldn't load film model configuration from checkpoint")
+                else:
+                    for k,v in film_cp["hyperparameters"].items():
+                        if k in vars(arg_groups["Architecture Film Gen"]).keys(): 
+                            model_args[k] = v
+                del film_cp
+            del cp
+            print("\nScript updated with Checkpoint parameters:")
+            for k,v in model_args.items():
+                print("    ",k," : ",v)
+            kwargs = model_args
+            model = load_model(model_args["model_type"], kwargs)
+            # trainer is still called with the original args not model_args but model_args should only modify architecture - do it nevertheless
+    else:
+        # if only film weights are given, load film model
+        kwargs = vars(args)
+        if args.film_weights:
+            film_cp = torch.load(args.film_weights)
+            if not 'hyperparameters' in film_cp.keys(): 
+                print("couldn't load film model configuration from checkpoint")
+            else:
+                for k,v in film_cp["hyperparameters"].items():
+                    if k in vars(arg_groups["Architecture Film Gen"]).keys(): 
+                        kwargs[k] = v
+            del film_cp
+        
+        print("\nScript updated with Checkpoint parameters:")
+        for k,v in kwargs.items():
+             print("    ",k," : ",v)
+        model = load_model(args.model_type, kwargs)
+
+    if args.fields:
+        model.print_fields()
+        sys.exit(0)
+
+    # This logic is a bit convoluted, but it is for backwards compatibility.
+    if args.retrieve_requests or (args.requests_extra and not args.archive_requests):
+        model.print_requests()
+        sys.exit(0)
+
+    if args.assets_list:
+        model.print_assets_list()
+        sys.exit(0)
+    
+    elif args.train:
+
+        print("")
+        print("Started training ")
+        LOG.info("Process ID: %s", os.getpid())
+
+
+        trainer = Trainer(model,kwargs)
+        try:
+            trainer.train()
+        except :
+            LOG.error(traceback.format_exc())
+            print("shutting down training")
+            trainer.finalise()
+            sys.exit(0)
+
+    elif do_return_trainer:
+        trainer = Trainer(model,vars(args))
+        return trainer
+
+    elif args.test_performance:
+        trainer = Trainer(model,vars(args))
+        trainer.test_performance()
+        sys.exit(0)
+
+    elif args.test_dataloader_speed:
+        trainer = Trainer(model,vars(args))
+        trainer.test_dataloader_speed()
+        sys.exit(0)
+
+    elif args.test_batch_size:
+        trainer = Trainer(model,vars(args))
+        trainer.test_batch_size()
+        sys.exit(0)
+
+    elif args.save_data:
+        trainer = Trainer(model,vars(args))
+        trainer.save_data()
+        sys.exit(0)
+
+    elif args.eval_model:
+        print("evaluating models")
+        checkpoint_list = list(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len)) 
+        
+        # select equidistance checkpoints from all checkpoints
+        if len(args.eval_checkpoints) > 0:
+            checkpoint_file = re.sub(r"\d+","{}",checkpoint_list[-1].split("/")[-1])
+            checkpoint_list_shorten = [os.path.join(args.eval_checkpoint_path,checkpoint_file.format(checkpoint)) for checkpoint in args.eval_checkpoints]
+        elif args.eval_checkpoint_num > 1:
+            num_checkpoints = len(checkpoint_list)
+            checkpoint_list_shorten = checkpoint_list[::num_checkpoints//args.eval_checkpoint_num]
+            if len(checkpoint_list_shorten)>args.eval_checkpoint_num:
+                checkpoint_list_shorten[-1] = checkpoint_list[-1]
+            else:
+                checkpoint_list_shorten.append(checkpoint_list[-1])
+            checkpoint_list_shorten.pop(0)
+        elif args.eval_checkpoint_num == -1:
+            checkpoint_list_shorten = checkpoint_list
+        else:
+            checkpoint_list_shorten = [checkpoint_list[-1]]#,checkpoint_list[2],checkpoint_list[-1]]
+        print("loading :")
+        for cp in checkpoint_list_shorten:print("    "+cp)
+        # #sfno
+        # sfno_kwargs = vars(args)
+        # sfno_kwargs["model_version"] = "release"
+        # sfno = load_model('sfno', sfno_kwargs)
+
+        #save folder
+        save_path = os.path.join(args.eval_checkpoint_path,"figures","valid_iter"+str(args.validation_epochs))#str(args.multi_step_validation//(args.validation_step_skip+1))
+        os.makedirs(save_path, exist_ok=True)
+        os.makedirs(os.path.join(save_path,"variable_plots"), exist_ok=True)
+
+        # model.evaluate_model(checkpoint_list_shorten,save_path)
+        trainer = Trainer(model,vars(args))
+        trainer.evaluate_model(checkpoint_list_shorten,save_path)
+        
+    elif args.run:
+
+        try:
+            model.running()
+        except FileNotFoundError as e:
+            LOG.exception(e)
+            LOG.error(
+                "It is possible that some files requited by %s are missing.\
+                \n    Or that the assets path is not set correctly.",
+                args.model_type,
+            )
+            LOG.error("Rerun the command as:")
+            LOG.error(
+                "   %s",
+                shlex.join([sys.argv[0], "--download-assets"] + sys.argv[1:]), ## download assets call not nessessary
+            )
+            if kwargs["model_type"] == "mae":
+                model.save_cls()
+            sys.exit(1)
+    else:
+        print("No action specified (--train or --run). Exiting.")
+    model.finalise()
+
+    if args.dump_provenance:
+        with Timer("Collect provenance information"):
+            file = os.path.join(outputDirPath,save_string + "_provenance.json")
+            with open(file, "w") as f:
+                prov = model.provenance()
+                import json  # import here so it is not listed in provenance
+                json.dump(prov, f, indent=4)
+
+
+def return_trainer(args):
+    print("returning trainer")
+    global do_return_trainer 
+    do_return_trainer = True
+    # args = ["--model","sfno","--test","--training-workers","0","--batch-size","1","--debug"]
+    sys.argv = [sys.argv[0]]
+    for arg in args: sys.argv.append(arg)
+    return main()
+
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     # See https://github.com/pytorch/pytorch/issues/77764
@@ -206,6 +506,12 @@ def _main():
         action="store",
         default=None,
         help=("path to numpy file containing cls tokens from MAE model"),
+    )
+    data.add_argument(
+        "--oni-path",
+        action="store",
+        default=None,
+        help=("path to numpy file containing oni indices"),
     )
     data.add_argument(
         "--past-sst",
@@ -534,6 +840,10 @@ def _main():
         "--save-data",
         action="store_true",
     )
+    training.add_argument(
+        "--ddp",
+        action="store_true",
+    )
     
 
     # Evaluation
@@ -707,351 +1017,14 @@ def _main():
         arg_groups[group.title]=argparse.Namespace(**group_dict)
 
 
-    # can also log to file if needed
-    if args.log_file:logging.basicConfig(level=logging.INFO, filename=args.log_file,filemode="a")
-    # use Slurm ID in checkpoint_save path and log to stdout to better find corresponding stdout from slurm job
-    if args.jobID is not None: LOG.info("Slurm Job ID: %s", args.jobID)
-    
-    
-    if args.debug: #new
-        pdb.set_trace()
-        torch.autograd.set_detect_anomaly(True)
-        args.training_workers = 0
-        print("starting debugger") 
-        print("setting training workers to 0 to be able to debug code in ")
-
-    # Format Assets path
-    if args.assets_sub_directory:
-        args.assets = os.path.join(Path(".").absolute(),args.assets_sub_directory)
-    # else:
-    #     args.assets = os.path.join(Path(".").absolute(),args.model_type)
-
-    
-    if args.requests_extra:
-        if not args.retrieve_requests and not args.archive_requests:
-            parser.error(
-                "You need to specify --retrieve-requests or --archive-requests"
-            )
-    
-    if not args.fields and not args.retrieve_requests:
-        logging.basicConfig(
-            level="DEBUG" if args.debug else "INFO",
-            format="%(asctime)s %(levelname)s %(message)s",
-        )
-
-    if args.file is not None:
-        args.input = "file"
-
-    if args.metadata is None:
-        args.metadata = []
-
-    if args.expver is not None:
-        args.metadata["expver"] = args.expver
-
-    if args.class_ is not None:
-        args.metadata["class"] = args.class_
-
-
-    # Manipulation on args
-    if args.metadata: args.metadata = dict(kv.split("=") for kv in args.metadata)
-
-    # Add extra steps to multi_step_training if we want to skip steps
-    if args.training_step_skip > 0:
-        if args.multi_step_training > 0:
-            args.multi_step_training = args.multi_step_training + args.training_step_skip*(args.multi_step_training)
-        else:
-            print("multi-step-skip given but no multi-step-training = 0. Specify the number of steps in multi-step-training larger 0.")
-    if args.validation_step_skip > 0:
-        if args.multi_step_validation > 0:
-            args.multi_step_validation = args.multi_step_validation + args.validation_step_skip*(args.multi_step_validation)
-        else:
-            print("multi-step-skip given but no multi-step-validation = 0. Specify the number of steps in multi-step-validation larger 0.")
-
-    # set film_gen_type if model version film is selected but no generator to default value
-    if args.film_gen_type:
-        if args.film_gen_type.lower() == "none" : args.film_gen_type = None
-    if args.model_version == "film" and args.film_gen_type is None: 
-        print("using film generator: gcn_custom")
-        args.film_gen_type = "gcn_custom"
-    # scheduler is updated in every validation interval. To arive at the total horizon in standard iters we divide by the validation interval
-    args.scheduler_horizon = args.scheduler_horizon//args.validation_interval//args.batch_size
-
-    # Format Output path
-    timestr = time.strftime("%Y%m%dT%H%M")
-    # save_string to save output data if model.run is called (only for runs not for training)
-    save_string = "leadtime_"+str(args.lead_time)+"_startDate_"+str(args.date)+str(args.time) +"_createdOn_"+timestr
-    if args.path is None:
-        outputDirPath = os.path.join(Path(".").absolute(),"S2S_on_SFNO/outputs",args.model_type)
-    else:
-        outputDirPath = os.path.join(args.path,args.model_type)
-    args.path  = os.path.join(outputDirPath,save_string+".grib")
-    # timestring for logging and saveing purposes
-    args.timestr = timestr
-    if not os.path.exists(args.path):
-        os.makedirs(os.path.dirname(args.path), exist_ok=True)
-
-
-    # init wandb and create directory for saveing training results
-    # if args.train:
-    #     if args.wandb   : 
-    #         # config_wandb = vars(args).copy()
-    #         # for key in ['notes','tags','wandb']:del config_wandb[key]
-    #         # del config_wandb
-    #         if args.wandb_resume is not None :
-    #             wandb_run = wandb.init(project=args.model_type + " - " +args.model_version, 
-    #                 config=args,
-    #                 notes=args.notes,
-    #                 tags=args.tags,
-    #                 resume="must",
-    #                 id=args.wandb_resume)
-    #         else:
-    #             wandb_run = wandb.init(project=args.model_type + " - " +args.model_version, 
-    #                 config=args,
-    #                 notes=args.notes,
-    #                 tags=args.tags)
-    #         # create checkpoint folder for run name
-    #         new_save_path = os.path.join(args.save_path,wandb_run.name)
-    #         os.mkdir(new_save_path)
-    #         args.save_path = new_save_path
-    #     else : 
-    #         wandb_run = None
-    #         if args.film_gen_type: film_gen_str = "_"+args.film_gen_type
-    #         else:                  film_gen_str = ""
-    #         new_save_path = os.path.join(args.save_path,args.model_type+"_"+args.model_version+film_gen_str+"_"+timestr)
-    #         os.mkdir(new_save_path)
-    #         args.save_path = new_save_path
-    #         print("")
-    #         print("no wandb")
-    
-    #Print args
-    print("Script called with the following parameters:")
-    for group,value in arg_groups.items():
-        if group == 'positional arguments': continue
-        print(" --",group)
-        for k,v in sorted(vars(value).items()):
-            print("    ",k," : ",v)
-        print("")
-
-    # Load parameters from checkpoint if given and load model
-    resume_cp = args.resume_checkpoint
-    if args.eval_model:
-        resume_cp = list(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len))[-1]
-    if resume_cp:
-        cp = torch.load(resume_cp)
-        if not 'hyperparameters' in cp.keys(): 
-            print("couldn't load model configuration from checkpoint")
-            model = load_model(args.model_type, vars(args))
-        else:
-            model_args = cp["hyperparameters"].copy()
-            
-            # overwrite checkpoint parameters with given parameters, attention, ignores default values, only specified ones
-            for passed_arg in sys.argv[1:]:
-                if passed_arg.startswith("--"):
-                    dest = next(x for x in parser._actions if x.option_strings[0] == passed_arg).dest
-                    # skip Architectural changes
-                    if dest in (list(vars(arg_groups["Architecture"]).keys())+list(vars(arg_groups["Architecture Film Gen"]).keys())): continue # do we want to skip Architecture as well?
-                    model_args[dest] = vars(args)[dest]
-
-            if args.film_weights:
-                film_cp = torch.load(args.film_weights)
-                if not 'hyperparameters' in cp.keys(): 
-                    print("couldn't load film model configuration from checkpoint")
-                else:
-                    for k,v in film_cp["hyperparameters"].items():
-                        if k in vars(arg_groups["Architecture Film Gen"]).keys(): 
-                            model_args[k] = v
-                del film_cp
-            del cp
-            print("\nScript updated with Checkpoint parameters:")
-            for k,v in model_args.items():
-                print("    ",k," : ",v)
-            kwargs = model_args
-            model = load_model(model_args["model_type"], kwargs)
-            # trainer is still called with the original args not model_args but model_args should only modify architecture - do it nevertheless
-    else:
-        # if only film weights are given, load film model
-        kwargs = vars(args)
-        if args.film_weights:
-            film_cp = torch.load(args.film_weights)
-            if not 'hyperparameters' in film_cp.keys(): 
-                print("couldn't load film model configuration from checkpoint")
-            else:
-                for k,v in film_cp["hyperparameters"].items():
-                    if k in vars(arg_groups["Architecture Film Gen"]).keys(): 
-                        kwargs[k] = v
-            del film_cp
-        
-        print("\nScript updated with Checkpoint parameters:")
-        for k,v in kwargs.items():
-             print("    ",k," : ",v)
-        model = load_model(args.model_type, kwargs)
-
-    if args.fields:
-        model.print_fields()
-        sys.exit(0)
-
-    # This logic is a bit convoluted, but it is for backwards compatibility.
-    if args.retrieve_requests or (args.requests_extra and not args.archive_requests):
-        model.print_requests()
-        sys.exit(0)
-
-    if args.assets_list:
-        model.print_assets_list()
-        sys.exit(0)
-
-    # for debugging reasons
-    if args.test:
-        # from S2S_on_SFNO.Models.train import train
-        # train(vars(args))
-        # print("Test passed")
-        from S2S_on_SFNO.Models.train import test
-        test(vars(args))
-        print("Test passed")
-        # kwargs = vars(args)
-        # model.test_training(**kwargs)
-        # sys.exit(0)
-    
-    elif args.train:
-        # Start training, catch errors like STRG+C and save model before exiting
-        # try:
-        #     print("")
-        #     print("Started training ")
-        #     print("save path: ",args.save_path)
-        #     LOG.info("Process ID: %s", os.getpid())
-        #     kwargs = vars(args)
-        #     print("called training with following arguments:")
-        #     for k,v in kwargs.items():
-        #         print(f"    {k} : {v}")
-        #     model.training(wandb_run=wandb_run,**kwargs)
-        # except :
-        #     LOG.error(traceback.format_exc())
-        #     print("shutting down training")
-        #     model.save_checkpoint()
-        #     sys.exit(0)
-
-        print("")
-        print("Started training ")
-        LOG.info("Process ID: %s", os.getpid())
-
-
-        trainer = Trainer(model,kwargs)
-        try:
-            trainer.train()
-        except :
-            LOG.error(traceback.format_exc())
-            print("shutting down training")
-            trainer.finalise()
-            sys.exit(0)
-
-    elif do_return_trainer:
-        trainer = Trainer(model,vars(args))
-        return trainer
-
-    elif args.test_performance:
-        trainer = Trainer(model,vars(args))
-        trainer.test_performance()
-        sys.exit(0)
-
-    elif args.test_dataloader_speed:
-        trainer = Trainer(model,vars(args))
-        trainer.test_dataloader_speed()
-        sys.exit(0)
-
-    elif args.test_batch_size:
-        trainer = Trainer(model,vars(args))
-        trainer.test_batch_size()
-        sys.exit(0)
-
-    elif args.save_data:
-        trainer = Trainer(model,vars(args))
-        trainer.save_data()
-        sys.exit(0)
-
-    elif args.eval_model:
-        print("evaluating models")
-        checkpoint_list = list(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len)) 
-        
-        # select equidistance checkpoints from all checkpoints
-        if len(args.eval_checkpoints) > 0:
-            checkpoint_file = re.sub(r"\d+","{}",checkpoint_list[-1].split("/")[-1])
-            checkpoint_list_shorten = [os.path.join(args.eval_checkpoint_path,checkpoint_file.format(checkpoint)) for checkpoint in args.eval_checkpoints]
-        elif args.eval_checkpoint_num > 1:
-            num_checkpoints = len(checkpoint_list)
-            checkpoint_list_shorten = checkpoint_list[::num_checkpoints//args.eval_checkpoint_num]
-            if len(checkpoint_list_shorten)>args.eval_checkpoint_num:
-                checkpoint_list_shorten[-1] = checkpoint_list[-1]
-            else:
-                checkpoint_list_shorten.append(checkpoint_list[-1])
-            checkpoint_list_shorten.pop(0)
-        elif args.eval_checkpoint_num == -1:
-            checkpoint_list_shorten = checkpoint_list
-        else:
-            checkpoint_list_shorten = [checkpoint_list[-1]]#,checkpoint_list[2],checkpoint_list[-1]]
-        print("loading :")
-        for cp in checkpoint_list_shorten:print("    "+cp)
-        # #sfno
-        # sfno_kwargs = vars(args)
-        # sfno_kwargs["model_version"] = "release"
-        # sfno = load_model('sfno', sfno_kwargs)
-
-        #save folder
-        save_path = os.path.join(args.eval_checkpoint_path,"figures","valid_iter"+str(args.validation_epochs))#str(args.multi_step_validation//(args.validation_step_skip+1))
-        os.makedirs(save_path, exist_ok=True)
-        os.makedirs(os.path.join(save_path,"variable_plots"), exist_ok=True)
-
-        # model.evaluate_model(checkpoint_list_shorten,save_path)
-        trainer = Trainer(model,vars(args))
-        trainer.evaluate_model(checkpoint_list_shorten,save_path)
-        
-    elif args.run:
-
-        try:
-            model.running()
-        except FileNotFoundError as e:
-            LOG.exception(e)
-            LOG.error(
-                "It is possible that some files requited by %s are missing.\
-                \n    Or that the assets path is not set correctly.",
-                args.model_type,
-            )
-            LOG.error("Rerun the command as:")
-            LOG.error(
-                "   %s",
-                shlex.join([sys.argv[0], "--download-assets"] + sys.argv[1:]), ## download assets call not nessessary
-            )
-            if kwargs["model_type"] == "mae":
-                model.save_cls()
-            sys.exit(1)
-    else:
-        print("No action specified (--train or --run). Exiting.")
-    model.finalise()
-
-    if args.dump_provenance:
-        with Timer("Collect provenance information"):
-            file = os.path.join(outputDirPath,save_string + "_provenance.json")
-            with open(file, "w") as f:
-                prov = model.provenance()
-                import json  # import here so it is not listed in provenance
-                json.dump(prov, f, indent=4)
-
-
-def return_trainer(args):
-    print("returning trainer")
-    global do_return_trainer 
-    do_return_trainer = True
-    # args = ["--model","sfno","--test","--training-workers","0","--batch-size","1","--debug"]
-    sys.argv = [sys.argv[0]]
-    for arg in args: sys.argv.append(arg)
-    return _main()
-
-
-def main_console():
     with Timer("Total time"):
-        _main()
+        if args.ddp:
 
-if __name__ == "__main__":
-    main_console()
-
+            world_size = torch.cuda.device_count()
+            mp.spawn(main, args=(args,arg_groups,world_size), nprocs=world_size, join=True)
+            destroy_process_group()
+        else:
+            main(args=args,arg_groups=arg_groups)
 
     
 
