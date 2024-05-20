@@ -11,6 +11,7 @@ from .sfno.sfnonet import GCN
 from .data import SST_galvani, ERA5_galvani
 import wandb
 from time import time
+from datetime import datetime
 
 # BatchSampler(drop_last=True)
 
@@ -520,6 +521,7 @@ class Trainer():
                     self.mem_log("loading data")
                     output, gt = self.model_forward(input,data,step)
                     self.output_data += [*(output.cpu().numpy())]
+                    print(str(i).rjust(6),"/",len(self.validation_loader)," -  ",datetime.strptime(str(time), '%Y%m%d%H').strftime("%d %B %Y"))
            
             self.mem_log("fin",fin=True)
             if i % 100 == 0:
