@@ -9,6 +9,8 @@ forecast_path = 'gs://weatherbench2/datasets/hres/2016-2022-0012-64x32_equiangul
 obs_path = 'gs://weatherbench2/datasets/era5/1959-2022-6h-64x32_equiangular_conservative.zarr'
 climatology_path = 'gs://weatherbench2/datasets/era5-hourly-climatology/1990-2019_6h_64x32_equiangular_conservative.zarr'
 
+climatology = xr.open_zarr(climatology_path)
+
 paths = config.Paths(
     forecast=forecast_path,
     obs=obs_path,
@@ -31,14 +33,16 @@ eval_configs = {
   'deterministic': config.Eval(
       metrics={
           'mse': MSE(), 
-          'acc': ACC(climatology=climatology) 
+          'acc': ACC(climatology=climatology),
+          'bias': Bias(),
+        'rmse': RMSE(),
       },
   )
 }
 
-# evaluation.evaluate_with_beam(
-#     data_config,
-#     eval_configs,
-#     runner='DirectRunner',
-#     input_chunks={'time': 20},
-# )
+evaluate_with_beam(
+    data_config,
+    eval_configs,
+    runner='DirectRunner',
+    input_chunks={'time': 20},
+)

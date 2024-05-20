@@ -270,6 +270,11 @@ def main(rank=0,args={},arg_groups={},world_size=1):
         trainer.save_data()
         sys.exit(0)
 
+    elif args.save_forecast:
+        trainer = Trainer(model,vars(args))
+        trainer.save_forecast()
+        sys.exit(0)
+
     elif args.eval_model:
         print("evaluating models")
         checkpoint_list = list(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len)) 
@@ -848,6 +853,10 @@ if __name__ == "__main__":
     )
     training.add_argument(
         "--save-data",
+        action="store_true",
+    )
+    training.add_argument(
+        "--save-forecast",
         action="store_true",
     )
     training.add_argument(

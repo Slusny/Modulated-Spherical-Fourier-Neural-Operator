@@ -506,7 +506,7 @@ class Trainer():
         
         print("save done")
 
-    def save_forward(self):
+    def save_forecast(self):
         self.ready_model()
         self.set_dataloader()
         self.model.eval()
@@ -539,7 +539,7 @@ class Trainer():
         # dataset = xr.Dataset(
         #     data
         # )
-        pass
+            pass
                 
     def test_model_speed(self):
         with Timer("Model speed test"):
