@@ -319,13 +319,14 @@ class Trainer():
                 past_sst = self.cfg.past_sst,
                 cls=self.cfg.cls,
             )
+        shuffle= not self.cfg.no_shuffle
         if self.cfg.ddp:
-            self.training_loader = DataLoader(self.dataset,shuffle=True,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size,sampler=DistributedSampler(self.dataset))
-            self.validation_loader = DataLoader(self.dataset_validation,shuffle=True,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size,sampler=DistributedSampler(self.dataset_validation))
+            self.training_loader = DataLoader(self.dataset,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size,sampler=DistributedSampler(self.dataset,shuffle=shuffle))
+            self.validation_loader = DataLoader(self.dataset_validation,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size,sampler=DistributedSampler(self.dataset_validation,shuffle=shuffle))
 
         else:
-            self.training_loader = DataLoader(self.dataset,shuffle=True,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
-            self.validation_loader = DataLoader(self.dataset_validation,shuffle=True,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
+            self.training_loader = DataLoader(self.dataset,shuffle=shuffle,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
+            self.validation_loader = DataLoader(self.dataset_validation,shuffle=shuffle,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
 
         return #training_loader, validation_loader
     

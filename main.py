@@ -527,6 +527,12 @@ if __name__ == "__main__":
         help=("calculate and use the ONI index as ground truth"),
     )
 
+    data.add_argument(
+        "--no-shuffle",
+        action="store_true",
+        help=("dont use shuffle in dataloader"),
+    )
+
     # Running
     running = parser.add_argument_group('Inference Parameters')
     running.add_argument(
