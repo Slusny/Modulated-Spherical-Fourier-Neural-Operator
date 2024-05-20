@@ -46,9 +46,8 @@ def ddp_setup(rank, world_size):
         world_size: Total number of processes
     """
     os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = "71350"
+    os.environ["MASTER_PORT"] = "31350"
     init_process_group(backend="nccl", rank=rank, world_size=world_size)
-    torch.cuda.set_device(rank)
     
 
 # LOG = logging.getLogger(__name__)
@@ -67,16 +66,18 @@ def main(rank=0,args={},arg_groups={},world_size=1):
     # use Slurm ID in checkpoint_save path and log to stdout to better find corresponding stdout from slurm job
     if args.jobID is not None: LOG.info("Slurm Job ID: %s", args.jobID)
     
-    
     if args.debug: #new
         pdb.set_trace()
         torch.autograd.set_detect_anomaly(True)
         args.training_workers = 0
         print("starting debugger") 
         print("setting training workers to 0 to be able to debug code in ")
-
+    
+    args.rank = rank
     if args.ddp:
-        args.rank = rank
+        print("rank ",rank)
+        # training workers need to be set to 0
+        args.training_workers=0
         args.world_size = world_size
         ddp_setup(rank,world_size)
 
@@ -151,13 +152,14 @@ def main(rank=0,args={},arg_groups={},world_size=1):
         os.makedirs(os.path.dirname(args.path), exist_ok=True)
 
     #Print args
-    print("Script called with the following parameters:")
-    for group,value in arg_groups.items():
-        if group == 'positional arguments': continue
-        print(" --",group)
-        for k,v in sorted(vars(value).items()):
-            print("    ",k," : ",v)
-        print("")
+    if rank == 0:
+        print("Script called with the following parameters:")
+        for group,value in arg_groups.items():
+            if group == 'positional arguments': continue
+            print(" --",group)
+            for k,v in sorted(vars(value).items()):
+                print("    ",k," : ",v)
+            print("")
 
     # Load parameters from checkpoint if given and load model
     resume_cp = args.resume_checkpoint
@@ -189,9 +191,10 @@ def main(rank=0,args={},arg_groups={},world_size=1):
                             model_args[k] = v
                 del film_cp
             del cp
-            print("\nScript updated with Checkpoint parameters:")
-            for k,v in model_args.items():
-                print("    ",k," : ",v)
+            if rank == 0:
+                print("\nScript updated with Checkpoint parameters:")
+                for k,v in model_args.items():
+                    print("    ",k," : ",v)
             kwargs = model_args
             model = load_model(model_args["model_type"], kwargs)
             # trainer is still called with the original args not model_args but model_args should only modify architecture - do it nevertheless
@@ -208,9 +211,10 @@ def main(rank=0,args={},arg_groups={},world_size=1):
                         kwargs[k] = v
             del film_cp
         
-        print("\nScript updated with Checkpoint parameters:")
-        for k,v in kwargs.items():
-             print("    ",k," : ",v)
+        if rank == 0:
+            print("\nScript updated with Checkpoint parameters:")
+            for k,v in kwargs.items():
+                 print("    ",k," : ",v)
         model = load_model(args.model_type, kwargs)
 
     if args.fields:
@@ -850,6 +854,12 @@ if __name__ == "__main__":
         "--ddp",
         action="store_true",
     )
+    training.add_argument(
+        "--world-size",
+        action="store",
+        type=int,
+        default=None,
+    )
     
 
     # Evaluation
@@ -1025,9 +1035,9 @@ if __name__ == "__main__":
 
     with Timer("Total time"):
         if args.ddp:
-
-            world_size = torch.cuda.device_count()
-            mp.spawn(main, args=(args,arg_groups,world_size), nprocs=world_size, join=True)
+            if args.world_size is None:
+                args.world_size = torch.cuda.device_count()
+            mp.spawn(main, args=(args,arg_groups,args.world_size), nprocs=args.world_size, join=True)
             destroy_process_group()
         else:
             main(args=args,arg_groups=arg_groups)

@@ -57,51 +57,54 @@ class Trainer():
         self.finalise()
 
     def set_logger(self):
-        print("")
-        print("logger settings:")
-        if self.cfg.wandb   : 
-            # config_wandb = vars(args).copy()
-            # for key in ['notes','tags','wandb']:del config_wandb[key]
-            # del config_wandb
-            if os.environ.get("SCRATCH") is not None:
-                wandb_dir = os.path.join(os.environ["SCRATCH"],"wandb")
-                if not os.path.exists(wandb_dir): os.mkdir(wandb_dir)
-            elif os.path.exists("/mnt/qb/work2/goswami0/gkd965/wandb"):
-                wandb_dir = "/mnt/qb/work2/goswami0/gkd965/wandb"
-            else:
-                wandb_dir = "./wandb"
-            if self.cfg.wandb_resume is not None :
-                wandb_run = wandb.init(project=self.cfg.model_type + " - " +self.cfg.model_version, 
-                    config=self.cfg.__dict__,
-                    notes=self.cfg.notes,
-                    tags=self.cfg.tags,
-                    resume="must",
-                    id=self.cfg.wandb_resume,
-                    dir=wandb_dir,
-                    )
-            else:
-                wandb_run = wandb.init(project=self.cfg.model_type + " - " +self.cfg.model_version, 
-                    config=self.cfg.__dict__,
-                    notes=self.cfg.notes,
-                    tags=self.cfg.tags,
-                    dir=wandb_dir,
-                    )
-            # create checkpoint folder for run name
-            if self.cfg.jobID is not None:  file_name = wandb_run.name+"-sID{"+self.cfg.jobID+"}"
-            else:                           file_name = wandb_run.name
-            new_save_path = os.path.join(self.cfg.save_path,file_name)
-            os.mkdir(new_save_path)
-            self.cfg.save_path = new_save_path
-        else : 
-            wandb_run = None
-            if self.cfg.film_gen_type: film_gen_str = "_"+self.cfg.film_gen_type
-            else:                  film_gen_str = ""
-            file_name = self.cfg.model_type+"_"+self.cfg.model_version+film_gen_str+"_"+self.cfg.timestr
-            if self.cfg.jobID is not None:  file_name = file_name+"-{sID"+self.cfg.jobID+"}"
-            new_save_path = os.path.join(self.cfg.save_path,file_name)
-            os.mkdir(new_save_path)
-            self.cfg.save_path = new_save_path
-            print("    no wandb")
+        if self.cfg.rank == 0:
+            print("")
+            print("logger settings:")
+            if self.cfg.wandb   : 
+                # config_wandb = vars(args).copy()
+                # for key in ['notes','tags','wandb']:del config_wandb[key]
+                # del config_wandb
+                if os.environ.get("SCRATCH") is not None:
+                    wandb_dir = os.path.join(os.environ["SCRATCH"],"wandb")
+                    if not os.path.exists(wandb_dir): os.mkdir(wandb_dir)
+                elif os.path.exists("/mnt/qb/work2/goswami0/gkd965/wandb"):
+                    wandb_dir = "/mnt/qb/work2/goswami0/gkd965/wandb"
+                else:
+                    wandb_dir = "./wandb"
+                if self.cfg.wandb_resume is not None :
+                    wandb_run = wandb.init(project=self.cfg.model_type + " - " +self.cfg.model_version, 
+                        config=self.cfg.__dict__,
+                        notes=self.cfg.notes,
+                        tags=self.cfg.tags,
+                        resume="must",
+                        id=self.cfg.wandb_resume,
+                        dir=wandb_dir,
+                        )
+                else:
+                    wandb_run = wandb.init(project=self.cfg.model_type + " - " +self.cfg.model_version, 
+                        config=self.cfg.__dict__,
+                        notes=self.cfg.notes,
+                        tags=self.cfg.tags,
+                        dir=wandb_dir,
+                        )
+                # create checkpoint folder for run name
+                if self.cfg.jobID is not None:  file_name = wandb_run.name+"-sID{"+self.cfg.jobID+"}"
+                else:                           file_name = wandb_run.name
+                new_save_path = os.path.join(self.cfg.save_path,file_name)
+                os.mkdir(new_save_path)
+                self.cfg.save_path = new_save_path
+            else : 
+                wandb_run = None
+                if self.cfg.film_gen_type: film_gen_str = "_"+self.cfg.film_gen_type
+                else:                  film_gen_str = ""
+                file_name = self.cfg.model_type+"_"+self.cfg.model_version+film_gen_str+"_"+self.cfg.timestr
+                if self.cfg.jobID is not None:  file_name = file_name+"-{sID"+self.cfg.jobID+"}"
+                new_save_path = os.path.join(self.cfg.save_path,file_name)
+                os.mkdir(new_save_path)
+                self.cfg.save_path = new_save_path
+                print("    no wandb")
+        else:
+            print("skip this process (",self.cfg.rank,") in logging")
         
         print("    Save path: %s", self.cfg.save_path)
         self.local_log = LocalLog(self.local_logging,self.cfg.save_path)
@@ -109,9 +112,6 @@ class Trainer():
     def train_epoch(self):
         self.iter = 0
         batch_loss = 0
-
-        self.dataset[52928]
-        self.dataset[34058]
 
         self.mem_log("loading data")
         for i, data in enumerate(self.training_loader):
@@ -215,11 +215,13 @@ class Trainer():
         sys.exit(0)
 
     def ready_model(self):
+        if self.cfg.ddp: torch.cuda.set_device(self.cfg.rank)
         self.util.load_model(self.util.checkpoint_path)
         self.model.train()
         self.util.load_statistics() 
         if self.cfg.ddp:
             self.model = DDP(self.model,device_ids=[self.util.device])
+            torch.cuda.empty_cache()
 
     def create_sheduler(self):
         # Scheduler
@@ -321,8 +323,8 @@ class Trainer():
             )
         shuffle= not self.cfg.no_shuffle
         if self.cfg.ddp:
-            self.training_loader = DataLoader(self.dataset,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size,sampler=DistributedSampler(self.dataset,shuffle=shuffle))
-            self.validation_loader = DataLoader(self.dataset_validation,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size,sampler=DistributedSampler(self.dataset_validation,shuffle=shuffle))
+            self.training_loader = DataLoader(self.dataset,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size,shuffle=False,pin_memory=True,sampler=DistributedSampler(self.dataset,shuffle=shuffle))
+            self.validation_loader = DataLoader(self.dataset_validation,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size,shuffle=False,pin_memory=True,sampler=DistributedSampler(self.dataset_validation,shuffle=shuffle))
 
         else:
             self.training_loader = DataLoader(self.dataset,shuffle=shuffle,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
@@ -404,6 +406,7 @@ class Trainer():
             self.model.train()
                 
     def valid_log(self,val_log,loss_pervar_list):
+        if self.cfg.rank != 0: return
         # little complicated console logging - looks nicer than LOG.info(str(val_log))
         if self.cfg.multi_step_validation > 0:multistep_notice = " (steps=... mutli-step-validation, each step an auto-regressive 6h-step)"
         else: multistep_notice = ""                                             
@@ -449,6 +452,7 @@ class Trainer():
             wandb.log(val_log,commit=False)
 
     def mem_log(self,str,fin=False):
+        if self.cfg.rank != 0: return
         if self.cfg.advanced_logging and self.mem_log_not_done:
             print("VRAM used before "+str+" : ",round(torch.cuda.memory_allocated(self.util.device)/10**9,2),
                   " GB, reserved: ",round(torch.cuda.memory_reserved(self.util.device)/10**9,2)," GB")
@@ -456,6 +460,7 @@ class Trainer():
                 self.mem_log_not_done = False 
             
     def iter_log(self,batch_loss,scale=None):
+        if self.cfg.rank != 0: return
         # local logging
         self.local_log.log({"loss": round(batch_loss,6),"step":self.step})
 
@@ -468,8 +473,7 @@ class Trainer():
                 print("After ", self.step, " Samples - Loss: ", round(batch_loss,5))
     
     def save_checkpoint(self):
-        if self.cfg.ddp:
-            if get_rank() != 0: return
+        if self.cfg.rank != 0: return
         save_file ="checkpoint_"+self.cfg.model_type+"_"+self.cfg.model_version+"_"+str(self.cfg.film_gen_type)+"_iter={}_epoch={}.pkl".format(self.iter,self.epoch)
         total_save_path = os.path.join( self.cfg.save_path,save_file)
         LOG.info("Saving checkpoint to %s",total_save_path)
@@ -487,7 +491,11 @@ class Trainer():
             "hyperparameters": self.cfg.__dict__
             }
         if self.scheduler: save_dict["scheduler_state_dict"]= self.scheduler.state_dict()
-        torch.save(save_dict,total_save_path)
+        # wanted to see if ddp issue comes from here
+        # for k,v in save_dict:
+        #     print("")
+        #     print("    ",k," : ",v)
+        # torch.save(save_dict,total_save_path)
 
         # Gamma Beta
         if self.cfg.advanced_logging and self.cfg.model_version == "film":
@@ -495,6 +503,8 @@ class Trainer():
             beta_np  = self.model.beta.cpu().clone().detach().numpy()
             np.save(os.path.join( self.cfg.save_path,"gamma_{}.npy".format(self.step)),gamma_np)
             np.save(os.path.join( self.cfg.save_path,"beta_{}.npy".format(self.step)),beta_np)
+        
+        print("save done")
 
                 
     def test_model_speed(self):
