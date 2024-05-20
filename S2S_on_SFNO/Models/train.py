@@ -522,6 +522,8 @@ class Trainer():
                     self.output_data += [*output]
            
             self.mem_log("fin",fin=True)
+            if i % 100 == 0:
+                system_monitor(printout=True,pids=[os.getpid()],names=["python"])
                 # logging
             self.iter += 1
             self.step = self.iter*self.cfg.batch_size+len(self.dataset)*self.epoch
@@ -533,9 +535,11 @@ class Trainer():
         latitude: float64, level: int32, longitude: float64, prediction_timedelta: timedelta64[ns], time: datetime64[ns]
         '''
         data_vars = {}
-        for 
-        dataset = xr.Dataset(
-            data
+        for i in range(0):
+        # dataset = xr.Dataset(
+        #     data
+        # )
+        pass
                 
     def test_model_speed(self):
         with Timer("Model speed test"):
