@@ -215,6 +215,11 @@ def _main():
               In the case of the MAE the sst start from the input date to #temporal-steps into the futre.\
               By setting this flag the sst data is taken from the past."),
     )
+    data.add_argument(
+        "--oni",
+        action="store_true",
+        help=("calculate and use the ONI index as ground truth"),
+    )
 
     # Running
     running = parser.add_argument_group('Inference Parameters')
@@ -476,6 +481,13 @@ def _main():
         help="Save RAM with AMP"
     )
     training.add_argument(
+        "--optimizer",
+        action="store",
+        default="Adam",
+        help="Optimizer to use",
+        choices=["Adam","SGD","LBFGS"],
+    )
+    training.add_argument(
         "--loss-fn",
         action="store",
         help="Which loss function to use",
@@ -489,6 +501,40 @@ def _main():
         default="mean",
         choices=["mean","none","sum"],
     )
+    training.add_argument(
+        "--test-performance",
+        action="store_true",
+        help="run speed test for dataloader and model performance",
+    )
+    training.add_argument(
+        "--test-dataloader-speed",
+        action="store_true",
+        help="run speed test for dataloader and model performance",
+    )
+    training.add_argument(
+        "--test-batch-size",
+        action="store_true",
+        help="run speed test for dataloader and model performance",
+    )
+    training.add_argument(
+        "--num-iterations",
+        action="store",
+        type=int,
+        default=100,
+        help="over how many iterations should the speed test be run",
+    )
+    training.add_argument(
+        "--batch-size-step",
+        action="store",
+        type=int,
+        default=1,
+        help="when testing for an optimal batch size, how large should be the inital step size",
+    )
+    training.add_argument(
+        "--save-data",
+        action="store_true",
+    )
+    
 
     # Evaluation
     evaluate = parser.add_argument_group('Evaluate Models')
@@ -900,6 +946,26 @@ def _main():
     elif do_return_trainer:
         trainer = Trainer(model,vars(args))
         return trainer
+
+    elif args.test_performance:
+        trainer = Trainer(model,vars(args))
+        trainer.test_performance()
+        sys.exit(0)
+
+    elif args.test_dataloader_speed:
+        trainer = Trainer(model,vars(args))
+        trainer.test_dataloader_speed()
+        sys.exit(0)
+
+    elif args.test_batch_size:
+        trainer = Trainer(model,vars(args))
+        trainer.test_batch_size()
+        sys.exit(0)
+
+    elif args.save_data:
+        trainer = Trainer(model,vars(args))
+        trainer.save_data()
+        sys.exit(0)
 
     elif args.eval_model:
         print("evaluating models")

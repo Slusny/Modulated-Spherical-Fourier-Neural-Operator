@@ -100,9 +100,13 @@ class Trainer():
     def train_epoch(self):
         self.iter = 0
         batch_loss = 0
+
+        self.dataset[52928]
+        self.dataset[34058]
+
         self.mem_log("loading data")
         for i, data in enumerate(self.training_loader):
-            if (self.iter+1) % (self.cfg.validation_interval) == 0:
+            if self.cfg.validation_interval > 0 and (self.iter+1) % (self.cfg.validation_interval)  == 0:
                 self.validation()
             loss = 0
             discount_factor = 0.99
@@ -152,6 +156,7 @@ class Trainer():
         self.epoch += 1
         self.iter = 0
         print("End of epoch ",self.epoch)
+        self.validation()
         self.save_checkpoint()
         self.local_log.save("training_log_epoch{}.npy".format(self.epoch))
 
@@ -160,7 +165,7 @@ class Trainer():
         if self.cfg.model_type == 'sfno' and self.cfg.model_version == "film" :
             if self.cfg.film_gen_type == "mae" and self.cfg.cls is not None:
                 # class token doesn't need normalisation
-                input_sst  = data[step+1][1].to(self.util.device)
+                input_sst  = data[step][1].to(self.util.device)
             else:
                 input_sst  = self.util.normalise_film(data[step+1][1]).to(self.util.device)
             gt = self.util.normalise(data[step+1][0]).to(self.util.device)
@@ -225,8 +230,13 @@ class Trainer():
             self.scheduler.step()
         
     def create_optimizer(self):
-        self.optimizer = torch.optim.Adam(self.util.get_parameters(), lr=self.cfg.learning_rate)# store the optimizer and scheduler in the model class
-        
+        if self.cfg.optimizer == "Adam":
+            self.optimizer = torch.optim.Adam(self.util.get_parameters(), lr=self.cfg.learning_rate)# store the optimizer and scheduler in the model class
+        elif self.cfg.optimizer == "SGD":
+            self.optimizer = torch.optim.SGD(self.util.get_parameters(), lr=self.cfg.learning_rate, momentum=0.9)
+        elif self.cfg.optimizer == "LBFGS":
+            self.optimizer = torch.optim.LBFGS(self.util.get_parameters())# store the optimizer and scheduler in the model class
+
     def create_loss(self):
         if self.cfg.loss_fn == "CosineMSE":
             self.loss_fn = CosineMSELoss(reduction=self.cfg.loss_reduction)
@@ -239,6 +249,10 @@ class Trainer():
 
     def set_dataloader(self):
         if self.cfg.model_type == "mae":
+            if self.cfg.model_version =="lin-probe":
+                oni = True
+            else:
+                oni = self.cfg.oni
             print("Trainig Data:")
             self.dataset = SST_galvani(
                 path=self.cfg.trainingdata_path, 
@@ -246,6 +260,7 @@ class Trainer():
                 end_year=self.cfg.trainingset_end_year,
                 temporal_step=self.cfg.temporal_step,
                 cls=self.cfg.cls,
+                oni=oni,
             )
             print("Validation Data:")
             self.dataset_validation = SST_galvani(
@@ -254,6 +269,7 @@ class Trainer():
                 end_year=self.cfg.validationset_end_year,
                 temporal_step=self.cfg.temporal_step,
                 cls=self.cfg.cls,
+                oni=oni,
                 )
         else:
             if self.cfg.model_version == 'film' and self.cfg.cls is None:
@@ -369,7 +385,9 @@ class Trainer():
                 
     def valid_log(self,val_log,loss_pervar_list):
         # little complicated console logging - looks nicer than LOG.info(str(val_log))
-        print("-- validation after ",self.step, "training examples")
+        if self.cfg.multi_step_validation > 0:multistep_notice = " (steps=... mutli-step-validation, each step an auto-regressive 6h-step)"
+        else: multistep_notice = ""                                             
+        print("-- validation after ",self.step, "training examples "+multistep_notice)
         val_log_keys = list(val_log.keys())
         for log_idx in range(0,self.cfg.multi_step_validation*2+1,2): 
             LOG.info(val_log_keys[log_idx] + " : " + str(val_log[val_log_keys[log_idx]]) 
@@ -457,14 +475,103 @@ class Trainer():
         with Timer("Model speed test"):
             for i in range(100):
                 # data_era5 = torch.randn(1,2,721,1440)
+                if self.cfg.model_type == "mae":
+                    if self.cfg.model_version == "lin-probe":
+                        nino = torch.randn((self.cfg.batch_size,1))
+                        cls = torch.randn((self.cfg.batch_size,512))
+                        data = torch.tensor([cls,nino])
+                    else:
+                        data = torch.randn(1,2,721,1440)
+                        data_sst = torch.randn(1,2,721,1440)
+                self.model_forward(data[0][0],data,0)
+    
+    def gen_test_data(self,num):
+        # nees multistep support
+        # create all data at once no for loops and directly on device
+        if self.cfg.model_type == "mae":
+            if self.cfg.model_version == "lin-probe":
+                dataset = []
+                for i in range(num):
+                    nino = torch.randn((self.cfg.batch_size,1))
+                    cls = torch.randn((self.cfg.batch_size,512))
+                    data = [[cls],[nino]]
+                    dataset.append(data)
+                return dataset
+            elif self.cfg.model_type == "sfno":
+                if self.cfg.film_gen_type == "mae" and self.cfg.cls is not None:
+                    dataset = []
+                    for i in range(num):
+                        data = []
+                        for i in range(0, self.auto_regressive_steps+2):
+                            era5 = torch.randn((self.cfg.batch_size,73,180,360))
+                            cls = torch.randn((self.cfg.batch_size,512))
+                            data.append([era5, cls])
+                        dataset.append(data)
+            else:
+                data = torch.randn(1,2,721,1440)
                 data_sst = torch.randn(1,2,721,1440)
-                self.model_forward(input,data_sst,0)
+    
+    def save_data(self):
+        self.set_dataloader()
+        print("saving data from dataloader")
+        dataset = []
+        percent = 0
+        for i, data in enumerate(self.training_loader):
+            if i % (len(self.training_loader)//10) == 0:
+                print("done ",percent," %")
+                percent+=10
+            dataset.append(data[0][0].item())
+        print("done dataloader test")
+        np.save(os.path.join(self.cfg.save_path,"oni.npy"),np.array(dataset))
+        return
     
     def test_dataloader_speed(self):
         self.set_dataloader()
-        with Timer("Dataloader speed test"):
+        print("testing dataloader speed")
+        with Timer("Dataloader speed test",divisor=self.cfg.num_iterations):
             for i, data in enumerate(self.training_loader):
-                pass
+                if i > self.cfg.num_iterations: break
+        print("done dataloader test")
+        return
+    
+    def test_performance(self):
+        self.test_batch_size(self.cfg.num_iterations,self.cfg.batch_size_step)
+        # self.test_model_speed()
+        self.test_dataloader_speed()
+
+    def test_batch_size(self,
+        num_iterations: int = 5,
+        batch_size_step: int = 1,
+    ) -> int:
+        # resetting batch size in cfg is an issue for GCNs
+        print("Test batch size")
+        self.cfg.validation_interval = -1
+        self.cfg.save_checkpoint_interval = -1
+        self.set_logger()
+        self.create_loss()
+        self.create_optimizer()
+        self.create_sheduler()
+        self.ready_model()
+        while True:
+            try:
+                self.training_loader = self.gen_test_data(num_iterations)
+                self.dataset = self.training_loader
+                print(f"Testing batch size {self.cfg.batch_size}")
+                with Timer("\truntime "+str(self.cfg.batch_size),divisor=num_iterations):
+                    self.train_epoch()
+                self.cfg.batch_size += batch_size_step
+                batch_size_step = batch_size_step*2
+            except RuntimeError:
+                print(f"\tOOM at batch size {self.cfg.batch_size}")
+                batch_size_step = batch_size_step//2
+                break
+            if batch_size_step == 0:
+                break
+        torch.cuda.empty_cache()
+        print(f"Final batch size {self.cfg.batch_size}")
+        return self.cfg.batch_size
+
+
 
     # only plots MAE results at the moment
     def evaluate_model(self, checkpoint_list,save_path):

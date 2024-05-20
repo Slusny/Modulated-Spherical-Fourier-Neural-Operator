@@ -3,7 +3,7 @@
 #a) Define slurm job parameters
 ####
 
-#SBATCH --job-name=kp2
+#SBATCH --job-name=kp3
 
 #resources:
 
@@ -20,7 +20,7 @@
 #SBATCH --mem-per-cpu=25G # Per CPU -> Per Core /10 kp
 # the job will need 12GB of memory equally distributed on 4 cpus.(251GB are available in total on one node)
 
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:3
 #the job can use and see 1 GPUs (4 GPUs are available in total on one node) use SBATCH --gres=gpu:1080ti:1 to explicitly demand a Geforce 1080 Ti GPU. Use SBATCH --gres=gpu:A4000:1 to explicitly demand a RTX A4000 GPU
 
 #SBATCH --exclude=galvani-cn209

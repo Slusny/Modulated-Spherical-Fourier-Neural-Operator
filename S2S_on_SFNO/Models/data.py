@@ -143,8 +143,11 @@ class ERA5_galvani(Dataset):
         
         def get_sst(idx):
             # temporal step 0 for normal sst output
-            slice_idx = self.temporal_step -1
-            sst = self.dataset.isel(time=slice(self.start_idx + idx -slice_idx ,self.start_idx + idx +self.auto_regressive_steps+2))["sea_surface_temperature"]
+            if not self.past_sst:
+                sst = self.dataset.isel(time=slice(self.start_idx+idx, self.start_idx+idx + self.temporal_step + self.auto_regressive_steps+1))[["sea_surface_temperature"]].to_array()
+            else:# default
+                sst = self.dataset.isel(time=slice(self.start_idx+idx -self.temporal_step -1 , self.start_idx+idx +self.auto_regressive_steps+2))[["sea_surface_temperature"]].to_array()
+            
             sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean().to_numpy()
             return torch.from_numpy(sst)
 
@@ -182,14 +185,17 @@ class SST_galvani(Dataset):
         self.temporal_step = temporal_step
         self.past_sst = past_sst
         self.clim = clim
+        self.oni = oni
         self.gt = ground_truth
         self.coarse_level = coarse_level
         if path.endswith(".zarr"):  self.dataset = xr.open_zarr(path,chunks=None)
         else:                       self.dataset = xr.open_dataset(path,chunks=None)
-        if self.clim:
+        if self.clim or self.oni:
             if path_clim.endswith(".zarr"):  self.dataset_clim = xr.open_zarr(path_clim,chunks=None)
-            else:                           self.dataset_clim = xr.open_dataset(path_clim,chunks=None)
+            else:                            self.dataset_clim = xr.open_dataset(path_clim,chunks=None)
         
+        self.nino35 = {"latitude":slice(5, -5), "longitude":slice(190, 240)}
+
         if cls:
             self.cls = torch.from_numpy(np.load(cls))
         else:
@@ -233,46 +239,62 @@ class SST_galvani(Dataset):
 
     def __getitem__(self,idx):
         if not self.past_sst:# default
-            input = self.dataset.isel(time=slice(self.start_idx+idx, self.start_idx+idx + self.temporal_step))[["sea_surface_temperature"]].to_array()
+            input = self.dataset.isel(time=slice(self.start_idx+idx, self.start_idx+idx + self.temporal_step))
         else:
-            input = self.dataset.isel(time=slice(self.start_idx+idx -self.temporal_step -1 , self.start_idx+idx + 1))[["sea_surface_temperature"]].to_array()
-            
+            input = self.dataset.isel(time=slice(self.start_idx+idx -self.temporal_step -1 , self.start_idx+idx + 1))
+        input = input[["sea_surface_temperature"]].to_array()
+
         def format(input):
             time = str(input.time.to_numpy()[0])
             time = torch.tensor(int(time[0:4]+time[5:7]+time[8:10]+time[11:13])) # time in format YYYYMMDDHH  
+            if self.oni:
+                return [torch.from_numpy(input.sel(**self.nino35).to_numpy()).float(), time ]
             if self.coarse_level > 1:
                 sst = input.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean()
-            return [torch.from_numpy(sst.to_numpy()).float(), time ]
+                return [torch.from_numpy(sst.to_numpy()).float(), time ]
         
         def sst_to_nino(data):
             return_data = []
             for datapoint in data:
-                time = datapoint.item()
+                time = datapoint[1].item()
                 yday = datetime.strptime(str(time), '%Y%m%d%H').timetuple().tm_yday
                 hour = int(str(time)[-2:])
                 if not self.past_sst:# default
+                    def year_overflow(x): 
+                        year_end = 366 if isleap(int(str(time)[0:4])) else 365
+                        if x > year_end:
+                            return x % year_end
+                        else: return x 
                     if hour == 0:
+                        days = list(map(year_overflow,range(yday, yday + self.temporal_step//4)))
                         # self.temporal_step//4 -1 : typically the slice end needs to be one more than the start to get a slice, but because for each dayofyear we have 4 hours the slice(n,n) still returns data for day n and 4 hours, if we only have the time dimension like in the weatherbenc2 era5 we would return 0
-                        input_clim = self.dataset_clim.sel(dayofyear=slice(yday, yday + self.temporal_step//4-1))[["sea_surface_temperature"]].to_array().to_numpy()
+                        input_clim = self.dataset_clim.sel(dayofyear=days,**self.nino35)[["sea_surface_temperature"]].to_array().to_numpy()
+                        input_clim = np.swapaxes(input_clim,0,1).reshape(-1, input_clim.shape[-2], input_clim.shape[-1])
                     else:
+                        days = list(map(year_overflow,range(yday, yday + self.temporal_step//4+1)))
                         # here we need to remove the hours that have been overselected by a slice in dayofyear (no need if the selection starts at hour 0)
-                        input_clim = self.dataset_clim.sel(dayofyear=slice(yday, yday + self.temporal_step//4))[["sea_surface_temperature"]].to_array().to_numpy()
+                        input_clim = self.dataset_clim.sel(dayofyear=days,**self.nino35)[["sea_surface_temperature"]].to_array().to_numpy()
                         # remove dayofyear dimension and only have (hour, lat, long)
                         input_clim = np.swapaxes(input_clim,0,1).reshape(-1, input_clim.shape[-2], input_clim.shape[-1])
                         # remove hours before the current hour and hours over the temporal step at the end
                         input_clim = input_clim[hour//6:-(4-hour//6)]
+                    if input_clim.shape != (28, 41, 201):
+                        print("no shape match",input_clim.shape)
+                        print("idx",idx)
+                        print("time",time)
                     input_clim = input_clim.mean(axis=0)      
                 else:
                     input_clim = self.dataset_clim.isel(dayofyear=slice(self.start_idx+idx -self.temporal_step -1 , self.start_idx+idx + 1))[["sea_surface_temperature"]].to_array()
             
-                sst = data[0]
-                sst = sst.sel(lat=slice(-5, 5), lon=slice(190, 240)).mean(dim="time").to_numpy()
-                nino34_anom = (sst - input_clim).mean()
+                sst = datapoint[0]
+                sst = sst[0].mean(dim=0)
+                clim = torch.tensor(input_clim)
+                nino34_anom = (sst - clim).mean()[None]
                 return_data.append([nino34_anom, time ])
             return return_data
 
 
-        if self.gt:
+        if self.gt: # not implemented
             g_truth = self.dataset.isel(time=slice(self.start_idx+idx+1, self.start_idx+idx+1 + self.temporal_step))[["sea_surface_temperature"]].to_array()
             data = [ format(input), format(g_truth)]
         else:

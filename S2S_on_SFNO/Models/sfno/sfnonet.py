@@ -829,7 +829,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
             for i, blk in enumerate(self.blocks):
                 # if i < 11: # don't want to checkpoint everything? All is needed to be able to go to 4 steps (1|2)
                 if self.cfg.repeat_film or i >= self.num_layers - self.film_layers:
-                    x = checkpoint(blk,x,gamma[:,i],beta[:,i],scale,first_filmlayer=(film_idx==0),use_reentrant=False)
+                    x = checkpoint(blk,x,gamma[:,i],beta[:,i],scale,use_reentrant=False)
                 else:
                     with torch.no_grad():
                         x =checkpoint(blk,x)
@@ -837,7 +837,7 @@ class FourierNeuralOperatorNet_Filmed(FourierNeuralOperatorNet):
             for i, blk in enumerate(self.blocks):
                 if self.cfg.repeat_film or i >= self.num_layers - self.film_layers:
                     film_idx = i - (self.num_layers - self.film_layers)
-                    x = blk(x,gamma[:,film_idx],beta[:,film_idx],scale,first_filmlayer=(film_idx==0))
+                    x = blk(x,gamma[:,film_idx],beta[:,film_idx],scale)
                 else:
                     with torch.no_grad():
                         x = blk(x)
