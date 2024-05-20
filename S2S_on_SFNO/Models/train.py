@@ -519,7 +519,7 @@ class Trainer():
                     else: input = output
                     self.mem_log("loading data")
                     output, gt = self.model_forward(input,data,step)
-                    self.output_data += [*output]
+                    self.output_data += [*(output.cpu().numpy())]
            
             self.mem_log("fin",fin=True)
             if i % 100 == 0:
