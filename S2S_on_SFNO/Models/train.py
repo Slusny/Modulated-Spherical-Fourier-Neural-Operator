@@ -502,11 +502,13 @@ class Trainer():
             "hyperparameters": self.cfg.__dict__
             }
         if self.scheduler: save_dict["scheduler_state_dict"]= self.scheduler.state_dict()
+        
         # wanted to see if ddp issue comes from here
         # for k,v in save_dict:
         #     print("")
         #     print("    ",k," : ",v)
-        # torch.save(save_dict,total_save_path)
+
+        torch.save(save_dict,total_save_path)
 
         # Gamma Beta
         if self.cfg.advanced_logging and self.cfg.model_version == "film":
