@@ -405,7 +405,10 @@ class Trainer():
         
         # return to training
         if self.cfg.model_version == "film" :
-            self.model.film_gen.train()
+            if self.cfg.ddp:
+                self.model.module.film_gen.train()
+            else:
+                self.model.film_gen.train()
         else:
             self.model.train()
                 
