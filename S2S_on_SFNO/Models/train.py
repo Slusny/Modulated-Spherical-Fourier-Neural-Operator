@@ -507,8 +507,12 @@ class Trainer():
 
         # Gamma Beta
         if self.cfg.advanced_logging and self.cfg.model_version == "film":
-            gamma_np = self.model.gamma.cpu().clone().detach().numpy()
-            beta_np  = self.model.beta.cpu().clone().detach().numpy()
+            if self.cfg.ddp:
+                gamma_np = self.model.module.gamma.cpu().clone().detach().numpy()
+                beta_np  = self.model.module.beta.cpu().clone().detach().numpy()
+            else:
+                gamma_np = self.model.gamma.cpu().clone().detach().numpy()
+                beta_np  = self.model.beta.cpu().clone().detach().numpy()
             np.save(os.path.join( self.cfg.save_path,"gamma_{}.npy".format(self.step)),gamma_np)
             np.save(os.path.join( self.cfg.save_path,"beta_{}.npy".format(self.step)),beta_np)
         
