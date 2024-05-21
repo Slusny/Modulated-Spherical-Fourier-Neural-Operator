@@ -174,6 +174,27 @@ class Trainer():
 
             # Adjust learning weights
             if ((i + 1) % (self.cfg.accumulation_steps + 1) == 0) or (i + 1 == len(self.training_loader)):
+                # train again but sync
+                with amp.autocast(self.cfg.enable_amp):
+                    for step in range(self.cfg.multi_step_training+1):
+                        if step == 0 : input = self.util.normalise(data[step][0]).to(self.util.device)
+                        else: input = output
+                        output, gt = self.model_forward(input,data,step)
+                        
+                        if step % (self.cfg.training_step_skip+1) == 0:
+                            loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1)/self.cfg.batch_size *discount_factor**step
+                        
+                    loss = loss / (self.cfg.accumulation_steps+1)
+                    # only for logging the loss for the batch
+                    batch_loss += loss.item()
+                
+                #backward
+                self.mem_log("backward pass")
+                if self.cfg.enable_amp:
+                    self.gscaler.scale(loss).backward()
+                else:
+                    loss.backward()
+                
                 # Update Optimizer
                 self.mem_log("optimizer step",fin=True)
                 if self.cfg.enable_amp:
