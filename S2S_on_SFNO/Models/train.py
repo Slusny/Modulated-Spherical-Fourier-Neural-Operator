@@ -173,15 +173,16 @@ class Trainer():
         self.save_checkpoint()
         self.local_log.save("training_log_epoch{}.npy".format(self.epoch))
 
-    def model_forward(self,input,data,step):
+    def model_forward(self,input,data,step,return_gt=True):
         self.mem_log("forward pass")
+        gt = None
         if self.cfg.model_type == 'sfno' and self.cfg.model_version == "film" :
             if self.cfg.film_gen_type == "mae" and self.cfg.cls is not None:
                 # class token doesn't need normalisation
                 input_sst  = data[step][1].to(self.util.device)
             else:
                 input_sst  = self.util.normalise_film(data[step+1][1]).to(self.util.device)
-            gt = self.util.normalise(data[step+1][0]).to(self.util.device)
+            if return_gt: gt = self.util.normalise(data[step+1][0]).to(self.util.device)
             outputs = self.model(input,input_sst,self.scale)
         elif self.cfg.model_type == "mae":
             if self.cfg.model_version == "lin-probe":
@@ -191,7 +192,7 @@ class Trainer():
                 gt = input # input is already normalised
                 outputs = self.model(input,np.random.uniform(0.4,0.8)) # outputs = (mean, std), mask, cls
         else:
-            gt = self.util.normalise(data[step+1][0]).to(self.util.device)
+            if return_gt: gt = self.util.normalise(data[step+1][0]).to(self.util.device)
             outputs = self.model(input)
         return outputs, gt
 
@@ -514,29 +515,32 @@ class Trainer():
         self.set_dataloader(run=True)
         self.model.eval()
         self.mem_log("loading data")
-        self.output_data = [[]]*self.cfg.multi_step_validation # time_delta, time, variable, lat, lon
+        # self.output_data = [[]]*(self.cfg.multi_step_validation+1)
+        self.output_data = [[]for _ in range(self.cfg.multi_step_validation)] # time_delta, time, variable, lat, lon
         self.time_dim = []
-        self.time_delta = [np.timedelta64(i*6, 'h') for i in range(self.cfg.multi_step_validation+1)]
+        self.time_delta = [np.timedelta64(i*6, 'h') for i in range(1,self.cfg.multi_step_validation+1)]
         with torch.no_grad():
             for i, data in enumerate(self.validation_loader):
                 with amp.autocast(self.cfg.enable_amp):
-                    for step in range(self.cfg.multi_step_validation+1):
+                    for step in range(self.cfg.multi_step_validation):
                         if step == 0 : 
                             input = self.util.normalise(data[step][0]).to(self.util.device)
-                            data_time = datetime.strptime(str(data[0][1].item()), '%Y%m%d%H') # ?? doesn't work with batches
+                            data_time = datetime.strptime(str(data[0][1].item()), '%Y%m%d%H')
+                            self.time_dim.append(np.datetime64(data_time))  # ?? doesn't work with batches
                         else: input = output
-                        if data_time.strftime("%H") == "00":continue
-                        self.time_dim.append(np.datetime64(data_time)) # [ns] ??
+                        # if data_time.strftime("%H") == "00":continue# [ns] ??
                         self.mem_log("loading data")
-                        output, gt = self.model_forward(input,data,step)
+                        output, gt = self.model_forward(input,data,step,return_gt=False)
                         self.output_data[step] += [*(output.cpu().numpy())]
-                        print(str(i).rjust(6),"/",len(self.validation_loader)," -  ",data_time.strftime("%d %B %Y"))
-                        if i%10 == 0:
-                            self.save_to_netcdf()
+                        # self.output_data[step].append(output.cpu().numpy())
+                    print(str(i).rjust(6),"/",len(self.validation_loader)," -  ",data_time.strftime("%d %b %Y"))
+                    if (i+1)%10 == 0:
+                        self.save_to_netcdf()
+                        sys.exit(0)
                             # logging
             
                 self.mem_log("fin",fin=True)
-                if i % 100 == 0:
+                if (i+1) % 100 == 0:
                     system_monitor(printout=True,pids=[os.getpid()],names=["python"])
                     # logging
                 self.iter += 1
@@ -548,12 +552,6 @@ class Trainer():
         Take the output_data from a inference run and save it as a netcdf file that conforms with the weatherbench2 forcast format, with coordinates:
         latitude: float64, level: int32, longitude: float64, prediction_timedelta: timedelta64[ns], time: datetime64[ns]
         '''
-        data_vars = {}
-        for i in range(0):
-        # dataset = xr.Dataset(
-        #     data
-        # )
-            pass
         
         # cut out 2,3 (100m)
         wb_ordering_scf = {
@@ -574,9 +572,10 @@ class Trainer():
         level = [1000, 925, 850, 700, 600, 500, 400, 300, 250, 200, 150, 100, 50]
         level.reverse()
 
-        if self.output_variables == self.owner.ordering and self.owner.model == 'sfno':
-            print("hi")
         data_dict={}
+        lat_coords = np.arange(-90,90.25,0.25)
+        lat_coords = lat_coords[::-1]
+        self.output_data = np.array(self.output_data)
         for out_var,idx in wb_ordering_scf.items():
             # if out_var in self.output_variables:
             data_dict[out_var] = xr.DataArray(self.output_data[:,:,idx],
@@ -584,21 +583,28 @@ class Trainer():
                 coords=dict(
                     prediction_timedelta=("prediction_timedelta",self.time_delta),
                     time=("time",self.time_dim),
-                    latitude=(["latitude", "longitude"], np.tile(np.arange(-90,90.25,0.25)[::-1],(1440,1)).T),
-                    longitude=(["latitude", "longitude"], np.tile(np.arange(0,360,0.25),(721,1))),
+                    latitude=("latitude", lat_coords),
+                    longitude=("longitude",np.arange(0,360,0.25)),
                 )
             )
+
         for out_var,idx in wb_ordering_pl.items():
             # if out_var in self.output_variables:
             data_dict[out_var] = xr.DataArray(self.output_data[:,:,idx],
-                dims=["prediction_timedelta","time","latitude","longitude"],
+                dims=["prediction_timedelta","time","level","latitude","longitude"],
                 coords=dict(
                     prediction_timedelta=("prediction_timedelta",self.time_delta),
                     time=("time",self.time_dim),
-                    latitude=(["latitude", "longitude"], np.tile(np.arange(-90,90.25,0.25)[::-1],(1440,1)).T),
-                    longitude=(["latitude", "longitude"], np.tile(np.arange(0,360,0.25),(721,1))),
+                    level=("level",level),
+                    latitude=("latitude", lat_coords),
+                    longitude=("longitude",np.arange(0,360,0.25)),
                 )
             )
+
+        dataset = xr.Dataset(data_vars=data_dict).to_netcdf(
+            os.path.join(self.cfg.path,'forecast_lead_time='+str(self.cfg.multi_step_validation)+
+                         'time='+self.time_dim[0].tolist().strftime("%d%b%Y")+'-'
+                         +self.time_dim[-1].tolist().strftime("%d%b%Y")+'.nc'))
 
         # dataset = xr.Dataset(data_vars=data_dict,coords=dict(
         #             latitude=(["latitude"], np.arange(-90,90.25,0.25)[::-1]),

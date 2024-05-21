@@ -20,6 +20,9 @@ class FileOutput:
         metadata.setdefault("expver", owner.expver)
         metadata.setdefault("class", "ml")
 
+        save_string = "leadtime_"+str(kwargs["lead_time"])+"_startDate_"+str(kwargs["date"])+str(kwargs["time"]) +"_createdOn_"+kwargs["timestr"]+".grib"
+        
+        path = os.path.join(path, save_string)
         LOG.info("Writing results to %s.", path)
         self.path = path
         self.owner = owner
@@ -87,9 +90,8 @@ class NetCDFOutput:
 
         edition = metadata.pop("edition", 2)
 
-        pathList = path.split('/')
-        pathDir = '/'.join(pathList[:-1])
-        self.pathString = pathList[-1].split('.')[0]
+        pathDir = path
+        self.pathString = "leadtime_"+str(kwargs["lead_time"])+"_startDate_"+str(kwargs["date"])+str(kwargs["time"]) +"_createdOn_"+kwargs["timestr"]
         self.subdir = os.path.join(pathDir,self.pathString)
         os.makedirs(self.subdir, exist_ok=True)
 
