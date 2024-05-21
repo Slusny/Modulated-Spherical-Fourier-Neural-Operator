@@ -156,7 +156,7 @@ class Trainer():
 
                 # logging
                 self.iter += 1
-                self.step = self.iter*self.cfg.batch_size+len(self.dataset)*self.epoch
+                self.step = self.iter*self.cfg.batch_size*self.accumulation_steps+len(self.dataset)*self.epoch
                 self.iter_log(batch_loss,scale=None)
                 batch_loss = 0
   
@@ -206,7 +206,7 @@ class Trainer():
 
                 # logging
                 self.iter += 1
-                self.step = self.iter*self.cfg.batch_size+len(self.dataset)*self.epoch
+                self.step = self.iter*self.cfg.batch_size*self.accumulation_steps+len(self.dataset)*self.epoch
                 self.iter_log(batch_loss,scale=None)
                 batch_loss = 0
             else:
