@@ -225,7 +225,7 @@ class Trainer():
                         batch_loss += loss.item()
                     
                     #backward
-                    self.mem_log("backward pass")
+                    self.mem_log("backward pass",fin=(self.cfg.accumulation_steps > 0))
                     if self.cfg.enable_amp:
                         self.gscaler.scale(loss).backward()
                     else:
