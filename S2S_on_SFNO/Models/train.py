@@ -601,7 +601,7 @@ class Trainer():
                 )
             )
 
-        dataset = xr.Dataset(data_vars=data_dict).to_netcdf(
+        xr.Dataset(data_vars=data_dict).to_netcdf(
             os.path.join(self.cfg.path,'forecast_lead_time='+str(self.cfg.multi_step_validation)+
                          'time='+self.time_dim[0].tolist().strftime("%d%b%Y")+'-'
                          +self.time_dim[-1].tolist().strftime("%d%b%Y")+'.nc'))
