@@ -332,7 +332,7 @@ class Trainer():
 
         else:
             self.training_loader = DataLoader(self.dataset,shuffle=shuffle,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
-            self.validation_loader = DataLoader(self.dataset_validation,shuffle=shuffle,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
+            self.validation_loader = DataLoader(self.dataset_validation,shuffle=shuffle,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size_validation)
 
         return #training_loader, validation_loader
     
@@ -439,8 +439,12 @@ class Trainer():
         
         # log film parameters gamma/beta
         if self.cfg.advanced_logging and self.cfg.model_version == "film":
-            gamma_np = self.model.gamma.cpu().clone().detach().numpy()
-            beta_np  = self.model.beta.cpu().clone().detach().numpy()
+            if self.cfg.ddp:
+                gamma_np = self.model.module.gamma.cpu().clone().detach().numpy()
+                beta_np  = self.model.module.beta.cpu().clone().detach().numpy()
+            else:
+                gamma_np = self.model.gamma.cpu().clone().detach().numpy()
+                beta_np  = self.model.beta.cpu().clone().detach().numpy()
             print("gamma values mean : ",round(gamma_np.mean(),6),"+/-",round(gamma_np.std(),6))
             print("beta values mean  : ",round(beta_np.mean(),6),"+/-",round(beta_np.std(),6))
             val_log["gamma"] = round(gamma_np.mean(),6)

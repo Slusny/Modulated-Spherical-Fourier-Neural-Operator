@@ -122,6 +122,9 @@ def main(rank=0,args={},arg_groups={},world_size=1):
         else:
             print("multi-step-skip given but no multi-step-validation = 0. Specify the number of steps in multi-step-validation larger 0.")
 
+    if args.batch_size_validation is None:
+        args.batch_size_validation = args.batch_size
+
     # set film_gen_type if model version film is selected but no generator to default value
     if args.film_gen_type:
         if args.film_gen_type.lower() == "none" : args.film_gen_type = None
@@ -169,7 +172,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
         else:
             model_args = cp["hyperparameters"].copy()
 
-            # overwrite checkpoint parameters with given parameters, attention, ignores default values, only specified ones
+            # overwrite checkpoint parameters with given parameters, attention! : ignores default values, only specified ones
             for passed_arg in sys.argv[1:]:
                 if passed_arg.startswith("--"):
                     dest = next(x for x in parser._actions if x.option_strings[0] == passed_arg).dest
@@ -177,6 +180,12 @@ def main(rank=0,args={},arg_groups={},world_size=1):
                     if dest in (list(vars(arg_groups["Architecture"]).keys())+list(vars(arg_groups["Architecture Film Gen"]).keys())): continue # do we want to skip Architecture as well?
                     model_args[dest] = vars(args)[dest]
 
+            # copy parameters present in current version, but not in checkpoint
+            for k,v in vars(args).items():
+                if k not in model_args.keys():
+                    model_args[k] = v
+
+            # copy film architecture hyperparameters if different film-layer is given
             if args.film_weights:
                 film_cp = torch.load(args.film_weights)
                 if not 'hyperparameters' in cp.keys(): 
@@ -729,6 +738,12 @@ if __name__ == "__main__":
         "--batch-size",
         action="store",
         default=1,
+        type=int
+    )
+    training.add_argument(
+        "--batch-size-validation",
+        action="store",
+        default=None,
         type=int
     )
     # FourCastNet uses 0.0005
