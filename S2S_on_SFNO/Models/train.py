@@ -110,6 +110,8 @@ class Trainer():
                 print("    no wandb")
         else:
             print("skip this process (",self.cfg.rank,") in logging")
+        if self.cfg.ddp:
+            dist.barrier()
         
         print("    Save path: %s", self.cfg.save_path)
         self.local_log = LocalLog(self.local_logging,self.cfg.save_path)
@@ -428,7 +430,7 @@ class Trainer():
         self.model.eval()
         with torch.no_grad():
             # For loop over validation dataset, calculates the validation loss mean for number of kwargs["validation_epochs"]
-            loss_pervar_list = []
+            loss_pervar_list = [[] for _ in range(self.cfg.multi_step_validation+1)]
             for val_idx, val_data in enumerate(self.validation_loader):
                 # Calculates the validation loss for autoregressive model evaluation
                 # if self.auto_regressive_steps = 0 the dataloader only outputs 2 datapoint 
@@ -439,13 +441,17 @@ class Trainer():
                     if val_step == 0 : input = self.util.normalise(val_data[val_step][0]).to(self.util.device)
                     else: input = output
                     output, gt = self.model_forward(input,val_data,val_step)
+
+                    if self.cfg.ddp:
+                        dist.all_reduce(output,dist.ReduceOp.SUM)
+                        output = output / dist.get_world_size()
                     
                     val_loss_value = self.get_loss(output,gt)/ self.cfg.batch_size
 
                     # loss for each variable
                     if self.cfg.advanced_logging and self.mse_all_vars  and val_step == 0: # !! only for first multi validation step, could include next step with -> ... -> ... in print statement on same line
                         val_g_truth_era5 = self.util.normalise(val_data[val_step+1][0]).to(self.util.device)
-                        loss_pervar_list.append(loss_fn_pervar(output, val_g_truth_era5).mean(dim=(0,2,3)) / self.cfg.batch_size)
+                        loss_pervar_list[val_step].append(loss_fn_pervar(output, val_g_truth_era5).mean(dim=(0,2,3)) / self.cfg.batch_size)
                     
                     if val_idx == 0: 
                         val_loss["validation loss step={}".format(val_step)] = [val_loss_value.cpu()] #kwargs["validation_epochs"]
@@ -493,115 +499,123 @@ class Trainer():
             self.model.train()
                 
     def valid_log(self,val_log,loss_pervar_list):
-        if self.cfg.rank != 0: return
-        # little complicated console logging - looks nicer than LOG.info(str(val_log))
-        if self.cfg.multi_step_validation > 0:multistep_notice = " (steps=... mutli-step-validation, each step an auto-regressive 6h-step)"
-        else: multistep_notice = ""                                             
-        print("-- validation after ",self.step, "training examples "+multistep_notice)
-        val_log_keys = list(val_log.keys())
-        for log_idx in range(0,self.cfg.multi_step_validation*2+1,2): 
-            LOG.info(val_log_keys[log_idx] + " : " + str(val_log[val_log_keys[log_idx]]) 
-                        + " +/- " + str(val_log[val_log_keys[log_idx+1]]))
-        
-        # log to local file
-        # self.val_means[log_idx].append(val_log[val_log_keys[log_idx]]) ## error here
-        # self.val_stds[log_idx].append(val_log[val_log_keys[log_idx+1]]) 
-        
-        # log scheduler
-        if self.scheduler is not None and self.scheduler != "None": 
-            lr = self.scheduler.get_last_lr()[0]
-            val_log["learning rate"] = lr
-        
-        # MSE for all variables
-        if self.cfg.advanced_logging and self.mse_all_vars and self.cfg.model_type != "mae":
-            print("MSE for each variable:")
-            val_loss_value_pervar = torch.stack(loss_pervar_list).mean(dim=0)
-            for idx_var,var_name in enumerate(self.util.ordering):
-                print("    ",var_name," = ",round(val_loss_value_pervar[idx_var].item(),5))
-                val_log["MSE "+var_name] = round(val_loss_value_pervar[idx_var].item(),5)
-        
-        # log film parameters gamma/beta
-        if self.cfg.advanced_logging and self.cfg.model_version == "film":
-            if self.cfg.ddp:
-                gamma_np = self.model.module.gamma.cpu().clone().detach().numpy()
-                beta_np  = self.model.module.beta.cpu().clone().detach().numpy()
-            else:
-                gamma_np = self.model.gamma.cpu().clone().detach().numpy()
-                beta_np  = self.model.beta.cpu().clone().detach().numpy()
-            print("gamma values mean : ",round(gamma_np.mean(),6),"+/-",round(gamma_np.std(),6))
-            print("beta values mean  : ",round(beta_np.mean(),6),"+/-",round(beta_np.std(),6))
-            val_log["gamma"] = round(gamma_np.mean(),6)
-            val_log["beta"]  = round(beta_np.mean(),6)
-            val_log["gamma_std"] = round(gamma_np.std(),6)
-            val_log["beta_std"]  = round(beta_np.std(),6)
-        
-        # local logging
-        self.local_log.log(val_log)
+        if self.cfg.rank == 0: 
+            # little complicated console logging - looks nicer than LOG.info(str(val_log))
+            if self.cfg.multi_step_validation > 0:multistep_notice = " (steps=... mutli-step-validation, each step an auto-regressive 6h-step)"
+            else: multistep_notice = ""                                             
+            print("-- validation after ",self.step, "training examples "+multistep_notice)
+            val_log_keys = list(val_log.keys())
+            for log_idx in range(0,self.cfg.multi_step_validation*2+1,2): 
+                LOG.info(val_log_keys[log_idx] + " : " + str(val_log[val_log_keys[log_idx]]) 
+                            + " +/- " + str(val_log[val_log_keys[log_idx+1]]))
             
-        # wandb
-        if self.cfg.wandb :
-            wandb.log(val_log,commit=False)
+            # log to local file
+            # self.val_means[log_idx].append(val_log[val_log_keys[log_idx]]) ## error here
+            # self.val_stds[log_idx].append(val_log[val_log_keys[log_idx+1]]) 
+            
+            # log scheduler
+            if self.scheduler is not None and self.scheduler != "None": 
+                lr = self.scheduler.get_last_lr()[0]
+                val_log["learning rate"] = lr
+            
+            # MSE for all variables
+            if self.cfg.advanced_logging and self.mse_all_vars and self.cfg.model_type != "mae":
+                print("MSE for each variable:")
+                val_loss_value_pervar = torch.stack(loss_pervar_list).mean(dim=0)
+                for idx_var,var_name in enumerate(self.util.ordering):
+                    print("    ",var_name," = ",round(val_loss_value_pervar[idx_var].item(),5))
+                    val_log["MSE "+var_name] = round(val_loss_value_pervar[idx_var].item(),5)
+            
+            # log film parameters gamma/beta
+            if self.cfg.advanced_logging and self.cfg.model_version == "film":
+                if self.cfg.ddp:
+                    gamma_np = self.model.module.gamma.cpu().clone().detach().numpy()
+                    beta_np  = self.model.module.beta.cpu().clone().detach().numpy()
+                else:
+                    gamma_np = self.model.gamma.cpu().clone().detach().numpy()
+                    beta_np  = self.model.beta.cpu().clone().detach().numpy()
+                print("gamma values mean : ",round(gamma_np.mean(),6),"+/-",round(gamma_np.std(),6))
+                print("beta values mean  : ",round(beta_np.mean(),6),"+/-",round(beta_np.std(),6))
+                val_log["gamma"] = round(gamma_np.mean(),6)
+                val_log["beta"]  = round(beta_np.mean(),6)
+                val_log["gamma_std"] = round(gamma_np.std(),6)
+                val_log["beta_std"]  = round(beta_np.std(),6)
+            
+            # local logging
+            self.local_log.log(val_log)
+                
+            # wandb
+            if self.cfg.wandb :
+                wandb.log(val_log,commit=False)
+        if self.cfg.ddp:
+            dist.barrier()
 
     def mem_log(self,str,fin=False):
-        if self.cfg.rank != 0: return
-        if self.cfg.advanced_logging and self.mem_log_not_done:
-            print("VRAM used before "+str+" : ",round(torch.cuda.memory_allocated(self.util.device)/10**9,2),
-                  " GB, reserved: ",round(torch.cuda.memory_reserved(self.util.device)/10**9,2)," GB")
-            if fin:
-                self.mem_log_not_done = False 
+        if self.cfg.rank == 0: 
+            if self.cfg.advanced_logging and self.mem_log_not_done:
+                print("VRAM used before "+str+" : ",round(torch.cuda.memory_allocated(self.util.device)/10**9,2),
+                    " GB, reserved: ",round(torch.cuda.memory_reserved(self.util.device)/10**9,2)," GB")
+                if fin:
+                    self.mem_log_not_done = False 
+        if self.cfg.ddp:
+            dist.barrier()
             
     def iter_log(self,batch_loss,scale=None):
-        if self.cfg.rank != 0: return
-        # local logging
-        self.local_log.log({"loss": round(batch_loss,6),"step":self.step})
+        if self.cfg.rank == 0: 
+            # local logging
+            self.local_log.log({"loss": round(batch_loss,6),"step":self.step})
 
-        if self.cfg.wandb:
-            wandb.log({"loss": round(batch_loss,5),"step":self.step })
-        if self.cfg.advanced_logging:
-            if scale is not None:
-                print("After ", self.step, " Samples - Loss: ", round(batch_loss,5)," - scale: ",round(scale,5))
-            else :
-                print("After ", self.step, " Samples - Loss: ", round(batch_loss,5))
-    
-    def save_checkpoint(self):
-        if self.cfg.rank != 0: return
-        save_file ="checkpoint_"+self.cfg.model_type+"_"+self.cfg.model_version+"_"+str(self.cfg.film_gen_type)+"_iter={}_epoch={}.pkl".format(self.iter,self.epoch)
-        total_save_path = os.path.join( self.cfg.save_path,save_file)
-        LOG.info("Saving checkpoint to %s",total_save_path)
-       
-        if save_file is None: save_file ="checkpoint_"+self.cfg.timestr+"_final.pkl"
+            if self.cfg.wandb:
+                wandb.log({"loss": round(batch_loss,5),"step":self.step })
+            if self.cfg.advanced_logging:
+                if scale is not None:
+                    print("After ", self.step, " Samples - Loss: ", round(batch_loss,5)," - scale: ",round(scale,5))
+                else :
+                    print("After ", self.step, " Samples - Loss: ", round(batch_loss,5))
         if self.cfg.ddp:
-            model_state = self.model.module.state_dict()
-        else:
-            model_state = self.model.state_dict()
-        save_dict = {
-            "model_state":model_state,
-            "epoch":self.epoch,
-            "iter":self.iter,
-            "optimizer_state_dict":self.optimizer.state_dict(),
-            "hyperparameters": self.cfg.__dict__
-            }
-        if self.scheduler: save_dict["scheduler_state_dict"]= self.scheduler.state_dict()
+            dist.barrier()
+
+    def save_checkpoint(self):
+        if self.cfg.rank == 0: 
+            save_file ="checkpoint_"+self.cfg.model_type+"_"+self.cfg.model_version+"_"+str(self.cfg.film_gen_type)+"_iter={}_epoch={}.pkl".format(self.iter,self.epoch)
+            total_save_path = os.path.join( self.cfg.save_path,save_file)
+            LOG.info("Saving checkpoint to %s",total_save_path)
         
-        # wanted to see if ddp issue comes from here
-        # for k,v in save_dict:
-        #     print("")
-        #     print("    ",k," : ",v)
-
-        torch.save(save_dict,total_save_path)
-
-        # Gamma Beta
-        if self.cfg.advanced_logging and self.cfg.model_version == "film":
+            if save_file is None: save_file ="checkpoint_"+self.cfg.timestr+"_final.pkl"
             if self.cfg.ddp:
-                gamma_np = self.model.module.gamma.cpu().clone().detach().numpy()
-                beta_np  = self.model.module.beta.cpu().clone().detach().numpy()
+                model_state = self.model.module.state_dict()
             else:
-                gamma_np = self.model.gamma.cpu().clone().detach().numpy()
-                beta_np  = self.model.beta.cpu().clone().detach().numpy()
-            np.save(os.path.join( self.cfg.save_path,"gamma_{}.npy".format(self.step)),gamma_np)
-            np.save(os.path.join( self.cfg.save_path,"beta_{}.npy".format(self.step)),beta_np)
-        
-        print("save done")
+                model_state = self.model.state_dict()
+            save_dict = {
+                "model_state":model_state,
+                "epoch":self.epoch,
+                "iter":self.iter,
+                "optimizer_state_dict":self.optimizer.state_dict(),
+                "hyperparameters": self.cfg.__dict__
+                }
+            if self.scheduler: save_dict["scheduler_state_dict"]= self.scheduler.state_dict()
+            
+            # wanted to see if ddp issue comes from here
+            # for k,v in save_dict:
+            #     print("")
+            #     print("    ",k," : ",v)
+
+            torch.save(save_dict,total_save_path)
+
+            # Gamma Beta
+            if self.cfg.advanced_logging and self.cfg.model_version == "film":
+                if self.cfg.ddp:
+                    gamma_np = self.model.module.gamma.cpu().clone().detach().numpy()
+                    beta_np  = self.model.module.beta.cpu().clone().detach().numpy()
+                else:
+                    gamma_np = self.model.gamma.cpu().clone().detach().numpy()
+                    beta_np  = self.model.beta.cpu().clone().detach().numpy()
+                np.save(os.path.join( self.cfg.save_path,"gamma_{}.npy".format(self.step)),gamma_np)
+                np.save(os.path.join( self.cfg.save_path,"beta_{}.npy".format(self.step)),beta_np)
+            
+            print("save done")
+        if self.cfg.ddp:
+            dist.barrier()
 
     def save_forecast(self):
         self.ready_model()
