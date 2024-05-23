@@ -52,6 +52,7 @@ class ERA5_galvani(Dataset):
             run=False,
         ):
         self.model = model
+        self.past_sst = past_sst
         self.sst = sst
         self.run = run
         self.auto_regressive_steps = auto_regressive_steps

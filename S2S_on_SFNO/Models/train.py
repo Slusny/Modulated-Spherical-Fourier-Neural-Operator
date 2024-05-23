@@ -12,7 +12,7 @@ from .data import SST_galvani, ERA5_galvani
 import wandb
 from time import time
 from datetime import datetime
-
+import torch.distributed as dist
 # BatchSampler(drop_last=True)
 
 from S2S_on_SFNO.Models.provenance import system_monitor
@@ -459,12 +459,17 @@ class Trainer():
                         val_log[k]          = round(val_loss_array.mean(),5)
                         val_log["std " + k] = round(val_loss_array.std(),5)
                     break
+
+
         
         # change scale value based on validation loss
         # if valid_mean < kwargs["val_loss_threshold"] and scale < 1.0:
         if self.scale < 1.0 and self.cfg.model_version == "film":
             val_log["scale"] = self.scale
             self.scale = self.scale + 0.002 # 5e-5 #
+
+        if self.cfg.ddp:
+            dist.all_reduce(val_log,dist.ReduceOp.AVG)
 
         self.valid_log(val_log,loss_pervar_list)
 
