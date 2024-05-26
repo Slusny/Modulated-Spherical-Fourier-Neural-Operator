@@ -43,7 +43,12 @@
 # batch-size 30 for 2080 , 115 for a100 with 28,9,9 ,  16 maybe 20 with 14,9,9
 
 
-# 1Film size multi-step-training 20, mit ddp 19 mit ddp und accumulation step ist 19 zu viel, 18 geht
+# 1Film size multi-step-training 20, mit ddp 19 mit ddp
+# 8 gpus mit 400MB residual and accumulation step: 19 zu viel, 18 geht? 16 ging
+
+# 2Film size multi-step-training 11, mit ddp 10 mit ddp
+# 8 gpus 10 ging nicht, 8 ging
+
 # 1Film
 singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965,/home/scratch_local /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version film --film-gen mae --train --cls /mnt/qb/work2/goswami0/gkd965/checkpoints/mae/wise-spaceship-24/checkpoint_mae_latest_None_iter=0_epoch=8-cls_encoder-1979-2019.npy --advanced-logging --film-layers 1 --batch-size 1 --multi-step-training 19 --validation-interval 3 --validation-epochs 3 --multi-step-validation 2 --validation-step-skip 15 --save-checkpoint-interval 10 --training-workers 8  --learning-rate 0.00005 --scheduler CosineAnnealingLR --scheduler-horizon 270275 --loss-fn L2Sphere --trainingset-start-year 1979 --trainingset-end-year 2016 --validationset-start-year 2016 --validationset-end-year 2018 --training-epochs 5  --notes 'decoder cls, future sst' --checkpointing-decoder --enable-amp --accumulation-steps 64 --ddp --wandb --jobID $SLURM_JOB_ID 
 

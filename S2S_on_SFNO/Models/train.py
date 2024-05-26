@@ -440,17 +440,22 @@ class Trainer():
                     if val_step == 0 : input = self.util.normalise(val_data[val_step][0]).to(self.util.device)
                     else: input = output
                     output, gt = self.model_forward(input,val_data,val_step)
-
-                    if self.cfg.ddp:
-                        dist.all_reduce(output,dist.ReduceOp.SUM)
-                        output = output / dist.get_world_size()
                     
                     val_loss_value = self.get_loss(output,gt)/ self.cfg.batch_size
+
+                    if self.cfg.ddp:
+                        dist.all_reduce(val_loss_value,dist.ReduceOp.SUM)
+                        val_loss_value = val_loss_value / dist.get_world_size()
 
                     # loss for each variable
                     if self.cfg.advanced_logging and self.mse_all_vars  and val_step == 0: # !! only for first multi validation step, could include next step with -> ... -> ... in print statement on same line
                         val_g_truth_era5 = self.util.normalise(val_data[val_step+1][0]).to(self.util.device)
-                        loss_pervar_list[val_step].append(loss_fn_pervar(output, val_g_truth_era5).mean(dim=(0,2,3)) / self.cfg.batch_size)
+                        loss_per_var = loss_fn_pervar(output, val_g_truth_era5).mean(dim=(0,2,3))/ self.cfg.batch_size
+                        if self.cfg.ddp:
+                            dist.all_reduce(loss_per_var,dist.ReduceOp.SUM)
+                            loss_per_var = loss_per_var / dist.get_world_size()
+
+                        loss_pervar_list[val_step].append(loss_per_var) 
                     
                     if val_idx == 0: 
                         val_loss["validation loss step={}".format(val_step)] = [val_loss_value.cpu()] #kwargs["validation_epochs"]
@@ -472,9 +477,6 @@ class Trainer():
         if self.scale < 1.0 and self.cfg.model_version == "film":
             val_log["scale"] = self.scale
             self.scale = self.scale + 0.002 # 5e-5 #
-
-        if self.cfg.ddp:
-            dist.all_reduce(val_log,dist.ReduceOp.AVG)
 
         self.valid_log(val_log,loss_pervar_list)
 

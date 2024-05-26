@@ -1076,4 +1076,7 @@ are all kwargs added to model: e.g. film_gen_type is part of model.film_gen_type
 - do we need grad for all layers?
 # Questions
 Do Transformers need to have a square input
+
+# Issues
+- validation with ddp, mean over all_reduce and then mean over iterations -> mean of means
 '''
