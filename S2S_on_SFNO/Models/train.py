@@ -294,7 +294,6 @@ class Trainer():
         sys.exit(0)
 
     def ready_model(self):
-        if self.cfg.ddp: torch.cuda.set_device(self.cfg.rank)
         self.util.load_model(self.util.checkpoint_path)
         self.model.train()
         self.util.load_statistics() 
