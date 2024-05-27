@@ -1517,6 +1517,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
             plt.close(fig)
 
     def get_parameters(self):
+        print("inside model sfno get_parameters")
+        print(self.model)
+        print(self.model.film_gen)
         return self.model.film_gen.get_parameters()
 
     def plot_skillscores(self,mean,std,save_path,variables,checkpoint,val_epochs):
