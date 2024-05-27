@@ -303,7 +303,8 @@ class Trainer():
 
     def create_scheduler(self):
         # debug
-        print("model : ",self.model,flush=True)
+        if self.cfg.rank==1:
+            print("model : ",self.util.model,flush=True)
         # Scheduler
         if self.cfg.scheduler_type == 'ReduceLROnPlateau':
             self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, factor=0.2, patience=5, mode='min')

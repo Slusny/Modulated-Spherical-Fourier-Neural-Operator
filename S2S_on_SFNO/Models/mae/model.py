@@ -171,6 +171,7 @@ class MAE(Model):
                 self.mem_log_not_done = False 
                 
     def get_parameters(self):
+        print("get_parameters",self.model)
         return self.model.parameters()
 
 
