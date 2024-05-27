@@ -49,6 +49,9 @@ class Trainer():
         self.epoch = 0
         self.step = 0
         self.iter = 0
+        
+        # depug
+        print("device: ",self.util.device)
 
     def train(self):
         self.setup()
@@ -300,6 +303,8 @@ class Trainer():
         if self.cfg.ddp:
             self.model = DDP(self.model,device_ids=[self.util.device])
             torch.cuda.empty_cache()
+            ## debug
+            print("ddp model in utli? ",self.util.model)
 
     def create_sheduler(self):
         # Scheduler
@@ -330,7 +335,9 @@ class Trainer():
             self.optimizer = torch.optim.SGD(self.util.get_parameters(), lr=self.cfg.learning_rate, momentum=0.9)
         elif self.cfg.optimizer == "LBFGS":
             self.optimizer = torch.optim.LBFGS(self.util.get_parameters())# store the optimizer and scheduler in the model class
-
+        elif self.cfg.optimizer == "AdamW":
+            self.optimizer = torch.distributed.optim.ZeroRedundancyOptimizer(self.util.parameters(),optimizer_class=torch.optim.Adam,lr=self.cfg.learning_rate)
+            
     def create_loss(self):
         if self.cfg.loss_fn == "CosineMSE":
             self.loss_fn = CosineMSELoss(reduction=self.cfg.loss_reduction)

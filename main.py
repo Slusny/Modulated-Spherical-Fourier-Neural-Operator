@@ -71,6 +71,8 @@ def main(rank=0,args={},arg_groups={},world_size=1):
     args.rank = rank
     if args.ddp:
         print("rank ",rank)
+        ## debug
+        print("type rank: ",type(rank))
         # training workers need to be set to 0
         args.training_workers=0
         args.world_size = world_size
@@ -1079,4 +1081,5 @@ Do Transformers need to have a square input
 
 # Issues
 - validation with ddp, mean over all_reduce and then mean over iterations -> mean of means
+- ddp optimizer model.module.parameters oder einfach model.parameters?
 '''
