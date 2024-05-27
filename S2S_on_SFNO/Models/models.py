@@ -86,7 +86,7 @@ class Model():
         import torch
 
         if self.cfg.ddp:
-            device=self.cfg.rank
+            device=torch.device(self.cfg.rank)
             return device
 
         device = "cpu"
