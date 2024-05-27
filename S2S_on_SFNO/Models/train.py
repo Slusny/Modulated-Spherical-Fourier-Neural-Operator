@@ -300,9 +300,6 @@ class Trainer():
             torch.cuda.empty_cache()
 
     def create_scheduler(self):
-        # debug
-        if self.cfg.rank==1:
-            print("model : ",self.util.model,flush=True)
         # Scheduler
         if self.cfg.scheduler_type == 'ReduceLROnPlateau':
             self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, factor=0.2, patience=5, mode='min')
@@ -458,7 +455,7 @@ class Trainer():
                             dist.all_reduce(loss_per_var,dist.ReduceOp.SUM)
                             loss_per_var = loss_per_var / dist.get_world_size()
 
-                        loss_pervar_list[val_step].append(loss_per_var) 
+                        loss_pervar_list[val_step].append(loss_per_var.cpu()) 
                     
                     if val_idx == 0: 
                         val_loss["validation loss step={}".format(val_step)] = [val_loss_value.cpu()] #kwargs["validation_epochs"]
@@ -525,7 +522,8 @@ class Trainer():
             # MSE for all variables
             if self.cfg.advanced_logging and self.mse_all_vars and self.cfg.model_type != "mae":
                 print("MSE for each variable:",flush=True)
-                val_loss_value_pervar = torch.stack(loss_pervar_list).mean(dim=0)
+                print(loss_pervar_list)
+                val_loss_value_pervar = torch.stack(loss_pervar_list).mean(dim=1)
                 for idx_var,var_name in enumerate(self.util.ordering):
                     print("    ",var_name," = ",round(val_loss_value_pervar[idx_var].item(),5),flush=True)
                     val_log["MSE "+var_name] = round(val_loss_value_pervar[idx_var].item(),5)
