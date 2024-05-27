@@ -429,7 +429,7 @@ class Trainer():
         self.model.eval()
         with torch.no_grad():
             # For loop over validation dataset, calculates the validation loss mean for number of kwargs["validation_epochs"]
-            loss_pervar_list = [[] for _ in range(self.cfg.multi_step_validation+1)]
+            loss_pervar_list = [[] for _ in range(self.cfg.multi_step_validation/(1+self.validation_step_skip+1)+1)]
             for val_idx, val_data in enumerate(self.validation_loader):
                 # Calculates the validation loss for autoregressive model evaluation
                 # if self.auto_regressive_steps = 0 the dataloader only outputs 2 datapoint 
@@ -441,6 +441,7 @@ class Trainer():
                     else: input = output
                     output, gt = self.model_forward(input,val_data,val_step)
                     
+                    if val_step % (self.cfg.validation_step_skip+1) != 0: continue 
                     val_loss_value = self.get_loss(output,gt)/ self.cfg.batch_size
 
                     if self.cfg.ddp:
