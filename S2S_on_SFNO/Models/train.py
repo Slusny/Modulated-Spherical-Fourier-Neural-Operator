@@ -49,9 +49,6 @@ class Trainer():
         self.epoch = 0
         self.step = 0
         self.iter = 0
-        
-        # depug
-        print("device: ",self.util.device)
 
     def train(self):
         self.setup()
@@ -66,8 +63,8 @@ class Trainer():
 
     def set_logger(self):
         if self.cfg.rank == 0:
-            print("")
-            print("logger settings:")
+            print("",flush=True)
+            print("logger settings:",flush=True)
             if self.cfg.wandb   : 
                 # config_wandb = vars(args).copy()
                 # for key in ['notes','tags','wandb']:del config_wandb[key]
@@ -110,13 +107,13 @@ class Trainer():
                 new_save_path = os.path.join(self.cfg.save_path,file_name)
                 os.mkdir(new_save_path)
                 self.cfg.save_path = new_save_path
-                print("    no wandb")
+                print("    no wandb",flush=True)
         else:
-            print("skip this process (",self.cfg.rank,") in logging")
+            print("skip this process (",self.cfg.rank,") in logging",flush=True)
         if self.cfg.ddp:
             dist.barrier()
         
-        print("    Save path: %s", self.cfg.save_path)
+        print("    Save path: %s", self.cfg.save_path,flush=True)
         self.local_log = LocalLog(self.local_logging,self.cfg.save_path)
 
     def train_epoch(self):
@@ -248,7 +245,7 @@ class Trainer():
     def post_epoch(self):
         self.epoch += 1
         self.iter = 0
-        print("End of epoch ",self.epoch)
+        if self.cfg.rank==0:print("End of epoch ",self.epoch,flush=True)
         self.validation()
         self.save_checkpoint()
         self.local_log.save("training_log_epoch{}.npy".format(self.epoch))
@@ -283,10 +280,10 @@ class Trainer():
         self.set_logger()
         if self.cfg.enable_amp == True:
             self.gscaler = amp.GradScaler()
-        self.create_loss()
-        self.create_optimizer()
-        self.create_sheduler()
         self.ready_model()
+        self.create_optimizer()
+        self.create_loss()
+        self.create_scheduler()
         self.set_dataloader()
 
     def finalise(self):
@@ -303,10 +300,10 @@ class Trainer():
         if self.cfg.ddp:
             self.model = DDP(self.model,device_ids=[self.util.device])
             torch.cuda.empty_cache()
-            ## debug
-            print("ddp model in utli? ",self.util.model)
 
-    def create_sheduler(self):
+    def create_scheduler(self):
+        # debug
+        print("model : ",self.model,flush=True)
         # Scheduler
         if self.cfg.scheduler_type == 'ReduceLROnPlateau':
             self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, factor=0.2, patience=5, mode='min')
@@ -511,7 +508,7 @@ class Trainer():
             # little complicated console logging - looks nicer than LOG.info(str(val_log))
             if self.cfg.multi_step_validation > 0:multistep_notice = " (steps=... mutli-step-validation, each step an auto-regressive 6h-step)"
             else: multistep_notice = ""                                             
-            print("-- validation after ",self.step, "training examples "+multistep_notice)
+            print("-- validation after ",self.step, "training examples "+multistep_notice,flush=True)
             val_log_keys = list(val_log.keys())
             for log_idx in range(0,self.cfg.multi_step_validation*2+1,2): 
                 LOG.info(val_log_keys[log_idx] + " : " + str(val_log[val_log_keys[log_idx]]) 
@@ -528,10 +525,10 @@ class Trainer():
             
             # MSE for all variables
             if self.cfg.advanced_logging and self.mse_all_vars and self.cfg.model_type != "mae":
-                print("MSE for each variable:")
+                print("MSE for each variable:",flush=True)
                 val_loss_value_pervar = torch.stack(loss_pervar_list).mean(dim=0)
                 for idx_var,var_name in enumerate(self.util.ordering):
-                    print("    ",var_name," = ",round(val_loss_value_pervar[idx_var].item(),5))
+                    print("    ",var_name," = ",round(val_loss_value_pervar[idx_var].item(),5),flush=True)
                     val_log["MSE "+var_name] = round(val_loss_value_pervar[idx_var].item(),5)
             
             # log film parameters gamma/beta
@@ -542,8 +539,8 @@ class Trainer():
                 else:
                     gamma_np = self.model.gamma.cpu().clone().detach().numpy()
                     beta_np  = self.model.beta.cpu().clone().detach().numpy()
-                print("gamma values mean : ",round(gamma_np.mean(),6),"+/-",round(gamma_np.std(),6))
-                print("beta values mean  : ",round(beta_np.mean(),6),"+/-",round(beta_np.std(),6))
+                print("gamma values mean : ",round(gamma_np.mean(),6),"+/-",round(gamma_np.std(),6),flush=True)
+                print("beta values mean  : ",round(beta_np.mean(),6),"+/-",round(beta_np.std(),6),flush=True)
                 val_log["gamma"] = round(gamma_np.mean(),6)
                 val_log["beta"]  = round(beta_np.mean(),6)
                 val_log["gamma_std"] = round(gamma_np.std(),6)
@@ -562,7 +559,7 @@ class Trainer():
         if self.cfg.rank == 0: 
             if self.cfg.advanced_logging and self.mem_log_not_done:
                 print("VRAM used before "+str+" : ",round(torch.cuda.memory_allocated(self.util.device)/10**9,2),
-                    " GB, reserved: ",round(torch.cuda.memory_reserved(self.util.device)/10**9,2)," GB")
+                    " GB, reserved: ",round(torch.cuda.memory_reserved(self.util.device)/10**9,2)," GB",flush=True)
                 if fin:
                     self.mem_log_not_done = False 
         if self.cfg.ddp:
@@ -579,7 +576,7 @@ class Trainer():
                 if scale is not None:
                     print("After ", self.step, " Samples - Loss: ", round(batch_loss,5)," - scale: ",round(scale,5))
                 else :
-                    print("After ", self.step, " Samples - Loss: ", round(batch_loss,5))
+                    print("After ", self.step, " Samples - Loss: ", round(batch_loss,5),flush=True)
         if self.cfg.ddp:
             dist.barrier()
 
@@ -621,7 +618,7 @@ class Trainer():
                 np.save(os.path.join( self.cfg.save_path,"gamma_{}.npy".format(self.step)),gamma_np)
                 np.save(os.path.join( self.cfg.save_path,"beta_{}.npy".format(self.step)),beta_np)
             
-            print("save done")
+            print("save done",flush=True)
         if self.cfg.ddp:
             dist.barrier()
 
@@ -648,7 +645,7 @@ class Trainer():
                         output, gt = self.model_forward(input,data,step,return_gt=False)
                         self.output_data[step] += [*(output.cpu().numpy())]
                         # self.output_data[step].append(output.cpu().numpy())
-                    print(str(i).rjust(6),"/",len(self.validation_loader)," -  ",data_time.strftime("%d %b %Y"))
+                    print(str(i).rjust(6),"/",len(self.validation_loader)," -  ",data_time.strftime("%d %b %Y"),flush=True)
                     if (i+1)%10 == 0:
                         self.save_to_netcdf()
                         sys.exit(0)
@@ -807,7 +804,7 @@ class Trainer():
         self.set_logger()
         self.create_loss()
         self.create_optimizer()
-        self.create_sheduler()
+        self.create_scheduler()
         self.ready_model()
         while True:
             try:

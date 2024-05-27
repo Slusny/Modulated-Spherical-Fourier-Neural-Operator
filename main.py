@@ -42,6 +42,7 @@ def ddp_setup(rank, world_size):
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "31350"
     torch.cuda.set_device(rank)
+    os.environ["CUDA_VISIBLE_DEVICES"]=rank
     init_process_group(backend="nccl", rank=rank, world_size=world_size)
 
 
@@ -65,14 +66,13 @@ def main(rank=0,args={},arg_groups={},world_size=1):
         pdb.set_trace()
         torch.autograd.set_detect_anomaly(True)
         args.training_workers = 0
-        print("starting debugger") 
-        print("setting training workers to 0 to be able to debug code in ")
+        if args.rank == 0:
+            print("starting debugger",flush=True) 
+            print("setting training workers to 0 to be able to debug code in ",flush=True)
 
     args.rank = rank
     if args.ddp:
-        print("rank ",rank)
-        ## debug
-        print("type rank: ",type(rank))
+        print("rank ",rank,flush=True)
         # training workers need to be set to 0
         args.training_workers=0
         args.world_size = world_size
@@ -118,12 +118,12 @@ def main(rank=0,args={},arg_groups={},world_size=1):
         if args.multi_step_training > 0:
             args.multi_step_training = args.multi_step_training + args.training_step_skip*(args.multi_step_training)
         else:
-            print("multi-step-skip given but no multi-step-training = 0. Specify the number of steps in multi-step-training larger 0.")
+            print("multi-step-skip given but no multi-step-training = 0. Specify the number of steps in multi-step-training larger 0.",flush=True)
     if args.validation_step_skip > 0:
         if args.multi_step_validation > 0:
             args.multi_step_validation = args.multi_step_validation + args.validation_step_skip*(args.multi_step_validation)
         else:
-            print("multi-step-skip given but no multi-step-validation = 0. Specify the number of steps in multi-step-validation larger 0.")
+            print("multi-step-skip given but no multi-step-validation = 0. Specify the number of steps in multi-step-validation larger 0.",flush=True)
 
     if args.batch_size_validation is None:
         args.batch_size_validation = args.batch_size
@@ -132,7 +132,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
     if args.film_gen_type:
         if args.film_gen_type.lower() == "none" : args.film_gen_type = None
     if args.model_version == "film" and args.film_gen_type is None: 
-        print("using film generator: gcn_custom")
+        print("using film generator: gcn_custom",flush=True)
         args.film_gen_type = "gcn_custom"
     # scheduler is updated in every validation interval. To arive at the total horizon in standard iters we divide by the validation interval
     args.scheduler_horizon = args.scheduler_horizon//args.validation_interval//args.batch_size
