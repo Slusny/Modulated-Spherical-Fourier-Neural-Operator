@@ -48,8 +48,8 @@ def ddp_setup(rank, world_size):
 
 # LOG = logging.getLogger(__name__)
 LOG = logging.getLogger(__name__)
-
-print("cuda available? : ",torch.cuda.is_available(),flush=True)
+cuda_available = torch.cuda.is_available()
+print("cuda available? : ",cuda_available,flush=True)
 
 
 # global variables
@@ -165,10 +165,11 @@ def main(rank=0,args={},arg_groups={},world_size=1):
 
     # Load parameters from checkpoint if given and load model
     resume_cp = args.resume_checkpoint
+    map_location=rank if cuda_available else 'cpu'
     if args.eval_model:
         resume_cp = list(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len))[-1]
     if resume_cp:
-        cp = torch.load(resume_cp)
+        cp = torch.load(resume_cp,map_location=map_location)
         if not 'hyperparameters' in cp.keys(): 
             print("couldn't load model configuration from checkpoint")
             model = load_model(args.model_type, vars(args))
@@ -190,7 +191,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
 
             # copy film architecture hyperparameters if different film-layer is given
             if args.film_weights:
-                film_cp = torch.load(args.film_weights)
+                film_cp = torch.load(args.film_weights,map_location=map_location)
                 if not 'hyperparameters' in cp.keys(): 
                     print("couldn't load film model configuration from checkpoint")
                 else:
@@ -210,7 +211,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
         # if only film weights are given, load film model
         kwargs = vars(args)
         if args.film_weights:
-            film_cp = torch.load(args.film_weights)
+            film_cp = torch.load(args.film_weights,map_location=map_location)
             if not 'hyperparameters' in film_cp.keys(): 
                 print("couldn't load film model configuration from checkpoint")
             else:
@@ -884,6 +885,12 @@ if __name__ == "__main__":
         type=int,
         default=None,
     )
+    training.add_argument(
+        "--discount-factor",
+        action="store",
+        type=int,
+        default=0.9,
+    )
 
 
     # Evaluation
@@ -1080,6 +1087,6 @@ are all kwargs added to model: e.g. film_gen_type is part of model.film_gen_type
 Do Transformers need to have a square input
 
 # Issues
-- validation with ddp, mean over all_reduce and then mean over iterations -> mean of means
-- ddp optimizer model.module.parameters oder einfach model.parameters?
+- validation with ddp, mean over all_reduce and then mean over iterations -> mean of means is ok
+- ddp optimizer expects model.parameters() on ddp model but we return parameters from sub models. we could give ddp-model as parameter of the get_parameter function, but actually how it is handled right now should be fine?
 '''

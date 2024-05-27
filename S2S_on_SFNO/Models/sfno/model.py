@@ -216,7 +216,7 @@ class FourCastNetv2(ATMModel):
 
         # Load weights
         if checkpoint_file is None:
-            checkpoint = torch.load(checkpoint_file)
+            checkpoint = torch.load(checkpoint_file,map_location=self.device)
 
             if "model_state" in checkpoint.keys(): weights = checkpoint["model_state"]
             else: weights = checkpoint
@@ -925,7 +925,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         model.zero_grad()
 
         # Load SFNO weights
-        checkpoint_sfno = torch.load(checkpoint_file)
+        checkpoint_sfno = torch.load(checkpoint_file,map_location=self.device)
         if "model_state" in checkpoint_sfno.keys(): weights = checkpoint_sfno["model_state"]
         else: weights = checkpoint_sfno
         drop_vars = ["module.norm.weight", "module.norm.bias"] # no checkpoint has that layer, probably lecacy from ai-model dev
@@ -976,7 +976,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
         #  Load Filmed weights
         if self.checkpoint_path_film:
-            checkpoint_film = torch.load(self.checkpoint_path_film)
+            checkpoint_film = torch.load(self.checkpoint_path_film,map_location=self.device)
             film_weights = checkpoint_film["model_state"]
             if next(iter(film_weights.keys()))[0:9] != 'film_gen.':
             # Try adding model weights as dictionary
@@ -1517,9 +1517,6 @@ class FourCastNetv2_filmed(FourCastNetv2):
             plt.close(fig)
 
     def get_parameters(self):
-        print("inside model sfno get_parameters")
-        print(self.model)
-        print(self.model.film_gen)
         return self.model.film_gen.get_parameters()
 
     def plot_skillscores(self,mean,std,save_path,variables,checkpoint,val_epochs):

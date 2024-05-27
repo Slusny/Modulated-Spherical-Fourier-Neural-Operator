@@ -124,7 +124,6 @@ class Trainer():
             if self.cfg.validation_interval > 0 and (self.iter+1) % (self.cfg.validation_interval)  == 0:
                 self.validation()
             loss = 0
-            discount_factor = 0.99
             with amp.autocast(self.cfg.enable_amp):
                 for step in range(self.cfg.multi_step_training+1):
                     if step == 0 : input = self.util.normalise(data[step][0]).to(self.util.device)
@@ -132,7 +131,7 @@ class Trainer():
                     output, gt = self.model_forward(input,data,step)
                     
                     if step % (self.cfg.training_step_skip+1) == 0:
-                        loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1)/self.cfg.batch_size *discount_factor**step
+                        loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1)/self.cfg.batch_size *self.cfg.discount_factor**step
                     
                 loss = loss / (self.cfg.accumulation_steps+1)
                 # only for logging the loss for the batch
@@ -146,7 +145,7 @@ class Trainer():
                 loss.backward()
 
             # Adjust learning weights
-            if ((i + 1) % (self.cfg.accumulation_steps + 1) == 0) or (i + 1 == len(self.training_loader)):
+            if ((i + 1) % (self.cfg.accumulation_steps + 1) == 0) or ((i + 1) == (len(self.training_loader)-1)):
                 # Update Optimizer
                 self.mem_log("optimizer step",fin=True)
                 if self.cfg.enable_amp:
@@ -172,10 +171,9 @@ class Trainer():
             if self.cfg.validation_interval > 0 and (self.iter+1) % (self.cfg.validation_interval)  == 0:
                 self.validation()
             loss = 0
-            discount_factor = 0.99
 
             # Adjust learning weights
-            if ((i + 1) % (self.cfg.accumulation_steps + 1) == 0) or (i + 1 == len(self.training_loader)):
+            if ((i + 1) % (self.cfg.accumulation_steps + 1) == 0) or ((i + 1) == (len(self.training_loader)-2)):
                 # train again but sync
                 with amp.autocast(self.cfg.enable_amp):
                     for step in range(self.cfg.multi_step_training+1):
@@ -184,7 +182,7 @@ class Trainer():
                         output, gt = self.model_forward(input,data,step)
                         
                         if step % (self.cfg.training_step_skip+1) == 0:
-                            loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1)/self.cfg.batch_size *discount_factor**step
+                            loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1)/self.cfg.batch_size *self.cfg.discount_factor**step
                         
                     loss = loss / (self.cfg.accumulation_steps+1)
                     # only for logging the loss for the batch
@@ -220,7 +218,7 @@ class Trainer():
                             output, gt = self.model_forward(input,data,step)
                             
                             if step % (self.cfg.training_step_skip+1) == 0:
-                                loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1)/self.cfg.batch_size *discount_factor**step
+                                loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1)/self.cfg.batch_size *self.cfg.discount_factor**step
                             
                         loss = loss / (self.cfg.accumulation_steps+1)
                         # only for logging the loss for the batch
@@ -565,6 +563,7 @@ class Trainer():
                     self.mem_log_not_done = False 
         if self.cfg.ddp:
             dist.barrier()
+        return
             
     def iter_log(self,batch_loss,scale=None):
         if self.cfg.rank == 0: 

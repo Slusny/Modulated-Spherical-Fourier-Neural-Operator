@@ -336,47 +336,47 @@ class Transformer_patch_embedding(nn.Module):
         return x, self.nan_mask, self.nan_mask_th
 
     
-#load config
-def my_load_config(model_name, model_path = '/mnt/qb/work/goswami/jthuemmel54/enso/stforenso/bin/ckpts/'):
+# #load config
+# def my_load_config(model_name, model_path = '/mnt/qb/work/goswami/jthuemmel54/enso/stforenso/bin/ckpts/'):
 
-    config = torch.load(model_path + model_name + '_config.pth')
-    epoch = config['num_epochs']
-    ckpt = torch.load(model_path + model_name + f'_checkpoint_{epoch}')
-    #Data variables
-    height = config['height']
-    width = config['width']
-    history = config['history']
-    horizon = config['horizon']
+#     config = torch.load(model_path + model_name + '_config.pth')
+#     epoch = config['num_epochs']
+#     ckpt = torch.load(model_path + model_name + f'_checkpoint_{epoch}')
+#     #Data variables
+#     height = config['height']
+#     width = config['width']
+#     history = config['history']
+#     horizon = config['horizon']
 
-    #Model variables
-    encoder_dim = config['encoder_dim']
-    decoder_dim = config['decoder_dim']
-    data_dim = config['data_dim']
-    patch_size = config['patch_size']
-    num_latents = config['num_latents']
-    timesteps = history + horizon
-    encoder_depth = config['encoder_depth']
-    decoder_depth = config['decoder_depth']
-    dropout = config['dropout']
-    layer_scale = config['layer_scale']
-    predict_std = config['predict_std']
-    learnable_position_code = config['learnable_position_code']
+#     #Model variables
+#     encoder_dim = config['encoder_dim']
+#     decoder_dim = config['decoder_dim']
+#     data_dim = config['data_dim']
+#     patch_size = config['patch_size']
+#     num_latents = config['num_latents']
+#     timesteps = history + horizon
+#     encoder_depth = config['encoder_depth']
+#     decoder_depth = config['decoder_depth']
+#     dropout = config['dropout']
+#     layer_scale = config['layer_scale']
+#     predict_std = config['predict_std']
+#     learnable_position_code = config['learnable_position_code']
 
-    #Model
-    model = ContextCast(data_dim = data_dim,
-                    decoder_dim= decoder_dim,
-                    encoder_dim= encoder_dim, 
-                    num_latents = num_latents, 
-                    patch_size = patch_size,
-                    encoder_depth = encoder_depth,
-                    decoder_depth = decoder_depth, 
-                    dropout=dropout, 
-                    layer_scale=layer_scale, 
-                    predict_std=predict_std,
-                    learnable_position_code=learnable_position_code,
-                    grid_size=(timesteps, height, width),
-                    )
+#     #Model
+#     model = ContextCast(data_dim = data_dim,
+#                     decoder_dim= decoder_dim,
+#                     encoder_dim= encoder_dim, 
+#                     num_latents = num_latents, 
+#                     patch_size = patch_size,
+#                     encoder_depth = encoder_depth,
+#                     decoder_depth = decoder_depth, 
+#                     dropout=dropout, 
+#                     layer_scale=layer_scale, 
+#                     predict_std=predict_std,
+#                     learnable_position_code=learnable_position_code,
+#                     grid_size=(timesteps, height, width),
+#                     )
     
-    model.load_state_dict(ckpt['model_state_dict'])
-    return model, config
+#     model.load_state_dict(ckpt['model_state_dict'])
+#     return model, config
 

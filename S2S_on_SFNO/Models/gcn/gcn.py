@@ -30,7 +30,7 @@ class GCN(torch.nn.Module):
         # prepare the graph 
         # Nan_mask removes nans from sst-matrix -> 1D array, edge_index and nan_mask loaded from file    
         # !! if numpy masking is used to downsample instead of coarsen, an other edge_index, nan_mask needs to be loaded
-        edge_index = torch.load(os.path.join(assets,"edge_index_coarsen_"+str(coarse_level)+".pt"))
+        edge_index = torch.load(os.path.join(assets,"edge_index_coarsen_"+str(coarse_level)+".pt"),map_location=device)
         nan_mask = np.load(os.path.join(assets,"nan_mask_coarsen_"+str(coarse_level)+"_notflatten.npy"))
         num_node_features = 686364
         num_nodes = np.sum(nan_mask)
@@ -133,7 +133,7 @@ class GCN_custom(nn.Module):
 
         ## Prepare Graph
         # load sparse adjacentcy matrix from file ( shape: num_node x num_nodes )
-        self.adj = torch.load(os.path.join(assets,"adj_coarsen_"+str(coarse_level)+"_sparse.pt")).to(device)
+        self.adj = torch.load(os.path.join(assets,"adj_coarsen_"+str(coarse_level)+"_sparse.pt"),map_location=device).to(device)
         # sparse adj needs 0.01  GB on memory
         # dense 7
         

@@ -45,7 +45,7 @@ class MAE(Model):
     def load_model(self, checkpoint_file):
         
         if checkpoint_file is not None:
-            checkpoint = torch.load(checkpoint_file)
+            checkpoint = torch.load(checkpoint_file,map_location=self.device)
             if "model_state" in checkpoint.keys(): weights = checkpoint["model_state"]
             else: weights = checkpoint
             try:
@@ -171,7 +171,6 @@ class MAE(Model):
                 self.mem_log_not_done = False 
                 
     def get_parameters(self):
-        print("get_parameters",self.model)
         return self.model.parameters()
 
 
@@ -190,7 +189,7 @@ class Linear_probing(Model):
     def load_model(self, checkpoint_file):
         
         if checkpoint_file is not None:
-            checkpoint = torch.load(checkpoint_file)
+            checkpoint = torch.load(checkpoint_file,map_location=self.device)
             if "model_state" in checkpoint.keys(): weights = checkpoint["model_state"]
             else: weights = checkpoint
             try:
