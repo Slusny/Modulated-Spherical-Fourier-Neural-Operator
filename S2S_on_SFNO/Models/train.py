@@ -296,8 +296,10 @@ class Trainer():
         self.model.train()
         self.util.load_statistics() 
         if self.cfg.ddp:
-            self.model = DDP(self.model,device_ids=[self.util.device.index],broadcast_buffers=True)#find_unused_parameters=True # ,static_graph=True deosn't work
+            self.model = DDP(self.model,device_ids=[self.util.device.index],broadcast_buffers=False)#find_unused_parameters=True # ,static_graph=True deosn't work
             # with static graph: 
+            # no unused parameters
+            # buffers True: torch-harmonics/sht.py:191 -> torch.einsum : one of the variables needed for gradient computation has been modified by an inplace operation (/Models/sfno/layers.py", line 638, in forward)(Models/sfno/sfnonet.py", line 132, in forward)
             
             
             torch.cuda.empty_cache()
