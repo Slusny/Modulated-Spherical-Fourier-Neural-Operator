@@ -42,7 +42,7 @@ class GCN(torch.nn.Module):
         # handle batch by appending sst-matrices to long 1D array, edge_index gets repeated and offseted to create the distinct graphs 
         self.batch = torch.tensor(list(range(batch_size))*num_nodes).reshape((num_nodes,batch_size)).T.flatten().to(device)
         offset_ = torch.tensor(list(range(batch_size))*num_edges).reshape((num_edges,batch_size)).T.flatten()*num_nodes
-        offset = torch.stack([offset_,offset_])
+        offset = torch.stack([offset_,offset_]).to(device)
         self.edge_index_batch = ( edge_index.repeat((1,batch_size))+offset ).to(device)
 
         # shape anlysis

@@ -56,6 +56,7 @@ print("cuda available? : ",cuda_available,flush=True)
 do_return_trainer = False
 
 def main(rank=0,args={},arg_groups={},world_size=1):
+    args.rank = rank
     # args = Attributes(v)
     # can also log to file if needed
     if args.log_file:logging.basicConfig(level=logging.INFO, filename=args.log_file,filemode="a")
@@ -70,7 +71,6 @@ def main(rank=0,args={},arg_groups={},world_size=1):
             print("starting debugger",flush=True) 
             print("setting training workers to 0 to be able to debug code in ",flush=True)
 
-    args.rank = rank
     if args.ddp:
         print("rank ",rank,flush=True)
         # training workers need to be set to 0
@@ -165,7 +165,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
 
     # Load parameters from checkpoint if given and load model
     resume_cp = args.resume_checkpoint
-    map_location=rank if cuda_available else 'cpu'
+    map_location=torch.device(rank) if cuda_available else 'cpu'
     if args.eval_model:
         resume_cp = list(sorted(glob.glob(os.path.join(args.eval_checkpoint_path,"checkpoint_*")),key=len))[-1]
     if resume_cp:
