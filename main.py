@@ -57,6 +57,7 @@ do_return_trainer = False
 
 def main(rank=0,args={},arg_groups={},world_size=1):
     args.rank = rank
+    args.world_size = world_size
     # args = Attributes(v)
     # can also log to file if needed
     if args.log_file:logging.basicConfig(level=logging.INFO, filename=args.log_file,filemode="a")
@@ -74,8 +75,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
     if args.ddp:
         print("rank ",rank,flush=True)
         # training workers need to be set to 0
-        args.training_workers=0
-        args.world_size = world_size
+        # args.training_workers=0
         ddp_setup(rank,world_size)
 
     # Format Assets path
