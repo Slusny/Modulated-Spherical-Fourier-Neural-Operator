@@ -296,7 +296,7 @@ class Trainer():
         self.model.train()
         self.util.load_statistics() 
         if self.cfg.ddp:
-            self.model = DDP(self.model,device_ids=[self.util.device.index],static_graph=True)#find_unused_parameters=True
+            self.model = DDP(self.model,device_ids=[self.util.device.index],find_unused_parameters=True)#find_unused_parameters=True # ,static_graph=True deosn't work
             torch.cuda.empty_cache()
 
     def create_scheduler(self):
