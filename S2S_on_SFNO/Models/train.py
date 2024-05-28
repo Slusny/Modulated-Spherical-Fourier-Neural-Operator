@@ -435,6 +435,7 @@ class Trainer():
                 # if self.auto_regressive_steps = 0 the dataloader only outputs 2 datapoint 
                 # and the for loop only runs once (calculating the ordinary validation loss with no auto regressive evaluation
                 val_input_era5 = None
+                log_idx = -1
                 for val_step in range(self.cfg.multi_step_validation+1):
                     
                     if val_step == 0 : input = self.util.normalise(val_data[val_step][0]).to(self.util.device)
@@ -442,6 +443,7 @@ class Trainer():
                     output, gt = self.model_forward(input,val_data,val_step)
                     
                     if val_step % (self.cfg.validation_step_skip+1) != 0: continue 
+                    log_idx += 1
                     val_loss_value = self.get_loss(output,gt)/ self.cfg.batch_size
 
                     if self.cfg.ddp:
@@ -456,7 +458,7 @@ class Trainer():
                             dist.all_reduce(loss_per_var,dist.ReduceOp.SUM)
                             loss_per_var = loss_per_var / dist.get_world_size()
 
-                        loss_pervar_list[val_step].append(loss_per_var.cpu()) 
+                        loss_pervar_list[log_idx].append(loss_per_var.cpu()) 
                     
                     if val_idx == 0: 
                         val_loss["validation loss step={}".format(val_step)] = [val_loss_value.cpu()] #kwargs["validation_epochs"]
@@ -525,11 +527,13 @@ class Trainer():
             # MSE for all variables
             if self.cfg.advanced_logging and self.mse_all_vars and self.cfg.model_type != "mae":
                 print("MSE for each variable:",flush=True)
-                print(loss_pervar_list)
-                val_loss_value_pervar = torch.stack(loss_pervar_list).mean(dim=1)
-                for idx_var,var_name in enumerate(self.util.ordering):
-                    print("    ",var_name," = ",round(val_loss_value_pervar[idx_var].item(),5),flush=True)
-                    val_log["MSE "+var_name] = round(val_loss_value_pervar[idx_var].item(),5)
+                for step, val_loss_value_pervar in enumerate(loss_pervar_list):
+                    step = step*(1+self.cfg.validation_step_skip)
+                    print(val_loss_value_pervar)
+                    val_loss_value_pervar = torch.stack(val_loss_value_pervar).mean(dim=1)
+                    for idx_var,var_name in enumerate(self.util.ordering):
+                        print("    ",var_name," step={} = ".format(step),round(val_loss_value_pervar[idx_var].item(),5),flush=True)
+                        val_log["MSE "+var_name+ " step={}".format(step)] = round(val_loss_value_pervar[idx_var].item(),5)
             
             # log film parameters gamma/beta
             if self.cfg.advanced_logging and self.cfg.model_version == "film":
