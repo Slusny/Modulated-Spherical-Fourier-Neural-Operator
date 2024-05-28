@@ -270,15 +270,74 @@
 # LOG.info("inf")
 # LOG.error("err")
 
-import xarray as xr
+# import xarray as xr
 from S2S_on_SFNO.utils import Timer
 
-d = xr.open_dataset("/mnt/qb/goswami/data/era5/weatherbench2/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr")
+# d = xr.open_dataset("/mnt/qb/goswami/data/era5/weatherbench2/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr")
 
-print("test")
-with Timer("loop"):
-    for i in range(0,10):
-        s = d.isel(time=10+i)["sea_surface_temperature"].to_numpy()
+# print("test")
+# with Timer("loop"):
+#     for i in range(0,10):
+#         s = d.isel(time=10+i)["sea_surface_temperature"].to_numpy()
 
-with Timer("slice"):
-    s = d.isel(time=slice(100,110))["sea_surface_temperature"].to_numpy()
+# with Timer("slice"):
+#     s = d.isel(time=slice(100,110))["sea_surface_temperature"].to_numpy()
+
+import torch
+
+# x = torch.rand((1000,1000))
+# dx = {}
+# xl = torch.rand((1000,1000))
+# dl = {}
+# c = torch.rand((1000,1000),device="cuda:0")
+# dc = {}
+# cl = torch.rand((1000,1000),device="cuda:0")
+# dcl = {}
+
+# 2ms
+# with Timer("cpu mean"):
+#     y = x.mean(dim=0)
+#     for i in range(x.shape[0]):
+#         dx[str(i)] = y[i]
+
+# 5.2ms
+# with Timer("cpu loop"):
+#     for i in range(x.shape[0]):
+#         y = xl[i].mean()
+#         dl[str(i)] = y
+
+# very slow 18.6ms
+# with Timer("cuda loop"):
+#     for i in range(x.shape[0]):
+#         y = cl[i].mean()
+#         dcl[str(i)] = y
+
+# 1.4ms
+# with Timer("cuda mean"):
+#     y = c.mean(dim=1)
+#     for i in range(x.shape[0]):
+#         dcl[str(i)] = y[i]
+
+
+
+# y = torch.zeros((1,1000))
+# z = []
+
+# with Timer("assign"):
+#     for i in range(1000):
+#         x[i,:] = y
+
+
+# with Timer("append"):
+#     for i in range(1000):
+#         z.append(y)
+#     torch.stack(z)
+l = []
+for i in range(3):
+    x = torch.rand((2,5),device="cuda:0")
+    l.append(x)
+
+x = torch.stack(l)
+print(x.device)
+print(x)
+print(x.shape)

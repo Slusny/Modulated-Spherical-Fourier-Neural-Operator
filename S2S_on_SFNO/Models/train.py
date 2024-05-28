@@ -423,71 +423,59 @@ class Trainer():
             return self.loss_fn(output,gt)
     
     def validation(self):
-        val_loss = {}
-        val_log  = {}
         loss_fn_pervar = torch.nn.MSELoss(reduction='none')
         self.model.eval()
         with torch.no_grad():
             # For loop over validation dataset, calculates the validation loss mean for number of kwargs["validation_epochs"]
-            loss_pervar_list = [[] for _ in range(self.cfg.multi_step_validation//(1+self.cfg.validation_step_skip)+1)]
+            # loss_pervar_list = [[] for _ in range(self.cfg.multi_step_validation//(1+self.cfg.validation_step_skip)+1)]
+            loss_pervar_list = [[] for _ in range(self.cfg.multi_step_validation+1)]
+            loss_list = [[] for _ in range(self.cfg.multi_step_validation+1)]
             for val_idx, val_data in enumerate(self.validation_loader):
                 # Calculates the validation loss for autoregressive model evaluation
                 # if self.auto_regressive_steps = 0 the dataloader only outputs 2 datapoint 
                 # and the for loop only runs once (calculating the ordinary validation loss with no auto regressive evaluation
-                val_input_era5 = None
-                log_idx = -1
                 for val_step in range(self.cfg.multi_step_validation+1):
                     
                     if val_step == 0 : input = self.util.normalise(val_data[val_step][0]).to(self.util.device)
                     else: input = output
                     output, gt = self.model_forward(input,val_data,val_step)
                     
-                    if val_step % (self.cfg.validation_step_skip+1) != 0: continue 
-                    log_idx += 1
                     val_loss_value = self.get_loss(output,gt)/ self.cfg.batch_size
+                    loss_list[val_step].append(val_loss_value)
 
                     if self.cfg.ddp:
                         dist.all_reduce(val_loss_value,dist.ReduceOp.SUM)
                         val_loss_value = val_loss_value / dist.get_world_size()
 
                     # loss for each variable
-                    if self.cfg.advanced_logging and self.mse_all_vars  and val_step == 0: # !! only for first multi validation step, could include next step with -> ... -> ... in print statement on same line
+                    if self.cfg.advanced_logging and self.mse_all_vars : # !! only for first multi validation step, could include next step with -> ... -> ... in print statement on same line
                         val_g_truth_era5 = self.util.normalise(val_data[val_step+1][0]).to(self.util.device)
                         loss_per_var = loss_fn_pervar(output, val_g_truth_era5).mean(dim=(0,2,3))/ self.cfg.batch_size
                         if self.cfg.ddp:
                             dist.all_reduce(loss_per_var,dist.ReduceOp.SUM)
                             loss_per_var = loss_per_var / dist.get_world_size()
 
-                        loss_pervar_list[log_idx].append(loss_per_var.cpu()) 
-                    
-                    if val_idx == 0: 
-                        val_loss["validation loss step={}".format(val_step)] = [val_loss_value.cpu()] #kwargs["validation_epochs"]
-                    else:
-                        val_loss["validation loss step={}".format(val_step)].append(val_loss_value.cpu())
+                        loss_pervar_list[val_step].append(loss_per_var.tolist()) 
 
                 # end of validation 
-                if val_idx > self.cfg.validation_epochs:
-                    for k in val_loss.keys():
-                        val_loss_array      = np.array(val_loss[k])
-                        val_log[k]          = round(val_loss_array.mean(),5)
-                        val_log["std " + k] = round(val_loss_array.std(),5)
+                if val_idx == (self.cfg.validation_epochs-1):
+                    loss_value = torch.tensor(loss_list).mean(dim=1).cpu()
+                    loss_value_std = torch.tensor(loss_list).std(dim=1).cpu()
+                    loss_pervar = torch.tensor(loss_pervar_list).mean(dim=1).cpu()
+                    loss_pervar_std = torch.tensor(loss_pervar_list).std(dim=1).cpu()
                     break
+                    
 
+        self.valid_log(loss_value,loss_pervar,loss_value_std,loss_pervar_std)
 
+        #scheduler
+        valid_mean = loss_value[0]
+        self.step_scheduler(valid_mean)
         
         # change scale value based on validation loss
         # if valid_mean < kwargs["val_loss_threshold"] and scale < 1.0:
         if self.scale < 1.0 and self.cfg.model_version == "film":
-            val_log["scale"] = self.scale
             self.scale = self.scale + 0.002 # 5e-5 #
-
-        self.valid_log(val_log,loss_pervar_list)
-
-        #scheduler
-        valid_mean = list(val_log.values())[0]
-        self.step_scheduler(valid_mean)
-
-        
 
         # save model and training statistics for checkpointing
         if (self.iter+1) % (self.cfg.validation_interval*self.cfg.save_checkpoint_interval) == 0 and self.cfg.save_checkpoint_interval > 0:
@@ -502,38 +490,60 @@ class Trainer():
         else:
             self.model.train()
                 
-    def valid_log(self,val_log,loss_pervar_list):
+    def valid_log(self,loss_value,loss_pervar,loss_value_std,loss_pervar_std):
         if self.cfg.rank == 0: 
-            # little complicated console logging - looks nicer than LOG.info(str(val_log))
             if self.cfg.multi_step_validation > 0:multistep_notice = " (steps=... mutli-step-validation, each step an auto-regressive 6h-step)"
             else: multistep_notice = ""                                             
             print("-- validation after ",self.step, "training examples "+multistep_notice,flush=True)
-            val_log_keys = list(val_log.keys())
-            print(val_log_keys)
-            print("i : ",self.cfg.multi_step_validation//(1+self.cfg.validation_step_skip)*2+1)
-            for log_idx in range(0,self.cfg.multi_step_validation//(1+self.cfg.validation_step_skip)*2+1,2): 
-                LOG.info(val_log_keys[log_idx] + " : " + str(val_log[val_log_keys[log_idx]]) 
-                            + " +/- " + str(val_log[val_log_keys[log_idx+1]]))
-            
-            # log to local file
-            # self.val_means[log_idx].append(val_log[val_log_keys[log_idx]]) ## error here
-            # self.val_stds[log_idx].append(val_log[val_log_keys[log_idx+1]]) 
+            val_log_local = {}
+            val_log_wandb = {}
+
+            # reduced loss
+            for i in range(loss_pervar.shape[0]):
+                val_log_local["validation loss step={}".format(i)]     = loss_value[i].item()
+                val_log_local["validation loss std step={}".format(i)] = loss_value_std[i].item()
+                if i % (1+self.cfg.validation_step_skip) == 0: 
+                    key = "validation loss step={}".format(i)
+                    val_log_wandb[key]                                     = round(loss_value[i].item(),5)
+                    val_log_wandb["validation loss std step={}".format(i)] = round(loss_value_std[i].item(),5)
+                    # LOG
+                    LOG.info(key+ " : " +str(val_log_wandb[key]) + " +/- " + str(round(loss_value_std[i].item(),5)))
+
+
+            # per variable
+            if self.cfg.advanced_logging and self.mse_all_vars and self.cfg.model_type != "mae":
+                for i in range(loss_pervar.shape[0]):
+                    for idx_var,var_name in enumerate(self.util.ordering):
+                        val_log_local["MSE "+var_name+ " step={}".format(i)]     = loss_pervar[i][idx_var].item()
+                        val_log_local["MSE "+var_name+ " std step={}".format(i)] = loss_pervar_std[i][idx_var].item()
+                        if i % (1+self.cfg.validation_step_skip) == 0: 
+                            val_log_wandb["MSE "+var_name+ " step={}".format(i)]     = round(loss_pervar[i][idx_var].item(),5)
             
             # log scheduler
             if self.scheduler is not None and self.scheduler != "None": 
                 lr = self.scheduler.get_last_lr()[0]
-                val_log["learning rate"] = lr
+                val_log_wandb["learning rate"] = lr
+                val_log_local["learning rate"] = lr
             
-            # MSE for all variables
+            # log scale
+            if self.scale < 1.0 and self.cfg.model_version == "film":
+                val_log_wandb["scale"] = self.scale
+                val_log_local["scale"] = self.scale
+
+            # Print MSE for all variables
             if self.cfg.advanced_logging and self.mse_all_vars and self.cfg.model_type != "mae":
-                print("MSE for each variable:",flush=True)
-                for step, val_loss_value_pervar in enumerate(loss_pervar_list):
-                    step = step*(1+self.cfg.validation_step_skip)
-                    print(val_loss_value_pervar)
-                    val_loss_value_pervar = torch.stack(val_loss_value_pervar).mean(dim=1)
-                    for idx_var,var_name in enumerate(self.util.ordering):
-                        print("    ",var_name," step={} = ".format(step),round(val_loss_value_pervar[idx_var].item(),5),flush=True)
-                        val_log["MSE "+var_name+ " step={}".format(step)] = round(val_loss_value_pervar[idx_var].item(),5)
+                mse_log_string = "MSE for each variable (step=0"
+                for i in range(0,loss_pervar.shape[0],1+self.cfg.validation_step_skip):
+                    mse_log_string += " -> step={}".format(i)
+                mse_log_string += ") :"
+                print(mse_log_string,flush=True)
+                
+                for idx_var,var_name in enumerate(self.util.ordering):
+                    mse_var_log_str = "    "+var_name.ljust(5)+" : "
+                    for step in range(0,loss_pervar.shape[0],1+self.cfg.validation_step_skip):
+                        mse_var_log_str += str(round(loss_pervar[step][idx_var].item(),5)).ljust(8)
+                        if step < (loss_pervar.shape[0]-1):mse_var_log_str += " -> "
+                    print(mse_var_log_str,flush=True)
             
             # log film parameters gamma/beta
             if self.cfg.advanced_logging and self.cfg.model_version == "film":
@@ -545,17 +555,21 @@ class Trainer():
                     beta_np  = self.model.beta.cpu().clone().detach().numpy()
                 print("gamma values mean : ",round(gamma_np.mean(),6),"+/-",round(gamma_np.std(),6),flush=True)
                 print("beta values mean  : ",round(beta_np.mean(),6),"+/-",round(beta_np.std(),6),flush=True)
-                val_log["gamma"] = round(gamma_np.mean(),6)
-                val_log["beta"]  = round(beta_np.mean(),6)
-                val_log["gamma_std"] = round(gamma_np.std(),6)
-                val_log["beta_std"]  = round(beta_np.std(),6)
+                val_log_wandb["gamma"] = round(gamma_np.mean(),6)
+                val_log_wandb["beta"]  = round(beta_np.mean(),6)
+                val_log_wandb["gamma_std"] = round(gamma_np.std(),6)
+                val_log_wandb["beta_std"]  = round(beta_np.std(),6)
+                val_log_local["gamma"] = round(gamma_np.mean(),6)
+                val_log_local["beta"]  = round(beta_np.mean(),6)
+                val_log_local["gamma_std"] = round(gamma_np.std(),6)
+                val_log_local["beta_std"]  = round(beta_np.std(),6)
             
             # local logging
-            self.local_log.log(val_log)
+            self.local_log.log(val_log_local)
                 
             # wandb
             if self.cfg.wandb :
-                wandb.log(val_log,commit=False)
+                wandb.log(val_log_wandb,commit=False)
         if self.cfg.ddp:
             dist.barrier()
 
