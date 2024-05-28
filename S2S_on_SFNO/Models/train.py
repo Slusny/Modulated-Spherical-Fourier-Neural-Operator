@@ -296,7 +296,7 @@ class Trainer():
         self.model.train()
         self.util.load_statistics() 
         if self.cfg.ddp:
-            self.model = DDP(self.model,device_ids=[self.util.device.index],broadcast_buffer=True)#find_unused_parameters=True # ,static_graph=True deosn't work
+            self.model = DDP(self.model,device_ids=[self.util.device.index],broadcast_buffers=True)#find_unused_parameters=True # ,static_graph=True deosn't work
             # with static graph: 
             
             
