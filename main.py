@@ -63,14 +63,6 @@ def main(rank=0,args={},arg_groups={},world_size=1):
     # use Slurm ID in checkpoint_save path and log to stdout to better find corresponding stdout from slurm job
     if args.jobID is not None: LOG.info("Slurm Job ID: %s", args.jobID)
 
-    if args.debug: #new
-        pdb.set_trace()
-        torch.autograd.set_detect_anomaly(True)
-        args.training_workers = 0
-        if args.rank == 0:
-            print("starting debugger",flush=True) 
-            print("setting training workers to 0 to be able to debug code in ",flush=True)
-
     if args.ddp:
         print("rank ",rank,flush=True)
         # training workers need to be set to 0
@@ -1056,6 +1048,15 @@ if __name__ == "__main__":
     # this ignores all unknown args
     # args, unknownargs = parser.parse_known_args()
     args = parser.parse_args()
+
+
+    if args.debug: #new
+        pdb.set_trace()
+        torch.autograd.set_detect_anomaly(True)
+        args.training_workers = 0
+        if args.rank == 0:
+            print("starting debugger",flush=True) 
+            print("setting training workers to 0 to be able to debug code in ",flush=True)
 
     # get parameters split by groups
     arg_groups={}
