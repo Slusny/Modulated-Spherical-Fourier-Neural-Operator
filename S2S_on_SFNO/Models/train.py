@@ -108,13 +108,13 @@ class Trainer():
                 os.mkdir(new_save_path)
                 self.cfg.save_path = new_save_path
                 print("    no wandb",flush=True)
+            print("    Save path: %s", self.cfg.save_path,flush=True)
+            self.local_log = LocalLog(self.local_logging,self.cfg.save_path)
         else:
             print("skip this process (",self.cfg.rank,") in logging",flush=True)
         if self.cfg.ddp:
             dist.barrier()
         
-        print("    Save path: %s", self.cfg.save_path,flush=True)
-        self.local_log = LocalLog(self.local_logging,self.cfg.save_path)
 
     def train_epoch(self):
         batch_loss = 0
@@ -157,7 +157,7 @@ class Trainer():
 
                 # logging
                 self.iter += 1
-                self.step = self.iter*self.cfg.batch_size*self.cfg.accumulation_steps+len(self.dataset)*self.epoch
+                self.step = self.iter*self.cfg.batch_size*(self.cfg.accumulation_steps+1)+len(self.dataset)*self.epoch
                 self.iter_log(batch_loss,scale=None)
                 batch_loss = 0
   
@@ -206,7 +206,7 @@ class Trainer():
 
                 # logging
                 self.iter += 1
-                self.step = self.iter*self.cfg.batch_size*self.cfg.accumulation_steps+len(self.dataset)*self.epoch
+                self.step = self.iter*self.cfg.batch_size*(self.cfg.accumulation_steps+1)+len(self.dataset)*self.epoch
                 self.iter_log(batch_loss,scale=None)
                 batch_loss = 0
             else:
