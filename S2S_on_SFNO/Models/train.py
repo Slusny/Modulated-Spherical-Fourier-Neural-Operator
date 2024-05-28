@@ -507,7 +507,9 @@ class Trainer():
             else: multistep_notice = ""                                             
             print("-- validation after ",self.step, "training examples "+multistep_notice,flush=True)
             val_log_keys = list(val_log.keys())
-            for log_idx in range(0,self.cfg.multi_step_validation*2+1,2): 
+            print(val_log_keys)
+            print("i : ",self.cfg.multi_step_validation//(1+self.cfg.validation_step_skip)*2+1)
+            for log_idx in range(0,self.cfg.multi_step_validation//(1+self.cfg.validation_step_skip)*2+1,2): 
                 LOG.info(val_log_keys[log_idx] + " : " + str(val_log[val_log_keys[log_idx]]) 
                             + " +/- " + str(val_log[val_log_keys[log_idx+1]]))
             
