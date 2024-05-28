@@ -64,7 +64,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
     if args.jobID is not None: LOG.info("Slurm Job ID: %s", args.jobID)
 
     if args.debug: #new
-        pdb.set_trace()
+        if not args.ddp: pdb.set_trace()
         torch.autograd.set_detect_anomaly(True)
         args.training_workers = 0
         if args.rank == 0:
