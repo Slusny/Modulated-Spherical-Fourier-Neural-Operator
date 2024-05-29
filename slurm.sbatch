@@ -11,7 +11,7 @@
 
 ##SBATCH --nodes=1
 
-#SBATCH --cpus-per-task=2 # 14 is max for cpu-short
+#SBATCH --cpus-per-task=25 # 14 is max for cpu-short (4 per 6 = 24)
 # the job can use and see 4 CPUs (from max 24).
 # needet task count -n, maybe there is a better way to specify cores
 
@@ -19,14 +19,14 @@
 # the slurm partition the job is queued to.
 # exits: gpu-2080ti , gpu-v100 ... see sinfo
 
-#SBATCH --mem-per-cpu=40G # Per CPU -> Per Core
+#SBATCH --mem-per-cpu=35G # Per CPU -> Per Core
 ##SBATCH --mem-per-cpu=200G # Per CPU -> Per Core
 # the job will need 12GB of memory equally distributed on 4 cpus.(251GB are available in total on one node)
 
 #SBATCH --gres=gpu:1
 #the job can use and see 1 GPUs (4 GPUs are available in total on one node) use SBATCH --gres=gpu:1080ti:1 to explicitly demand a Geforce 1080 Ti GPU. Use SBATCH --gres=gpu:A4000:1 to explicitly demand a RTX A4000 GPU
 
-#SBATCH --time=00-05:00
+#SBATCH --time=03-00:00
 # the maximum time the scripts needs to run
 # "minutes:seconds", "hours:minutes:seconds", "days-hours","days-hours:minutes" and "days-hours:minutes:seconds"
 

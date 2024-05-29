@@ -14,18 +14,25 @@
             "justMyCode": true,
             // "args": ["--model", "mae", "--run", "--validation-start-year","1979","--validation-end-year","2019","--temporal-step","28","--batch-size","100","--training-workers","6",]
             "args": [
-                "--model", "sfno", 
-                "--model-version", "film",
+                "--model", "mae", 
+                "--model-version", "lin-probe",
                 "--film-gen", "mae",
-                
-                "--train",
-                "--temporal-step","28",
-                "--batch-size","1",
-                "--multi-step-training","1"
+                "--eval-checkpoint-path","/media/lenny/V/Master/checkpoints/linprobe/wobbly-thunder-4-sID{345618}/",
+                "--eval-model",
+                "--batch-size","10",
+                "--trainingdata-path", "/media/lenny/V/wb2_2001-2003.zarr",
+                "--validationset-start-year", "2002",
+                "--validationset-end-year", "2003",
+                "--cls", "/media/lenny/V/Master/Assets/glorious-deluge/checkpoint_mae_latest_None_iter=0_epoch=8-cls_encoder-1979-2019.npy",
+                "--oni-path", "/media/lenny/V/Master/data/oni.npy"
             ]
             
             //"args":["--model","sfno","--date","20190101","--time","0000","--lead-time","18","--output","netcdf","--input-store", "./S2S_on_SFNO/inputs"]
             // python main.py --model sfno --date 20190101 --time 0000 --lead-time 8760 --output netcdf --file ./S2S_on_SFNO/inputs/ClimateInputData_201901010.grib
+        
+            // linprobe eval
+            //"args":["--model","mae",]
+            
         }
     ]
 }
@@ -87,7 +94,7 @@
 
 // local
 // MAE film
-python main.py --model sfno --model-version film --film-gen mae --train --cls /media/lenny/V/Master/Assets/wise-spaceship/checkpoint_mae_latest_None_iter=0_epoch=8-cls_decoder-1979-2019.npy --advanced-logging --film-layers 1 --batch-size 1 --multi-step-training 1 --validation-interval 1 --validation-epochs 2 --multi-step-validation 2 --validation-step-skip 15 --save-checkpoint-interval -1 --training-workers 8  --learning-rate 0.00005 --loss-fn L2Sphere --save-path /mnt/ssd2/Master/S2S_on_SFNO/outputs/mae --assets /mnt/ssd2/Master/S2S_on_SFNO/Assets --trainingdata-path /media/lenny/V/wb2_2001-2003.zarr --trainingdata-v100-path /media/lenny/V/v100_2001-2003.zarr --trainingdata-u100-path /media/lenny/V/u100_2001-2003.zarr --trainingset-start-year 2001 --trainingset-end-year 2002 --validationset-start-year 2002 --validationset-end-year 2003 --training-epochs 5  --notes 'decoder cls, future sst' --checkpointing-decoder --enable-amp 
+// python main.py --model sfno --model-version film --film-gen mae --train --cls /media/lenny/V/Master/Assets/wise-spaceship/checkpoint_mae_latest_None_iter=0_epoch=8-cls_decoder-1979-2019.npy --advanced-logging --film-layers 1 --batch-size 1 --multi-step-training 1 --validation-interval 1 --validation-epochs 2 --multi-step-validation 2 --validation-step-skip 15 --save-checkpoint-interval -1 --training-workers 8  --learning-rate 0.00005 --loss-fn L2Sphere --save-path /mnt/ssd2/Master/S2S_on_SFNO/outputs/mae --assets /mnt/ssd2/Master/S2S_on_SFNO/Assets --trainingdata-path /media/lenny/V/wb2_2001-2003.zarr --trainingdata-v100-path /media/lenny/V/v100_2001-2003.zarr --trainingdata-u100-path /media/lenny/V/u100_2001-2003.zarr --trainingset-start-year 2001 --trainingset-end-year 2002 --validationset-start-year 2002 --validationset-end-year 2003 --training-epochs 5  --notes 'decoder cls, future sst' --checkpointing-decoder --enable-amp 
 
 
 //plot

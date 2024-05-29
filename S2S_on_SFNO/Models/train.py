@@ -348,7 +348,7 @@ class Trainer():
             self.loss_fn = L2Sphere(relative=True, squared=True,reduction=self.cfg.loss_reduction)
         elif self.cfg.loss_fn == "NormalCRPS":
             self.loss_fn = NormalCRPS(reduction=self.cfg.loss_reduction)
-        else:
+        elif self.cfg.loss_fn == "MSE":
             self.loss_fn = torch.nn.MSELoss()
 
     def set_dataloader(self,run=False):
@@ -365,6 +365,7 @@ class Trainer():
                 temporal_step=self.cfg.temporal_step,
                 cls=self.cfg.cls,
                 oni=oni,
+                oni_path=self.cfg.oni_path,
             )
             print("Validation Data:")
             self.dataset_validation = SST_galvani(
@@ -374,6 +375,7 @@ class Trainer():
                 temporal_step=self.cfg.temporal_step,
                 cls=self.cfg.cls,
                 oni=oni,
+                oni_path=self.cfg.oni_path,
                 )
         else:
             if self.cfg.model_version == 'film' and self.cfg.cls is None:
@@ -856,7 +858,7 @@ class Trainer():
 
 
 
-    # only plots MAE results at the moment
+    # only plots MAE results at the moment: 4 plots, gt, pred, mask ...
     def evaluate_model(self, checkpoint_list,save_path):
         """Evaluate model using checkpoint list"""
         # self.cfg.batch_size = 1
@@ -868,16 +870,27 @@ class Trainer():
             for cp_idx, checkpoint in enumerate(checkpoint_list):
                 cp_name = checkpoint.split("/")[-1].split(".")[0]
                 cp = self.util.load_model(checkpoint)
-                # self.save_path = save_path
-                for i, data in enumerate(self.validation_loader):
-                    for step in range(1): #range(self.cfg.multi_step_validation+1):
-                        if step == 0 : input = self.util.normalise(data[step][0]).to(self.util.device)
-                        else: input = output
-                        output, gt = self.model_forward(input,data,step)
-                        if plot:
-                            self.util.plot(output, gt, int(cp["iter"])*int(cp["epoch"]),cp_name,save_path)
-                            break
-                    if plot: break
+                if self.cfg.model_type == "mae":
+                    if self.cfg.model_version == "lin-probe":
+                        for i, data in enumerate(self.validation_loader):
+                            outputs = []
+                            gts = []
+                            for step in range(1): #range(self.cfg.multi_step_validation+1):
+                                if step == 0 : input = self.util.normalise(data[step][0]).to(self.util.device)
+                                else: input = output
+                                output, gt = self.model_forward(input,data,step)
+                                outputs.append(output[0].item())
+                                gts.append(gt.item())
+                    else:
+                        for i, data in enumerate(self.validation_loader):
+                            for step in range(1): #range(self.cfg.multi_step_validation+1):
+                                if step == 0 : input = self.util.normalise(data[step][0]).to(self.util.device)
+                                else: input = output
+                                output, gt = self.model_forward(input,data,step)
+                                if plot:
+                                    self.util.plot(output, gt, int(cp["iter"])*int(cp["epoch"]),cp_name,save_path)
+                                    break
+                            if plot: break
                 
             print("done")
     
