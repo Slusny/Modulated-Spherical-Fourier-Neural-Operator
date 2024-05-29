@@ -11,16 +11,16 @@
 
 ##SBATCH --nodes=1
 
-#SBATCH --cpus-per-task=20 # 14 is max for cpu-short
+#SBATCH --cpus-per-task=32 # 14 is max for cpu-short
 # the job can use and see 4 CPUs (from max 24).
 # needet task count -n, maybe there is a better way to specify cores
 
 #SBATCH --partition=a100-galvani#2080-galvani#a100-galvani#cpu-galvani#2080-galvani#cpu-long#cpu-short #gpu-v100  #gpu-2080ti #cpu-long
 
-#SBATCH --mem-per-cpu=25G # Per CPU -> Per Core
+#SBATCH --mem-per-cpu=16G # Per CPU -> Per Core
 # the job will need 12GB of memory equally distributed on 4 cpus.(251GB are available in total on one node)
 
-#SBATCH --gres=gpu:6
+#SBATCH --gres=gpu:4
 #the job can use and see 1 GPUs (4 GPUs are available in total on one node) use SBATCH --gres=gpu:1080ti:1 to explicitly demand a Geforce 1080 Ti GPU. Use SBATCH --gres=gpu:A4000:1 to explicitly demand a RTX A4000 GPU
 
 #SBATCH --time=03-00:00
@@ -50,7 +50,7 @@
 # 8 gpus 10 ging nicht, 8 ging
 
 # 1Film
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965,/home/scratch_local /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version film --film-gen mae --train --cls /mnt/qb/work2/goswami0/gkd965/checkpoints/mae/glorious-deluge-23/checkpoint_mae_latest_None_iter=0_epoch=8-cls_encoder-1979-2019.npy --advanced-logging --film-layers 1 --batch-size 1 --multi-step-training 19 --validation-interval 3 --validation-epochs 1 --multi-step-validation 2 --validation-step-skip 15 --save-checkpoint-interval 2 --training-workers 3  --learning-rate 0.00005 --scheduler CosineAnnealingLR --scheduler-horizon 270275 --loss-fn L2Sphere --trainingset-start-year 1979 --trainingset-end-year 2016 --validationset-start-year 2016 --validationset-end-year 2018 --training-epochs 5  --notes 'encoder cls, future sst, glorious deluge' --checkpointing-decoder --enable-amp --accumulation-steps 64 --ddp --wandb --jobID $SLURM_JOB_ID 
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965,/home/scratch_local /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version film --film-gen mae --train --cls /mnt/qb/work2/goswami0/gkd965/checkpoints/mae/helpful-salad-14/checkpoint_mae_latest_None_iter=0_epoch=8-cls_encoder-1979-2019.npy --advanced-logging --film-layers 1 --batch-size 1 --multi-step-training 19 --validation-interval 3 --validation-epochs 1 --multi-step-validation 2 --validation-step-skip 15 --save-checkpoint-interval 2 --training-workers 7  --learning-rate 0.00005 --scheduler CosineAnnealingLR --scheduler-horizon 270275 --loss-fn L2Sphere --trainingset-start-year 1979 --trainingset-end-year 2016 --validationset-start-year 2016 --validationset-end-year 2018 --training-epochs 5  --notes 'encoder cls, future sst, helpful salad' --checkpointing-decoder --enable-amp --accumulation-steps 64 --ddp --wandb --jobID $SLURM_JOB_ID 
 
 # 2Film
 # singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965,/home/scratch_local /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version film --film-gen mae --train --cls /mnt/qb/work2/goswami0/gkd965/checkpoints/mae/wise-spaceship-24/checkpoint_mae_latest_None_iter=0_epoch=8-cls_encoder-1979-2019.npy --advanced-logging --film-layers 2 --batch-size 1 --multi-step-training 11 --validation-interval 2 --validation-epochs 1 --multi-step-validation 2 --validation-step-skip 15 --save-checkpoint-interval 2 --training-workers 3  --learning-rate 0.00005 --scheduler CosineAnnealingLR --scheduler-horizon 270275 --loss-fn L2Sphere --trainingset-start-year 1979 --trainingset-end-year 2016 --validationset-start-year 2016 --validationset-end-year 2018 --training-epochs 5  --notes 'decoder cls, future sst' --checkpointing-decoder --enable-amp --accumulation-steps 64 --ddp --wandb --jobID $SLURM_JOB_ID 
