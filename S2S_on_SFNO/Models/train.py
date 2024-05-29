@@ -409,7 +409,7 @@ class Trainer():
         shuffle= not self.cfg.no_shuffle
         if self.cfg.ddp:
             self.training_loader = DataLoader(self.dataset,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size,shuffle=False,pin_memory=True,sampler=DistributedSampler(self.dataset,shuffle=shuffle))
-            self.validation_loader = DataLoader(self.dataset_validation,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size,shuffle=False,pin_memory=True,sampler=DistributedSampler(self.dataset_validation,shuffle=shuffle))
+            self.validation_loader = DataLoader(self.dataset_validation,num_workers=0, batch_size=self.cfg.batch_size,shuffle=False,pin_memory=True,sampler=DistributedSampler(self.dataset_validation,shuffle=shuffle))
 
         else:
             self.training_loader = DataLoader(self.dataset,shuffle=shuffle,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)

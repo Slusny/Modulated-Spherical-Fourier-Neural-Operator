@@ -1090,4 +1090,6 @@ Do Transformers need to have a square input
 - validation with ddp, mean over all_reduce and then mean over iterations -> mean of means is ok
 - ddp optimizer expects model.parameters() on ddp model but we return parameters from sub models. we could give ddp-model as parameter of the get_parameter function, but actually how it is handled right now should be fine?
 -  clone state dict from checkpoint and then delete that checkpoint to gain memory
+
+- seperate batch_size and workers for training and validation
 '''
