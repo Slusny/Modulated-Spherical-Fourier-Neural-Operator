@@ -42,7 +42,7 @@ def ddp_setup(rank, world_size):
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "31350"
     torch.cuda.set_device(rank)
-    os.environ["CUDA_VISIBLE_DEVICES"]=str(rank)
+    # os.environ["CUDA_VISIBLE_DEVICES"]=str(rank) if you set visible device the set device is always 0
     init_process_group(backend="nccl", rank=rank, world_size=world_size)
 
 
