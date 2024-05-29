@@ -286,10 +286,15 @@ class Trainer():
 
     def finalise(self):
         if not self.cfg.debug:
-            self.local_log.save("training_log.npy")
-            self.save_checkpoint()
-            wandb.finish()
-        sys.exit(0)
+            if self.cfg.rank == 0:
+                self.local_log.save("training_log.npy")
+                self.save_checkpoint()
+                wandb.finish()
+        if self.cfg.ddp:
+            dist.barrier()
+            sys.exit(0)
+        else:
+            sys.exit(0)
 
     def ready_model(self):
         self.util.load_model(self.util.checkpoint_path)
@@ -573,7 +578,7 @@ class Trainer():
             self.local_log.log(val_log_local)
                 
             # wandb
-            if self.cfg.wandb :
+            if self.cfg.wandb and self.cfg.rank == 0:
                 wandb.log(val_log_wandb,commit=False)
         if self.cfg.ddp:
             dist.barrier()
@@ -594,7 +599,7 @@ class Trainer():
             # local logging
             self.local_log.log({"loss": round(batch_loss,6),"step":self.step})
 
-            if self.cfg.wandb:
+            if self.cfg.wandb and self.cfg.rank == 0:
                 wandb.log({"loss": round(batch_loss,5),"step":self.step })
             if self.cfg.advanced_logging:
                 if scale is not None:
