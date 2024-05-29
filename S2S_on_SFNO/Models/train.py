@@ -121,7 +121,7 @@ class Trainer():
 
         self.mem_log("loading data")
         for i, data in enumerate(self.training_loader):
-            if self.cfg.validation_interval > 0 and (self.iter+1) % (self.cfg.validation_interval)  == 0:
+            if self.cfg.validation_interval > 0 and (self.iter+1) % (self.cfg.validation_interval)*(self.cfg.accumulation_steps + 1)  == 0:
                 self.validation()
             loss = 0
             with amp.autocast(self.cfg.enable_amp):
@@ -168,7 +168,7 @@ class Trainer():
 
         self.mem_log("loading data")
         for i, data in enumerate(self.training_loader):
-            if self.cfg.validation_interval > 0 and (self.iter+1) % (self.cfg.validation_interval)  == 0:
+            if self.cfg.validation_interval > 0 and (self.iter+1) % (self.cfg.validation_interval)*(self.cfg.accumulation_steps + 1)  == 0:
                 self.validation()
             loss = 0
 
