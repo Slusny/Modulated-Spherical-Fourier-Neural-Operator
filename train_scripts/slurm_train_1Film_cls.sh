@@ -3,7 +3,7 @@
 #a) Define slurm job parameters
 ####
 
-#SBATCH --job-name=1fdgd #21gcn
+#SBATCH --job-name=1fdhs #21gcn
 
 #resources:
 
@@ -11,7 +11,7 @@
 
 ##SBATCH --nodes=1
 
-#SBATCH --cpus-per-task=32 # 14 is max for cpu-short
+#SBATCH --cpus-per-task=30 # 14 is max for cpu-short
 # the job can use and see 4 CPUs (from max 24).
 # needet task count -n, maybe there is a better way to specify cores
 
@@ -27,10 +27,10 @@
 # the maximum time the scripts needs to run
 # "minutes:seconds", "hours:minutes:seconds", "days-hours","days-hours:minutes" and "days-hours:minutes:seconds"
 
-#SBATCH --error=/home/goswami/gkd965/jobs/job.1filmCLS.GD.ddp.%J.err
+#SBATCH --error=/home/goswami/gkd965/jobs/job.1filmCLS.HS.ddp.%J.err
 # write the error output to job.*jobID*.err
 
-#SBATCH --output=/home/goswami/gkd965/jobs/job.1filmCLS.GD.ddp.%J.out
+#SBATCH --output=/home/goswami/gkd965/jobs/job.1filmCLS.HS.ddp.%J.out
 # write the standard output to job.*jobID*.out
 
 #SBATCH --mail-type=ALL
