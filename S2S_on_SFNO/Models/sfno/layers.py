@@ -84,7 +84,7 @@ def trunc_normal_(tensor, mean=0.0, std=1.0, a=-2.0, b=2.0):
     return _no_grad_trunc_normal_(tensor, mean, std, a, b)
 
 
-@torch.jit.script
+ 
 def drop_path(
     x: torch.Tensor, drop_prob: float = 0.0, training: bool = False
 ) -> torch.Tensor:

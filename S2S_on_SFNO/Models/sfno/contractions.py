@@ -7,7 +7,7 @@ import torch
 # Helper routines for FNOs
 
 
-@torch.jit.script
+ 
 def compl_contract2d_fwd(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     tmp = torch.einsum("bixys,kixyr->srbkxy", a, b)
     res = torch.stack(
@@ -16,7 +16,7 @@ def compl_contract2d_fwd(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     return res
 
 
-@torch.jit.script
+ 
 def compl_contract2d_fwd_c(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     ac = torch.view_as_complex(a)
     bc = torch.view_as_complex(b)
@@ -24,7 +24,7 @@ def compl_contract2d_fwd_c(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     return torch.view_as_real(res)
 
 
-@torch.jit.script
+ 
 def compl_contract_fwd(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     tmp = torch.einsum("bins,kinr->srbkn", a, b)
     res = torch.stack(
@@ -33,7 +33,7 @@ def compl_contract_fwd(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     return res
 
 
-@torch.jit.script
+ 
 def compl_contract_fwd_c(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     ac = torch.view_as_complex(a)
     bc = torch.view_as_complex(b)
@@ -41,7 +41,7 @@ def compl_contract_fwd_c(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     return torch.view_as_real(res)
 
 
-@torch.jit.script
+ 
 def compl_ttc1_c_fwd(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     ac = torch.view_as_complex(a)
     bc = torch.view_as_complex(b)
@@ -49,7 +49,7 @@ def compl_ttc1_c_fwd(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     return torch.view_as_real(res)
 
 
-@torch.jit.script
+ 
 def compl_ttc2_c_fwd(a: torch.Tensor, b: torch.Tensor, c: torch.Tensor) -> torch.Tensor:
     ac = torch.view_as_complex(a)
     bc = torch.view_as_complex(b)
@@ -64,7 +64,7 @@ def contract_tt(x, w):
 
 
 # Helper routines for spherical MLPs
-@torch.jit.script
+ 
 def compl_mul1d_fwd(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     tmp = torch.einsum("bixs,ior->srbox", a, b)
     res = torch.stack(
@@ -73,7 +73,7 @@ def compl_mul1d_fwd(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     return res
 
 
-@torch.jit.script
+ 
 def compl_mul1d_fwd_c(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     ac = torch.view_as_complex(a)
     bc = torch.view_as_complex(b)
@@ -82,7 +82,7 @@ def compl_mul1d_fwd_c(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     return res
 
 
-@torch.jit.script
+ 
 def compl_muladd1d_fwd(
     a: torch.Tensor, b: torch.Tensor, c: torch.Tensor
 ) -> torch.Tensor:
@@ -90,7 +90,7 @@ def compl_muladd1d_fwd(
     return res
 
 
-@torch.jit.script
+ 
 def compl_muladd1d_fwd_c(
     a: torch.Tensor, b: torch.Tensor, c: torch.Tensor
 ) -> torch.Tensor:
@@ -102,13 +102,13 @@ def compl_muladd1d_fwd_c(
 # for the real-valued case:
 
 
-@torch.jit.script
+ 
 def compl_mul1d_fwd_r(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     res = torch.einsum("bix,io->box", a, b)
     return res
 
 
-@torch.jit.script
+ 
 def compl_muladd1d_fwd_r(
     a: torch.Tensor, b: torch.Tensor, c: torch.Tensor
 ) -> torch.Tensor:
@@ -119,7 +119,7 @@ def compl_muladd1d_fwd_r(
 # Helper routines for FFT MLPs
 
 
-@torch.jit.script
+ 
 def compl_mul2d_fwd(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     tmp = torch.einsum("bixys,ior->srboxy", a, b)
     res = torch.stack(
@@ -128,7 +128,7 @@ def compl_mul2d_fwd(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     return res
 
 
-@torch.jit.script
+ 
 def compl_mul2d_fwd_c(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     ac = torch.view_as_complex(a)
     bc = torch.view_as_complex(b)
@@ -137,7 +137,7 @@ def compl_mul2d_fwd_c(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     return res
 
 
-@torch.jit.script
+ 
 def compl_muladd2d_fwd(
     a: torch.Tensor, b: torch.Tensor, c: torch.Tensor
 ) -> torch.Tensor:
@@ -145,7 +145,7 @@ def compl_muladd2d_fwd(
     return res
 
 
-@torch.jit.script
+ 
 def compl_muladd2d_fwd_c(
     a: torch.Tensor, b: torch.Tensor, c: torch.Tensor
 ) -> torch.Tensor:
@@ -155,13 +155,13 @@ def compl_muladd2d_fwd_c(
 
 
 # for the real-valued case:
-@torch.jit.script
+ 
 def compl_mul2d_fwd_r(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     res = torch.einsum("bixy,io->boxy", a, b)
     return res
 
 
-@torch.jit.script
+ 
 def compl_muladd2d_fwd_r(
     a: torch.Tensor, b: torch.Tensor, c: torch.Tensor
 ) -> torch.Tensor:
@@ -171,13 +171,13 @@ def compl_muladd2d_fwd_r(
 
 # helper scripts for pointwise ops
 
-# @torch.jit.script
+#  
 # def compl_mul_pw_fwd(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
 #     tmp = torch.einsum("bkoxs,koxr->srbkox", a, b)
 #     res = torch.stack([tmp[0,0,...] - tmp[1,1,...], tmp[1,0,...] + tmp[0,1,...]], dim=-1)
 #     return res
 
-# @torch.jit.script
+#  
 # def compl_mul_pw_fwd_c(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
 #     ac = torch.view_as_complex(a)
 #     bc = torch.view_as_complex(b)
@@ -187,13 +187,13 @@ def compl_muladd2d_fwd_r(
 
 # for the SHT variant
 
-# @torch.jit.script
+#  
 # def compl_mul_fwd(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
 #     tmp = torch.einsum("bkifs,kior->srbkof", a, b)
 #     res = torch.stack([tmp[0,0,...] - tmp[1,1,...], tmp[1,0,...] + tmp[0,1,...]], dim=-1)
 #     return res
 
-# @torch.jit.script
+#  
 # def compl_mul_fwd_c(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
 #     ac = torch.view_as_complex(a)
 #     bc = torch.view_as_complex(b)
@@ -201,7 +201,7 @@ def compl_muladd2d_fwd_r(
 #     res = torch.view_as_real(resc)
 #     return res
 
-# @torch.jit.script
+#  
 # def pointwise_mul(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
 #     ac = torch.view_as_complex(a)
 #     bc = torch.view_as_complex(b)
