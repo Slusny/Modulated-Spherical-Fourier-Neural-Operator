@@ -23,8 +23,9 @@ class ERA5_galvani(Dataset):
         :param int      steps_per_day: How many datapoints per day in the dataset. For a 6hr increment we have 4 steps per day.
         :param bool     sst         : wether to include sea surface temperature in the data as seperate tuple element (used for filmed models)
         :param bool     uv100       : wether to include u100 and v100 in the data 
-        :param int      auto_regressive_steps : how many consecutive datapoints should be loaded to used to calculate an autoregressive loss 
-        
+        :param int      multi_step : how many consecutive datapoints should be loaded to used to calculate an autoregressive loss 
+        :param bool     run         : wether the model is run autoregressivly and there is no need to evaluate the model, only the first era5 data is outputed (step=0), following steps only needed if calculating a loss
+
         :return: weather data as torch.tensor or tuple (weather data, sea surface temperature)   
     """
     def __init__(
@@ -48,14 +49,16 @@ class ERA5_galvani(Dataset):
             temporal_step=28,
             past_sst=False,
             cls=None,
-            auto_regressive_steps=0,
+            multi_step=0,
+            skip_step=0,
             run=False,
         ):
         self.model = model
         self.past_sst = past_sst
         self.sst = sst
         self.run = run
-        self.auto_regressive_steps = auto_regressive_steps
+        self.multi_step = multi_step
+        self.skip_step = skip_step
         self.coarse_level = coarse_level
         self.uv100 = uv100
         self.temporal_step = temporal_step
@@ -147,9 +150,9 @@ class ERA5_galvani(Dataset):
         def get_sst(idx):
             # temporal step 0 for normal sst output
             if not self.past_sst:
-                sst = self.dataset.isel(time=slice(self.start_idx+idx, self.start_idx+idx + self.temporal_step + self.auto_regressive_steps+1))[["sea_surface_temperature"]].to_array()
+                sst = self.dataset.isel(time=slice(self.start_idx+idx, self.start_idx+idx + self.temporal_step + self.multi_step+1))[["sea_surface_temperature"]].to_array()
             else:# default
-                sst = self.dataset.isel(time=slice(self.start_idx+idx -self.temporal_step -1 , self.start_idx+idx +self.auto_regressive_steps+2))[["sea_surface_temperature"]].to_array()
+                sst = self.dataset.isel(time=slice(self.start_idx+idx -self.temporal_step -1 , self.start_idx+idx +self.multi_step+2))[["sea_surface_temperature"]].to_array()
             
             sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean().to_numpy()
             return torch.from_numpy(sst)
@@ -158,8 +161,9 @@ class ERA5_galvani(Dataset):
             sst = get_sst(idx)
 
         data = []
-        for i in range(0, self.auto_regressive_steps+2):
-            if self.run and i > 0:
+        for i in range(0, self.multi_step+2):
+            if (self.run and i > 0) or i % (self.skip_step+1) ==0:
+                # if we run the model autoregressivly and don't want to evaluate, just save the output, we only need the first era5 data and no following data
                 era5 = [[]]
             else:
                 era5 = format(self.dataset.isel(time=self.start_idx + idx + i))
@@ -180,14 +184,15 @@ class SST_galvani(Dataset):
             end_year=2022,
             steps_per_day=4,
             coarse_level=4,
-            temporal_step=6,
+            temporal_step=28,
             past_sst=False,
             clim=False,
             oni=False,
             oni_path=None,
             cls = None,
             ground_truth=False,
-            precompute_temporal_average=False
+            precompute_temporal_average=False,
+            dataset_idx_offset=29220,
         ):
         self.temporal_step = temporal_step
         self.past_sst = past_sst
@@ -195,12 +200,14 @@ class SST_galvani(Dataset):
         self.oni = oni
         self.oni_path=oni_path
         self.gt = ground_truth
+        self.dataset_idx_offset = dataset_idx_offset
         self.coarse_level = coarse_level
         if path.endswith(".zarr"):  self.dataset = xr.open_zarr(path,chunks=None)
         else:                       self.dataset = xr.open_dataset(path,chunks=None)
         if self.oni_path:
             self.oni = True
             self.dataset_oni = torch.from_numpy(np.load(oni_path)) 
+        #elif
         elif self.clim or self.oni:
             if path_clim.endswith(".zarr"):  self.dataset_clim = xr.open_zarr(path_clim,chunks=None)
             else:                            self.dataset_clim = xr.open_dataset(path_clim,chunks=None)
@@ -249,11 +256,6 @@ class SST_galvani(Dataset):
         return self.end_idx - self.start_idx
 
     def __getitem__(self,idx):
-        if not self.past_sst:# default
-            input = self.dataset.isel(time=slice(self.start_idx+idx, self.start_idx+idx + self.temporal_step))
-        else:
-            input = self.dataset.isel(time=slice(self.start_idx+idx -self.temporal_step -1 , self.start_idx+idx + 1))
-        input = input[["sea_surface_temperature"]].to_array()
 
         def format(input):
             time = str(input.time.to_numpy()[0])
@@ -304,10 +306,14 @@ class SST_galvani(Dataset):
                 return_data.append([nino34_anom, time ])
             return return_data
 
-        
         if self.oni_path:
-            data = [[self.dataset_oni[idx].float()]]
+            data = [[self.dataset_oni[self.start_idx - self.dataset_idx_offset + idx].float()]]
         else:
+            if not self.past_sst:# default
+                input = self.dataset.isel(time=slice(self.start_idx+idx, self.start_idx+idx + self.temporal_step))
+            else:
+                input = self.dataset.isel(time=slice(self.start_idx+idx -self.temporal_step -1 , self.start_idx+idx + 1))
+            input = input[["sea_surface_temperature"]].to_array()
             if self.gt: # not implemented
                 g_truth = self.dataset.isel(time=slice(self.start_idx+idx+1, self.start_idx+idx+1 + self.temporal_step))[["sea_surface_temperature"]].to_array()
                 data = [ format(input), format(g_truth)]
@@ -321,7 +327,7 @@ class SST_galvani(Dataset):
         if self.cls is not None:
                 # for d in data:
                 #     d.insert(0,(self.cls[idx]).float())
-            data.insert(0,[(self.cls[idx]).float()]) # for self.cls and self oni: [[cls], [oni, time] ]
+            data.insert(0,[(self.cls[self.start_idx - self.dataset_idx_offset +idx]).float()]) # for self.cls and self oni: [[cls], [oni, time] ]
 
         return data
         

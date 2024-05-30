@@ -201,8 +201,8 @@ def main(rank=0,args={},arg_groups={},world_size=1):
                 del film_cp
             del cp
             if rank == 0:
-                print("\nScript updated with Checkpoint parameters:")
-                for k,v in model_args.items():
+                print("\nScript updated with Checkpoint parameters to:")
+                for k,v in sorted(model_args.items()):
                     print("    ",k," : ",v)
             kwargs = model_args
             model = load_model(model_args["model_type"], kwargs)
@@ -461,6 +461,10 @@ if __name__ == "__main__":
         help="log the slurm JobID",
         action="store",
         default=None,
+    )
+    parser.add_argument(
+        "--save-data",
+        action="store_true",
     )
 
     # Data
@@ -868,10 +872,6 @@ if __name__ == "__main__":
         help="when testing for an optimal batch size, how large should be the inital step size",
     )
     training.add_argument(
-        "--save-data",
-        action="store_true",
-    )
-    training.add_argument(
         "--save-forecast",
         action="store_true",
     )
@@ -976,8 +976,7 @@ if __name__ == "__main__":
         #choices=available_models(),
         choices=["sfno","fcn","mae"],
         dest="model_type",
-        help="Specify the model to run",
-        required=True,
+        help="Specify the model to run"
     )
     architecture_parser.add_argument(
         "--model-version",

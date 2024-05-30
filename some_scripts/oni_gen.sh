@@ -1,0 +1,1 @@
+python main.py --model mae --save-data --trainingset-start-year 1979 --trainingset-end-year 2019 --save-path /mnt/qb/work2/goswami0/gkd965/Assets/mae --no-shuffle --oni 

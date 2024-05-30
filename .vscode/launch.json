@@ -17,14 +17,17 @@
                 "--model", "mae", 
                 "--model-version", "lin-probe",
                 "--film-gen", "mae",
-                "--eval-checkpoint-path","/media/lenny/V/Master/checkpoints/linprobe/wobbly-thunder-4-sID{345618}/",
+                // "--eval-checkpoint-path","/media/lenny/V/Master/checkpoints/linprobe/wobbly-thunder-4-sID{345618}/",
+                "--eval-checkpoint-path","/mnt/qb/work2/goswami0/gkd965/checkpoints/linprobe/wobbly-thunder-4-sID{345618}/",
                 "--eval-model",
                 "--batch-size","10",
-                "--trainingdata-path", "/media/lenny/V/wb2_2001-2003.zarr",
-                "--validationset-start-year", "2002",
-                "--validationset-end-year", "2003",
-                "--cls", "/media/lenny/V/Master/Assets/glorious-deluge/checkpoint_mae_latest_None_iter=0_epoch=8-cls_encoder-1979-2019.npy",
-                "--oni-path", "/media/lenny/V/Master/data/oni.npy"
+                // "--trainingdata-path", "/media/lenny/V/wb2_2001-2003.zarr",
+                // "--validationset-start-year", "2002",
+                // "--validationset-end-year", "2003",
+                // "--cls", "/media/lenny/V/Master/Assets/glorious-deluge/checkpoint_mae_latest_None_iter=0_epoch=8-cls_encoder-1979-2019.npy",
+                // "--oni-path", "/media/lenny/V/Master/data/oni.npy"
+                "--cls", "/mnt/qb/work2/goswami0/gkd965/checkpoints/mae/glorious-deluge-23/checkpoint_mae_latest_None_iter=0_epoch=8-cls_encoder-1979-2019.npy",
+                "--oni-path", "/mnt/qb/work2/goswami0/gkd965/Assets/mae/oni.npy"
             ]
             
             //"args":["--model","sfno","--date","20190101","--time","0000","--lead-time","18","--output","netcdf","--input-store", "./S2S_on_SFNO/inputs"]

@@ -3,7 +3,7 @@
 #a) Define slurm job parameters
 ####
 
-#SBATCH --job-name=kp6
+#SBATCH --job-name=k3
 
 #resources:
 
@@ -11,16 +11,16 @@
 
 ##SBATCH --nodes=1
 
-#SBATCH --cpus-per-task=16 # 14 is max for cpu-short
+#SBATCH --cpus-per-task=24 # 14 is max for cpu-short
 # the job can use and see 4 CPUs (from max 24).
 # needet task count -n, maybe there is a better way to specify cores
 
 #SBATCH --partition=a100-galvani#a100-galvani#cpu-galvani#2080-galvani#cpu-long#cpu-short #gpu-v100  #gpu-2080ti #cpu-long
 
-#SBATCH --mem-per-cpu=18G # Per CPU -> Per Core /10 kp
+#SBATCH --mem-per-cpu=2G # Per CPU -> Per Core /10 kp
 # the job will need 12GB of memory equally distributed on 4 cpus.(251GB are available in total on one node)
 
-#SBATCH --gres=gpu:6
+#SBATCH --gres=gpu:3
 #the job can use and see 1 GPUs (4 GPUs are available in total on one node) use SBATCH --gres=gpu:1080ti:1 to explicitly demand a Geforce 1080 Ti GPU. Use SBATCH --gres=gpu:A4000:1 to explicitly demand a RTX A4000 GPU
 
 ##SBATCH --exclude=galvani-cn209
