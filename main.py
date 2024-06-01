@@ -33,6 +33,8 @@ import torch.multiprocessing as mp
 from torch.distributed import init_process_group, destroy_process_group, get_rank, get_world_size
 
 
+os.environ["WANDB__SERVICE_WAIT"] = "300"
+
 def ddp_setup(rank, world_size):
     """
     Args:
@@ -41,6 +43,7 @@ def ddp_setup(rank, world_size):
     """
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "31350"
+    os.environ["WANDB__SERVICE_WAIT"] = "300"
     torch.cuda.set_device(rank)
     # os.environ["CUDA_VISIBLE_DEVICES"]=str(rank) if you set visible device the set device is always 0
     init_process_group(backend="nccl", rank=rank, world_size=world_size)
@@ -48,6 +51,7 @@ def ddp_setup(rank, world_size):
 
 # LOG = logging.getLogger(__name__)
 LOG = logging.getLogger(__name__)
+LOG.addHandler(logging.StreamHandler(sys.stdout)) 
 cuda_available = torch.cuda.is_available()
 print("cuda available? : ",cuda_available,flush=True)
 

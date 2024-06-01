@@ -121,14 +121,13 @@ class Trainer():
 
         self.mem_log("loading data")
         for i, data in enumerate(self.training_loader):
-            if self.cfg.validation_interval > 0 and (self.iter+1) % (self.cfg.validation_interval)*(self.cfg.accumulation_steps + 1)  == 0:
-                self.validation()
+            
             loss = 0
             with amp.autocast(self.cfg.enable_amp):
                 for step in range(self.cfg.multi_step_training+1):
                     if step == 0 : input = self.util.normalise(data[step][0]).to(self.util.device)
                     else: input = output
-                    output, gt = self.model_forward(input,data,step)
+                    output, gt = self.model_forward(input,data,step,return_gt= step % (self.cfg.training_step_skip+1)==0)
                     
                     if step % (self.cfg.training_step_skip+1) == 0:
                         loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1)/self.cfg.batch_size *self.cfg.discount_factor**step
@@ -138,7 +137,7 @@ class Trainer():
                 batch_loss += loss.item()
             
             #backward
-            self.mem_log("backward pass")
+            self.mem_log("backward pass",fin=True)
             if self.cfg.enable_amp:
                 self.gscaler.scale(loss).backward()
             else:
@@ -146,8 +145,8 @@ class Trainer():
 
             # Adjust learning weights
             if ((i + 1) % (self.cfg.accumulation_steps + 1) == 0) or ((i + 1) == (len(self.training_loader)-1)):
+            
                 # Update Optimizer
-                self.mem_log("optimizer step",fin=True)
                 if self.cfg.enable_amp:
                     self.gscaler.step(self.optimizer)
                     self.gscaler.update()
@@ -155,8 +154,12 @@ class Trainer():
                     self.optimizer.step()
                 self.model.zero_grad()
 
-                # logging
                 self.iter += 1
+                # validation
+                if self.cfg.validation_interval > 0 and (self.iter) % (self.cfg.validation_interval)  == 0:
+                    self.validation()
+
+                # logging
                 self.step = self.iter*self.cfg.batch_size*(self.cfg.accumulation_steps+1)+len(self.dataset)*self.epoch
                 self.iter_log(batch_loss,scale=None)
                 batch_loss = 0
@@ -168,10 +171,8 @@ class Trainer():
 
         self.mem_log("loading data")
         for i, data in enumerate(self.training_loader):
-            if self.cfg.validation_interval > 0 and (self.iter+1) % (self.cfg.validation_interval)*(self.cfg.accumulation_steps + 1)  == 0:
-                self.validation()
+            
             loss = 0
-
             # Adjust learning weights
             if ((i + 1) % (self.cfg.accumulation_steps + 1) == 0) or ((i + 1) == (len(self.training_loader)-2)):
                 # train again but sync
@@ -179,7 +180,7 @@ class Trainer():
                     for step in range(self.cfg.multi_step_training+1):
                         if step == 0 : input = self.util.normalise(data[step][0]).to(self.util.device)
                         else: input = output
-                        output, gt = self.model_forward(input,data,step)
+                        output, gt = self.model_forward(input,data,step,return_gt= step % (self.cfg.training_step_skip+1)==0)
                         
                         if step % (self.cfg.training_step_skip+1) == 0:
                             loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1)/self.cfg.batch_size *self.cfg.discount_factor**step
@@ -189,14 +190,13 @@ class Trainer():
                     batch_loss += loss.item()
                 
                 #backward
-                self.mem_log("backward pass")
+                self.mem_log("backward pass",fin=True)
                 if self.cfg.enable_amp:
                     self.gscaler.scale(loss).backward()
                 else:
                     loss.backward()
                 
                 # Update Optimizer
-                self.mem_log("optimizer step",fin=True)
                 if self.cfg.enable_amp:
                     self.gscaler.step(self.optimizer)
                     self.gscaler.update()
@@ -204,8 +204,12 @@ class Trainer():
                     self.optimizer.step()
                 self.model.zero_grad()
 
-                # logging
                 self.iter += 1
+                # validation
+                if self.cfg.validation_interval > 0 and (self.iter) % (self.cfg.validation_interval)  == 0:
+                    self.validation()
+
+                # logging
                 self.step = self.iter*self.cfg.batch_size*(self.cfg.accumulation_steps+1)*self.cfg.world_size+len(self.dataset)*self.epoch
                 self.iter_log(batch_loss,scale=None)
                 batch_loss = 0
@@ -215,7 +219,7 @@ class Trainer():
                         for step in range(self.cfg.multi_step_training+1):
                             if step == 0 : input = self.util.normalise(data[step][0]).to(self.util.device)
                             else: input = output
-                            output, gt = self.model_forward(input,data,step)
+                            output, gt = self.model_forward(input,data,step,return_gt= step % (self.cfg.training_step_skip+1)==0)
                             
                             if step % (self.cfg.training_step_skip+1) == 0:
                                 loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1)/self.cfg.batch_size *self.cfg.discount_factor**step
@@ -292,9 +296,10 @@ class Trainer():
                 wandb.finish()
         if self.cfg.ddp:
             dist.barrier()
-            sys.exit(0)
+            # sys.exit(0)
         else:
-            sys.exit(0)
+            pass
+            # sys.exit(0)
 
     def ready_model(self):
         self.util.load_model(self.util.checkpoint_path)
@@ -325,7 +330,7 @@ class Trainer():
             self.scheduler.step(valid_mean)
         elif self.cfg.scheduler_type == 'CosineAnnealingLR':
             self.scheduler.step()
-            if (self.iter/self.cfg.validation_interval) >= self.cfg.scheduler_horizon:
+            if (self.step) >= self.cfg.scheduler_horizon:
                 LOG.info("Terminating training after reaching params.max_epochs while LR scheduler is set to CosineAnnealingLR") 
                 self.finalise()
         elif self.cfg.scheduler_type == 'CosineAnnealingWarmRestarts':
@@ -391,7 +396,8 @@ class Trainer():
                 v100_path=self.cfg.trainingdata_v100_path,
                 start_year=self.cfg.trainingset_start_year,
                 end_year=self.cfg.trainingset_end_year,
-                auto_regressive_steps=self.cfg.multi_step_training,
+                multi_step=self.cfg.multi_step_training,
+                skip_step=self.cfg.training_step_skip,
                 sst=sst,
                 temporal_step=self.cfg.temporal_step,
                 past_sst = self.cfg.past_sst,
@@ -406,7 +412,8 @@ class Trainer():
                 v100_path=self.cfg.trainingdata_v100_path,
                 start_year=self.cfg.validationset_start_year,
                 end_year=self.cfg.validationset_end_year,
-                auto_regressive_steps=self.cfg.multi_step_validation,
+                multi_step=self.cfg.multi_step_validation,
+                skip_step=self.cfg.validation_step_skip,
                 sst=sst,
                 temporal_step=self.cfg.temporal_step,
                 past_sst = self.cfg.past_sst,
@@ -416,7 +423,7 @@ class Trainer():
         shuffle= not self.cfg.no_shuffle
         if self.cfg.ddp:
             self.training_loader = DataLoader(self.dataset,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size,shuffle=False,pin_memory=True,sampler=DistributedSampler(self.dataset,shuffle=shuffle))
-            self.validation_loader = DataLoader(self.dataset_validation,num_workers=0, batch_size=self.cfg.batch_size,shuffle=False,pin_memory=True,sampler=DistributedSampler(self.dataset_validation,shuffle=shuffle))
+            self.validation_loader = DataLoader(self.dataset_validation,num_workers=0, batch_size=self.cfg.batch_size_validation,shuffle=False,pin_memory=True,sampler=DistributedSampler(self.dataset_validation,shuffle=shuffle))
 
         else:
             self.training_loader = DataLoader(self.dataset,shuffle=shuffle,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
@@ -450,8 +457,11 @@ class Trainer():
                     
                     if val_step == 0 : input = self.util.normalise(val_data[val_step][0]).to(self.util.device)
                     else: input = output
-                    output, gt = self.model_forward(input,val_data,val_step)
+                    output, gt = self.model_forward(input,val_data,val_step,return_gt= val_step % (self.cfg.validation_step_skip+1)==0)
                     
+                    # skip steps so no gt has to be outputed, saves ram and computation
+                    if val_step % (self.cfg.validation_step_skip+1) != 0: continue
+
                     val_loss_value = self.get_loss(output,gt)/ self.cfg.batch_size
                     loss_list[val_step].append(val_loss_value)
 
@@ -471,6 +481,8 @@ class Trainer():
 
                 # end of validation 
                 if val_idx == (self.cfg.validation_epochs-1):
+                    loss_list = [x for x in loss_list if x != []]
+                    loss_pervar_list = [x for x in loss_pervar_list if x != []]
                     loss_value = torch.tensor(loss_list).mean(dim=1).cpu()
                     loss_value_std = torch.tensor(loss_list).std(dim=1).cpu()
                     loss_pervar = torch.tensor(loss_pervar_list).mean(dim=1).cpu()
@@ -504,32 +516,38 @@ class Trainer():
                 
     def valid_log(self,loss_value,loss_pervar,loss_value_std,loss_pervar_std):
         if self.cfg.rank == 0: 
+
             if self.cfg.multi_step_validation > 0:multistep_notice = " (steps=... mutli-step-validation, each step an auto-regressive 6h-step)"
             else: multistep_notice = ""                                             
             print("-- validation after ",self.step, "training examples "+multistep_notice,flush=True)
             val_log_local = {}
             val_log_wandb = {}
 
+            # change the commented out for loops with the current for loop to loop through if all validation steps are calculated
             # reduced loss
-            for i in range(loss_pervar.shape[0]):
-                val_log_local["validation loss step={}".format(i)]     = loss_value[i].item()
-                val_log_local["validation loss std step={}".format(i)] = loss_value_std[i].item()
-                if i % (1+self.cfg.validation_step_skip) == 0: 
-                    key = "validation loss step={}".format(i)
+            # for i in range(loss_pervar.shape[0]):
+                # step=i
+            for i,step in enumerate(list(range(0,self.cfg.multi_step_validation+1,1+self.cfg.validation_step_skip))):
+                val_log_local["validation loss step={}".format(step)]     = loss_value[i].item()
+                val_log_local["validation loss std step={}".format(step)] = loss_value_std[i].item()
+                if step % (1+self.cfg.validation_step_skip) == 0: 
+                    key = "validation loss step={}".format(step)
                     val_log_wandb[key]                                     = round(loss_value[i].item(),5)
-                    val_log_wandb["validation loss std step={}".format(i)] = round(loss_value_std[i].item(),5)
+                    val_log_wandb["validation loss std step={}".format(step)] = round(loss_value_std[i].item(),5)
                     # LOG
                     LOG.info(key+ " : " +str(val_log_wandb[key]) + " +/- " + str(round(loss_value_std[i].item(),5)))
 
 
             # per variable
             if self.cfg.advanced_logging and self.mse_all_vars and self.cfg.model_type != "mae":
-                for i in range(loss_pervar.shape[0]):
+                # for i in range(loss_pervar.shape[0]):
+                    # step=i
+                for i,step in enumerate(list(range(0,self.cfg.multi_step_validation+1,1+self.cfg.validation_step_skip))):
                     for idx_var,var_name in enumerate(self.util.ordering):
-                        val_log_local["MSE "+var_name+ " step={}".format(i)]     = loss_pervar[i][idx_var].item()
-                        val_log_local["MSE "+var_name+ " std step={}".format(i)] = loss_pervar_std[i][idx_var].item()
-                        if i % (1+self.cfg.validation_step_skip) == 0: 
-                            val_log_wandb["MSE "+var_name+ " step={}".format(i)]     = round(loss_pervar[i][idx_var].item(),5)
+                        val_log_local["MSE "+var_name+ " step={}".format(step)]     = loss_pervar[i][idx_var].item()
+                        val_log_local["MSE "+var_name+ " std step={}".format(step)] = loss_pervar_std[i][idx_var].item()
+                        if step % (1+self.cfg.validation_step_skip) == 0: 
+                            val_log_wandb["MSE "+var_name+ " step={}".format(step)]     = round(loss_pervar[i][idx_var].item(),5)
             
             # log scheduler
             if self.scheduler is not None and self.scheduler != "None": 
@@ -545,14 +563,15 @@ class Trainer():
             # Print MSE for all variables
             if self.cfg.advanced_logging and self.mse_all_vars and self.cfg.model_type != "mae":
                 mse_log_string = "MSE for each variable (step=0"
-                for i in range(0,loss_pervar.shape[0],1+self.cfg.validation_step_skip):
+                for i in range(0,self.cfg.multi_step_validation+1,1+self.cfg.validation_step_skip):
                     mse_log_string += " -> step={}".format(i)
                 mse_log_string += ") :"
                 print(mse_log_string,flush=True)
                 
                 for idx_var,var_name in enumerate(self.util.ordering):
                     mse_var_log_str = "    "+var_name.ljust(5)+" : "
-                    for step in range(0,loss_pervar.shape[0],1+self.cfg.validation_step_skip):
+                    # for step in range(0,loss_pervar.shape[0],1+self.cfg.validation_step_skip):
+                    for step in range(0,loss_pervar.shape[0]):
                         mse_var_log_str += str(round(loss_pervar[step][idx_var].item(),5)).ljust(8)
                         if step < (loss_pervar.shape[0]-1):mse_var_log_str += " -> "
                     print(mse_var_log_str,flush=True)
