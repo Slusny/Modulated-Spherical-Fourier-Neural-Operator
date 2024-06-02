@@ -76,8 +76,12 @@ class Trainer():
                     wandb_dir = "/mnt/qb/work2/goswami0/gkd965/wandb"
                 else:
                     wandb_dir = "./wandb"
+                if self.cfg.wandb_project is not None:
+                    project = self.cfg.wandb_project
+                else:
+                    project_name = self.cfg.model_type + " - " +self.cfg.model_version
                 if self.cfg.wandb_resume is not None :
-                    wandb_run = wandb.init(project=self.cfg.model_type + " - " +self.cfg.model_version, 
+                    wandb_run = wandb.init(project=project_name, 
                         config=self.cfg.__dict__,
                         notes=self.cfg.notes,
                         tags=self.cfg.tags,
@@ -86,7 +90,7 @@ class Trainer():
                         dir=wandb_dir,
                         )
                 else:
-                    wandb_run = wandb.init(project=self.cfg.model_type + " - " +self.cfg.model_version, 
+                    wandb_run = wandb.init(project=project_name, 
                         config=self.cfg.__dict__,
                         notes=self.cfg.notes,
                         tags=self.cfg.tags,
@@ -247,10 +251,11 @@ class Trainer():
     def post_epoch(self):
         self.epoch += 1
         self.iter = 0
-        if self.cfg.rank==0:print("End of epoch ",self.epoch,flush=True)
         self.validation()
-        self.save_checkpoint()
-        self.local_log.save("training_log_epoch{}.npy".format(self.epoch))
+        if self.cfg.rank==0:
+            print("End of epoch ",self.epoch,flush=True)
+            self.save_checkpoint()
+            self.local_log.save("training_log_epoch{}.npy".format(self.epoch))
 
     def model_forward(self,input,data,step,return_gt=True):
         self.mem_log("forward pass")
@@ -296,11 +301,10 @@ class Trainer():
                 wandb.finish()
         if self.cfg.ddp:
             dist.barrier()
-            # sys.exit(0)
+            return
         else:
-            pass
-            # sys.exit(0)
-
+            return 
+        
     def ready_model(self):
         self.util.load_model(self.util.checkpoint_path)
         self.model.train()
@@ -698,7 +702,7 @@ class Trainer():
                     print(str(i).rjust(6),"/",len(self.validation_loader)," -  ",data_time.strftime("%d %b %Y"),flush=True)
                     if (i+1)%10 == 0:
                         self.save_to_netcdf()
-                        sys.exit(0)
+                        return
                             # logging
             
                 self.mem_log("fin",fin=True)
@@ -1017,7 +1021,7 @@ def train_test(kwargs):
             print("std 1",outputs1[1].std())
             print("---------------------")
 
-        sys.exit(0)
+        return
 # 0 ---------------------
 # mean 0 tensor(0.2065, grad_fn=<MeanBackward0>)
 # std 0 tensor(3.0127, grad_fn=<StdBackward0>)

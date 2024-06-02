@@ -332,12 +332,27 @@ import torch
 #     for i in range(1000):
 #         z.append(y)
 #     torch.stack(z)
-l = []
-for i in range(3):
-    x = torch.rand((2,5),device="cuda:0")
-    l.append(x)
+# l = []
+# for i in range(3):
+#     x = torch.rand((2,5),device="cuda:0")
+#     l.append(x)
 
-x = torch.stack(l)
-print(x.device)
-print(x)
-print(x.shape)
+# x = torch.stack(l)
+# print(x.device)
+# print(x)
+# print(x.shape)
+
+def test():
+    print("test")
+    try:
+        # raise Exception("test")
+        x = 1/0
+    except :
+        print("error")
+
+print("testing execption")
+def main():
+    with Timer("test"):
+        test()
+
+main()

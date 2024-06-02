@@ -139,7 +139,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
         print("using film generator: gcn_custom",flush=True)
         args.film_gen_type = "gcn_custom"
     # scheduler is updated in every validation interval. To arive at the total horizon in standard iters we divide by the validation interval
-    args.scheduler_horizon = args.scheduler_horizon//args.validation_interval//args.batch_size
+    args.scheduler_horizon = args.scheduler_horizon//(args.validation_interval*args.batch_size*(args.accummulation_steps+1))
 
     # Format Output path
     timestr = time.strftime("%Y%m%dT%H%M")
@@ -232,16 +232,16 @@ def main(rank=0,args={},arg_groups={},world_size=1):
 
     if args.fields:
         model.print_fields()
-        sys.exit(0)
+        return
 
     # This logic is a bit convoluted, but it is for backwards compatibility.
     if args.retrieve_requests or (args.requests_extra and not args.archive_requests):
         model.print_requests()
-        sys.exit(0)
+        return
 
     if args.assets_list:
         model.print_assets_list()
-        sys.exit(0)
+        return
 
     elif args.train:
 
@@ -257,7 +257,6 @@ def main(rank=0,args={},arg_groups={},world_size=1):
             LOG.error(traceback.format_exc())
             print("shutting down training")
             trainer.finalise()
-            sys.exit(0)
 
     elif do_return_trainer:
         trainer = Trainer(model,vars(args))
@@ -266,27 +265,27 @@ def main(rank=0,args={},arg_groups={},world_size=1):
     elif args.test_performance:
         trainer = Trainer(model,vars(args))
         trainer.test_performance()
-        sys.exit(0)
+        return
 
     elif args.test_dataloader_speed:
         trainer = Trainer(model,vars(args))
         trainer.test_dataloader_speed()
-        sys.exit(0)
+        return
 
     elif args.test_batch_size:
         trainer = Trainer(model,vars(args))
         trainer.test_batch_size()
-        sys.exit(0)
+        return
 
     elif args.save_data:
         trainer = Trainer(model,vars(args))
         trainer.save_data()
-        sys.exit(0)
+        return
 
     elif args.save_forecast:
         trainer = Trainer(model,vars(args))
         trainer.save_forecast()
-        sys.exit(0)
+        return
 
     elif args.eval_model:
         print("evaluating models")
@@ -342,7 +341,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
             )
             if kwargs["model_type"] == "mae":
                 model.save_cls()
-            sys.exit(1)
+                return
     else:
         print("No action specified (--train or --run). Exiting.")
     model.finalise()
@@ -942,7 +941,7 @@ if __name__ == "__main__":
         help='use weights and biases'
     )
     logging_parser.add_argument(
-        '--wandb_resume', 
+        '--wandb-resume', 
         action='store', 
         default=None,             
         type=str, 
@@ -955,6 +954,13 @@ if __name__ == "__main__":
         type=str, 
         help='notes for wandb')
 
+    logging_parser.add_argument(
+        '--wandb-project', 
+        action='store', 
+        default=None,             
+        type=str, 
+        help='which project to log to. if none given defaults to {model}-{model-version}')
+    
     logging_parser.add_argument(
         '--tags', 
         action='store', 
