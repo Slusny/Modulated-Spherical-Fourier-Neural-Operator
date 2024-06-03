@@ -48,6 +48,7 @@ class Trainer():
         self.epoch = 0
         self.step = 0
         self.iter = 0
+        self.start_time = time()
 
     def train(self):
         self.setup()
@@ -75,8 +76,8 @@ class Trainer():
                     wandb_dir = "/mnt/qb/work2/goswami0/gkd965/wandb"
                 else:
                     wandb_dir = "./wandb"
-                if self.cfg.wandb_project is not None:
-                    project = self.cfg.wandb_project
+                if self.cfg.wandb_project is None:
+                    project_name = self.cfg.wandb_project
                 else:
                     project_name = self.cfg.model_type + " - " +self.cfg.model_version
                 if self.cfg.wandb_resume is not None :
@@ -108,7 +109,7 @@ class Trainer():
                 file_name = self.cfg.model_type+"_"+self.cfg.model_version+film_gen_str+"_"+self.cfg.timestr
                 if self.cfg.jobID is not None:  file_name = file_name+"-{sID"+self.cfg.jobID+"}"
                 new_save_path = os.path.join(self.cfg.save_path,file_name)
-                os.mkdir(new_save_path)
+                if not os.path.exists(new_save_path): os.mkdir(new_save_path)
                 self.cfg.save_path = new_save_path
                 print("    no wandb",flush=True)
             print("    Save path: %s", self.cfg.save_path,flush=True)
@@ -135,7 +136,7 @@ class Trainer():
                     output, gt = self.model_forward(input,data,step,return_gt= step % (self.cfg.training_step_skip+1)==0)
                     
                     if step % (self.cfg.training_step_skip+1) == 0:
-                        loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1)/self.cfg.batch_size *self.cfg.discount_factor**step
+                        loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1) *self.cfg.discount_factor**step #/self.cfg.batch_size
                     
                 loss = loss / (self.cfg.accumulation_steps+1)
                 # only for logging the loss for the batch
@@ -190,7 +191,7 @@ class Trainer():
                         output, gt = self.model_forward(input,data,step,return_gt= step % (self.cfg.training_step_skip+1)==0)
                         
                         if step % (self.cfg.training_step_skip+1) == 0:
-                            loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1)/self.cfg.batch_size *self.cfg.discount_factor**step
+                            loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1) *self.cfg.discount_factor**step #/self.cfg.batch_size
                         
                     loss = loss / (self.cfg.accumulation_steps+1)
                     # only for logging the loss for the batch
@@ -229,7 +230,7 @@ class Trainer():
                             output, gt = self.model_forward(input,data,step,return_gt= step % (self.cfg.training_step_skip+1)==0)
                             
                             if step % (self.cfg.training_step_skip+1) == 0:
-                                loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1)/self.cfg.batch_size *self.cfg.discount_factor**step
+                                loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1) *self.cfg.discount_factor**step #/self.cfg.batch_size
                             
                         loss = loss / (self.cfg.accumulation_steps+1)
                         # only for logging the loss for the batch
@@ -339,7 +340,7 @@ class Trainer():
             self.scheduler.step(valid_mean)
         elif self.cfg.scheduler_type == 'CosineAnnealingLR':
             self.scheduler.step()
-            if (self.step) >= self.cfg.scheduler_horizon:
+            if (self.step/(self.cfg.validation_interval*self.cfg.batch_size*(self.cfg.accumulation_steps+1))) >= self.cfg.scheduler_horizon:
                 LOG.info("Terminating training after reaching params.max_epochs while LR scheduler is set to CosineAnnealingLR") 
                 self.finalise("end of scheduler horizon reached")
         elif self.cfg.scheduler_type == 'CosineAnnealingWarmRestarts':
@@ -362,6 +363,8 @@ class Trainer():
             self.loss_fn = L2Sphere(relative=True, squared=True,reduction=self.cfg.loss_reduction)
         elif self.cfg.loss_fn == "NormalCRPS":
             self.loss_fn = NormalCRPS(reduction=self.cfg.loss_reduction)
+        elif self.cfg.loss_fn == "L1":
+            self.loss_fn = torch.nn.L1Loss()
         elif self.cfg.loss_fn == "MSE":
             self.loss_fn = torch.nn.MSELoss()
 
@@ -471,7 +474,7 @@ class Trainer():
                     # skip steps so no gt has to be outputed, saves ram and computation
                     if val_step % (self.cfg.validation_step_skip+1) != 0: continue
 
-                    val_loss_value = self.get_loss(output,gt)/ self.cfg.batch_size
+                    val_loss_value = self.get_loss(output,gt) #/ self.cfg.batch_size
                     loss_list[val_step].append(val_loss_value)
 
                     if self.cfg.ddp:
@@ -688,7 +691,7 @@ class Trainer():
     def time_limit_stop(self):
         if self.cfg.rank == 0: 
             if self.cfg.time_limit is not None:
-                if self.time_limit - time.time()  < 15*60:
+                if (self.time_limit - (time()-self.start_time))  < 15*60:
                     print("Time limit reached, stopping training",flush=True)
                     self.finalise("slurm time limit reached")
         if self.cfg.ddp:

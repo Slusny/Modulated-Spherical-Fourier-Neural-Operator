@@ -3,7 +3,9 @@
 #a) Define slurm job parameters
 ####
 
-#SBATCH --job-name=1fdhse #21gcn
+timelimit="03-00:00"
+
+#SBATCH --job-name=2fdDGe #21gcn
 
 #resources:
 
@@ -23,14 +25,14 @@
 #SBATCH --gres=gpu:8
 #the job can use and see 1 GPUs (4 GPUs are available in total on one node) use SBATCH --gres=gpu:1080ti:1 to explicitly demand a Geforce 1080 Ti GPU. Use SBATCH --gres=gpu:A4000:1 to explicitly demand a RTX A4000 GPU
 
-#SBATCH --time=03-00:00
+#SBATCH --time=$timelimit
 # the maximum time the scripts needs to run
 # "minutes:seconds", "hours:minutes:seconds", "days-hours","days-hours:minutes" and "days-hours:minutes:seconds"
 
-#SBATCH --error=/home/goswami/gkd965/jobs/job.1filmCLS.HSe.ddp.%J.err
+#SBATCH --error=/home/goswami/gkd965/jobs/job.2filmCLS.DGe.ddp.%J.out
 # write the error output to job.*jobID*.err
 
-#SBATCH --output=/home/goswami/gkd965/jobs/job.1filmCLS.HSe.ddp.%J.out
+#SBATCH --output=/home/goswami/gkd965/jobs/job.2filmCLS.DGe.ddp.%J.out
 # write the standard output to job.*jobID*.out
 
 #SBATCH --mail-type=ALL
@@ -49,20 +51,11 @@
 # 2Film size multi-step-training 11, mit ddp 10 mit ddp
 # 8 gpus 10 ging nicht, 8 ging
 
-# HS
-# helpful-salad-14
+# 2Film
+singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965,/home/scratch_local /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version film --film-gen mae --train --cls /mnt/qb/work2/goswami0/gkd965/checkpoints/mae/glorious-deluge-23/checkpoint_mae_latest_None_iter=0_epoch=8-cls_encoder-1979-2019.npy --advanced-logging --film-layers 2 --batch-size 1 --multi-step-training 2 --training-step-skip 4 --validation-interval 3 --validation-epochs 2 --multi-step-validation 2 --validation-step-skip 15 --save-checkpoint-interval 3 --training-workers 6  --learning-rate 0.00005 --scheduler CosineAnnealingLR --scheduler-horizon 270275 --loss-fn L2Sphere --trainingset-start-year 1979 --trainingset-end-year 2016 --validationset-start-year 2016 --validationset-end-year 2018 --training-epochs 5  --notes 'encoder cls, future sst,glorious-deluge-23' --checkpointing-decoder --enable-amp --accumulation-steps 16 --ddp --wandb --wandb-project "1film" --time-limit $timelimit --jobID $SLURM_JOB_ID 
 
-#WS
-# wise-spaceship-24
-
-# GD
-# glorious-deluge-23
-
-# 1Film
-singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965,/home/scratch_local /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version film --film-gen mae --train --cls /mnt/qb/work2/goswami0/gkd965/checkpoints/mae/helpful-salad-14/checkpoint_mae_latest_None_iter=0_epoch=8-cls_encoder-1979-2019.npy --advanced-logging --film-layers 1 --batch-size 1 --multi-step-training 3 --training-step-skip 5  --validation-interval 3 --validation-epochs 2 --multi-step-validation 2 --validation-step-skip 15 --save-checkpoint-interval 3 --training-workers 6  --learning-rate 0.000005 --scheduler CosineAnnealingLR --scheduler-horizon 270275 --loss-fn L2Sphere --trainingset-start-year 1979 --trainingset-end-year 2016 --validationset-start-year 2016 --validationset-end-year 2018 --training-epochs 5  --notes 'encoder cls, future sst, helpful-salad-14' --checkpointing-decoder --enable-amp --accumulation-steps 16 --ddp --wandb --jobID $SLURM_JOB_ID 
-
-#ssh 1 Film DDP
-                                                                                                                                                                                    python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version film --film-gen mae --train --cls /mnt/qb/work2/goswami0/gkd965/checkpoints/mae/helpful-salad-14/checkpoint_mae_latest_None_iter=0_epoch=8-cls_encoder-1979-2019.npy --advanced-logging --film-layers 1 --batch-size 1 --multi-step-training 3 --training-step-skip 5  --validation-interval 3 --validation-epochs 2 --multi-step-validation 2 --validation-step-skip 15 --save-checkpoint-interval 3 --training-workers 7  --learning-rate 0.00005 --scheduler CosineAnnealingLR --scheduler-horizon 270275 --loss-fn L2Sphere --trainingset-start-year 1979 --trainingset-end-year 2016 --validationset-start-year 2016 --validationset-end-year 2018 --training-epochs 5  --notes 'encoder cls, future sst, helpful-salad-14' --checkpointing-decoder --enable-amp --accumulation-steps 16 --ddp --wandb --jobID '3232' > /home/goswami/gkd965/jobs/job.1Film.HSe.ddp.3232.out 2> /home/goswami/gkd965/jobs/job.1Film.HSe.ddp.3232.out
+#ssh 2 Film DDP
+                                                                                                                                                                                    # python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version film --film-gen mae --train --cls /mnt/qb/work2/goswami0/gkd965/checkpoints/mae/glorious-deluge-23/checkpoint_mae_latest_None_iter=0_epoch=8-cls_encoder-1979-2019.npy --advanced-logging --film-layers 2 --batch-size 1 --multi-step-training 2 --training-step-skip 4 --validation-interval 3 --validation-epochs 2 --multi-step-validation 2 --validation-step-skip 15 --save-checkpoint-interval 3 --training-workers 6  --learning-rate 0.00005 --scheduler CosineAnnealingLR --scheduler-horizon 270275 --loss-fn L2Sphere --trainingset-start-year 1979 --trainingset-end-year 2016 --validationset-start-year 2016 --validationset-end-year 2018 --training-epochs 5  --notes 'encoder cls, future sst,glorious-deluge-23' --checkpointing-decoder --enable-amp --accumulation-steps 16 --ddp --wandb --wandb-project "1film" --time-limit $timelimit --jobID '00005' > /home/goswami/gkd965/jobs/job.2Film.DGe.ddp.00005.out 2> /home/goswami/gkd965/jobs/job.2Film.DGe.ddp.00005.out
 
 # ssh
 # python /home/goswami/gkd965/MasterML/main.py --model mae --train --validation-interval 20 --save-checkpoint-interval 8 --validation-epochs 2 --training-workers 6  --learning-rate 0.0005 --advanced-logging --scheduler CosineAnnealingLR --scheduler-horizon 432442 --loss-fn NormalCRPS --trainingset-start-year 1979 --trainingset-end-year 2016 --validationset-start-year 2016 --validationset-end-year 2018 --training-epochs 8 --batch-size 64 --patch-size 7 15 30 --wandb --jobID '71530' > /home/goswami/gkd965/jobs/job.mae.71530.out 2> /home/goswami/gkd965/jobs/job.mae.71530.err
@@ -71,3 +64,4 @@ singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gk
 # main.py --model sfno --model-version film --film-gen mae --train --cls /mnt/qb/work2/goswami0/gkd965/checkpoints/mae/wise-spaceship-24/checkpoint_mae_latest_None_iter=0_epoch=8-cls_encoder-1979-2019.npy --advanced-logging --film-layers 1 --batch-size 1 --multi-step-training 10 --validation-interval 2 --validation-epochs 1 --multi-step-validation 2 --validation-step-skip 2 --save-checkpoint-interval 1 --training-workers 8  --learning-rate 0.00005 --scheduler CosineAnnealingLR --scheduler-horizon 270275 --loss-fn L2Sphere --trainingset-start-year 1979 --trainingset-end-year 2016 --validationset-start-year 2016 --validationset-end-year 2018 --training-epochs 5  --notes 'decoder cls, future sst' --checkpointing-decoder --enable-amp --accumulation-steps 2 --ddp
 
 echo DONE!
+

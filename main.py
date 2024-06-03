@@ -14,6 +14,7 @@ import numpy as np
 import glob
 import re
 import datetime
+import math
 # to get eccodes working on Ubuntu 20.04
 # os.environ["LD_PRELOAD"] = '/usr/lib/x86_64-linux-gnu/libffi.so.7'
 # in shell : export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libffi.so.7
@@ -139,7 +140,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
         print("using film generator: gcn_custom",flush=True)
         args.film_gen_type = "gcn_custom"
     # scheduler is updated in every validation interval. To arive at the total horizon in standard iters we divide by the validation interval
-    args.scheduler_horizon = args.scheduler_horizon//(args.validation_interval*args.batch_size*(args.accumulation_steps+1))
+    args.scheduler_horizon = math.floor(args.scheduler_horizon/(abs(args.validation_interval)*args.batch_size*(args.accumulation_steps+1)))
 
     # Format Output path
     timestr = time.strftime("%Y%m%dT%H%M")
@@ -154,7 +155,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
         seconds = 0.
         if len(time_arr) == 2:
             seconds += int(time_arr[0])*24*3600
-        x = time.strptime(args.time_limit[-1], "%H:%M")
+        x = time.strptime(time_arr[-1], "%H:%M")
         seconds += datetime.timedelta(hours=x.tm_hour,minutes=x.tm_min,seconds=x.tm_sec).total_seconds()
         args.time_limit = seconds
 
@@ -200,6 +201,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
             # copy parameters present in current version, but not in checkpoint
             for k,v in vars(args).items():
                 if k not in model_args.keys():
+                    #if k == "timestr" or k =="save_path": continue
                     model_args[k] = v
 
             # copy film architecture hyperparameters if different film-layer is given
@@ -218,6 +220,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
                 for k,v in sorted(model_args.items()):
                     print("    ",k," : ",v)
             kwargs = model_args
+            if args.no_wandb: model_args["wandb"] = False
             model = load_model(model_args["model_type"], kwargs)
             # trainer is still called with the original args not model_args but model_args should only modify architecture - do it nevertheless
     else:
@@ -854,7 +857,7 @@ if __name__ == "__main__":
         action="store",
         help="Which loss function to use",
         default="MSE",
-        choices=["MSE","CosineMSE","L2Sphere","NormalCRPS"],
+        choices=["MSE","CosineMSE","L2Sphere","NormalCRPS","L1"],
     )
     training.add_argument(
         "--loss-reduction",
@@ -957,6 +960,11 @@ if __name__ == "__main__":
         '--wandb', 
         action='store_true',
         help='use weights and biases'
+    )
+    logging_parser.add_argument(
+        '--no-wandb', 
+        action='store_true',
+        help='dont use weights and biases'
     )
     logging_parser.add_argument(
         '--wandb-resume', 
