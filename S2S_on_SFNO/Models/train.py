@@ -19,7 +19,7 @@ from S2S_on_SFNO.Models.provenance import system_monitor
 from .losses import CosineMSELoss, L2Sphere, NormalCRPS
 from S2S_on_SFNO.utils import Timer, Attributes
 
-from ..utils import LocalLog
+from ..utils import LocalLog,FinTraining
 
 import logging
 LOG = logging.getLogger('S2S_on_SFNO')
@@ -31,7 +31,6 @@ import torch.distributed as dist
 from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import  get_rank
-
 
 class Trainer():
     '''
@@ -59,7 +58,7 @@ class Trainer():
             else:
                 self.train_epoch() 
             self.post_epoch() 
-        self.finalise()
+        self.finalise("end of training epochs reached")
 
     def set_logger(self):
         if self.cfg.rank == 0:
@@ -126,6 +125,8 @@ class Trainer():
         self.mem_log("loading data")
         for i, data in enumerate(self.training_loader):
             
+            self.time_limit_stop()
+
             loss = 0
             with amp.autocast(self.cfg.enable_amp):
                 for step in range(self.cfg.multi_step_training+1):
@@ -175,6 +176,8 @@ class Trainer():
 
         self.mem_log("loading data")
         for i, data in enumerate(self.training_loader):
+
+            self.time_limit_stop()
             
             loss = 0
             # Adjust learning weights
@@ -252,10 +255,12 @@ class Trainer():
         self.epoch += 1
         self.iter = 0
         self.validation()
-        if self.cfg.rank==0:
+        if self.cfg.rank == 0:
             print("End of epoch ",self.epoch,flush=True)
             self.save_checkpoint()
             self.local_log.save("training_log_epoch{}.npy".format(self.epoch))
+        if self.cfg.ddp:
+            dist.barrier()
 
     def model_forward(self,input,data,step,return_gt=True):
         self.mem_log("forward pass")
@@ -293,7 +298,7 @@ class Trainer():
         self.create_scheduler()
         self.set_dataloader()
 
-    def finalise(self):
+    def finalise(self,msg=""):
         if not self.cfg.debug:
             if self.cfg.rank == 0:
                 self.local_log.save("training_log.npy")
@@ -301,9 +306,9 @@ class Trainer():
                 wandb.finish()
         if self.cfg.ddp:
             dist.barrier()
-            return
+            raise FinTraining(msg)
         else:
-            return 
+            raise FinTraining(msg)
         
     def ready_model(self):
         self.util.load_model(self.util.checkpoint_path)
@@ -336,7 +341,7 @@ class Trainer():
             self.scheduler.step()
             if (self.step) >= self.cfg.scheduler_horizon:
                 LOG.info("Terminating training after reaching params.max_epochs while LR scheduler is set to CosineAnnealingLR") 
-                self.finalise()
+                self.finalise("end of scheduler horizon reached")
         elif self.cfg.scheduler_type == 'CosineAnnealingWarmRestarts':
             self.scheduler.step()
         
@@ -489,8 +494,12 @@ class Trainer():
                     loss_pervar_list = [x for x in loss_pervar_list if x != []]
                     loss_value = torch.tensor(loss_list).mean(dim=1).cpu()
                     loss_value_std = torch.tensor(loss_list).std(dim=1).cpu()
-                    loss_pervar = torch.tensor(loss_pervar_list).mean(dim=1).cpu()
-                    loss_pervar_std = torch.tensor(loss_pervar_list).std(dim=1).cpu()
+                    if self.mse_all_vars:
+                        loss_pervar = torch.tensor(loss_pervar_list).mean(dim=1).cpu()
+                        loss_pervar_std = torch.tensor(loss_pervar_list).std(dim=1).cpu()
+                    else:
+                        loss_pervar = None
+                        loss_pervar_std = None
                     break
                     
 
@@ -506,7 +515,7 @@ class Trainer():
             self.scale = self.scale + 0.002 # 5e-5 #
 
         # save model and training statistics for checkpointing
-        if (self.iter+1) % (self.cfg.validation_interval*self.cfg.save_checkpoint_interval) == 0 and self.cfg.save_checkpoint_interval > 0:
+        if (self.iter) % (self.cfg.validation_interval*self.cfg.save_checkpoint_interval) == 0 and self.cfg.save_checkpoint_interval > 0:
             self.save_checkpoint()
         
         # return to training
@@ -543,16 +552,16 @@ class Trainer():
 
 
             # per variable
-            if self.cfg.advanced_logging and self.mse_all_vars and self.cfg.model_type != "mae":
-                # for i in range(loss_pervar.shape[0]):
-                    # step=i
-                for i,step in enumerate(list(range(0,self.cfg.multi_step_validation+1,1+self.cfg.validation_step_skip))):
-                    for idx_var,var_name in enumerate(self.util.ordering):
-                        val_log_local["MSE "+var_name+ " step={}".format(step)]     = loss_pervar[i][idx_var].item()
-                        val_log_local["MSE "+var_name+ " std step={}".format(step)] = loss_pervar_std[i][idx_var].item()
-                        if step % (1+self.cfg.validation_step_skip) == 0: 
-                            val_log_wandb["MSE "+var_name+ " step={}".format(step)]     = round(loss_pervar[i][idx_var].item(),5)
-            
+                if self.cfg.advanced_logging and self.mse_all_vars and self.cfg.model_type != "mae":
+                    # for i in range(loss_pervar.shape[0]):
+                        # step=i
+                    for i,step in enumerate(list(range(0,self.cfg.multi_step_validation+1,1+self.cfg.validation_step_skip))):
+                        for idx_var,var_name in enumerate(self.util.ordering):
+                            val_log_local["MSE "+var_name+ " step={}".format(step)]     = loss_pervar[i][idx_var].item()
+                            val_log_local["MSE "+var_name+ " std step={}".format(step)] = loss_pervar_std[i][idx_var].item()
+                            if step % (1+self.cfg.validation_step_skip) == 0: 
+                                val_log_wandb["MSE "+var_name+ " step={}".format(step)]     = round(loss_pervar[i][idx_var].item(),5)
+                
             # log scheduler
             if self.scheduler is not None and self.scheduler != "None": 
                 lr = self.scheduler.get_last_lr()[0]
@@ -673,6 +682,15 @@ class Trainer():
                 np.save(os.path.join( self.cfg.save_path,"beta_{}.npy".format(self.step)),beta_np)
             
             print("save done",flush=True)
+        if self.cfg.ddp:
+            dist.barrier()
+
+    def time_limit_stop(self):
+        if self.cfg.rank == 0: 
+            if self.cfg.time_limit is not None:
+                if self.time_limit - time.time()  < 15*60:
+                    print("Time limit reached, stopping training",flush=True)
+                    self.finalise("slurm time limit reached")
         if self.cfg.ddp:
             dist.barrier()
 

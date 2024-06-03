@@ -13,7 +13,7 @@ import torch
 import numpy as np
 import glob
 import re
-
+import datetime
 # to get eccodes working on Ubuntu 20.04
 # os.environ["LD_PRELOAD"] = '/usr/lib/x86_64-linux-gnu/libffi.so.7'
 # in shell : export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libffi.so.7
@@ -27,7 +27,7 @@ from S2S_on_SFNO.Models.models import available_models, load_model #########
 from S2S_on_SFNO.utils import Timer
 from S2S_on_SFNO.outputs import available_outputs
 from S2S_on_SFNO.Models.train import Trainer
-from S2S_on_SFNO.utils import Attributes
+from S2S_on_SFNO.utils import Attributes, FinTraining
 
 import torch.multiprocessing as mp
 from torch.distributed import init_process_group, destroy_process_group, get_rank, get_world_size
@@ -139,7 +139,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
         print("using film generator: gcn_custom",flush=True)
         args.film_gen_type = "gcn_custom"
     # scheduler is updated in every validation interval. To arive at the total horizon in standard iters we divide by the validation interval
-    args.scheduler_horizon = args.scheduler_horizon//(args.validation_interval*args.batch_size*(args.accummulation_steps+1))
+    args.scheduler_horizon = args.scheduler_horizon//(args.validation_interval*args.batch_size*(args.accumulation_steps+1))
 
     # Format Output path
     timestr = time.strftime("%Y%m%dT%H%M")
@@ -148,6 +148,15 @@ def main(rank=0,args={},arg_groups={},world_size=1):
         outputDirPath = os.path.join(Path(".").absolute(),"S2S_on_SFNO/outputs",args.model_type)
     else:
         outputDirPath = os.path.join(args.path,args.model_type)
+
+    if args.time_limit is not None:
+        time_arr = args.time_limit.split("-") 
+        seconds = 0.
+        if len(time_arr) == 2:
+            seconds += int(time_arr[0])*24*3600
+        x = time.strptime(args.time_limit[-1], "%H:%M")
+        seconds += datetime.timedelta(hours=x.tm_hour,minutes=x.tm_min,seconds=x.tm_sec).total_seconds()
+        args.time_limit = seconds
 
     if args.model_version == "film":
         outputDirPath = os.path.join(outputDirPath,"film-"+args.film_gen_type)
@@ -253,6 +262,8 @@ def main(rank=0,args={},arg_groups={},world_size=1):
         trainer = Trainer(model,kwargs)
         try:
             trainer.train()
+        except FinTraining as e:
+            print("Training finished due to",e)
         except :
             LOG.error(traceback.format_exc())
             print("shutting down training")
@@ -468,6 +479,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--save-data",
         action="store_true",
+    )
+
+    parser.add_argument(
+        "--time-limit",
+        action="store",
+        default=None,
+        help="time limit in slurm, to save a model before it ends",
     )
 
     # Data

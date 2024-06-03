@@ -25,6 +25,11 @@ class Timer:
         LOG.info("%s: %s.", self.title, seconds(elapsed/self.divisor))
         print("%s: %s." % (self.title, seconds(elapsed/self.divisor)))
 
+
+class FinTraining(Exception):
+    "Raised if Training is finished"
+    def __init__(self,message):
+        super().__init__(message)
     
 class Attributes():
     def __init__(self, **kwargs):

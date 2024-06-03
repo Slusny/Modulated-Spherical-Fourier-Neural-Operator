@@ -342,6 +342,9 @@ import torch
 # print(x)
 # print(x.shape)
 
+
+from S2S_on_SFNO.utils import Attributes, FinTraining
+
 def test():
     print("test")
     try:
@@ -352,7 +355,13 @@ def test():
 
 print("testing execption")
 def main():
-    with Timer("test"):
-        test()
+    print("start")
+    raise FinTraining("test")
+    print("over")
 
-main()
+try:
+    main()
+except FinTraining as e:
+    print("exep ",e)
+except:
+    print("oh no")
