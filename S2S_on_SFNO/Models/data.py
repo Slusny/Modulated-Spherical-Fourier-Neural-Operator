@@ -60,6 +60,7 @@ class ERA5_galvani(Dataset):
         self.model = model
         self.past_sst = past_sst
         self.sst = sst
+        self.sst_path = sst_path
         self.run = run
         self.multi_step = multi_step
         self.skip_step = skip_step
@@ -210,6 +211,7 @@ class SST_galvani(Dataset):
         self.temporal_step = temporal_step
         self.output_sst = sst
         self.past_sst = past_sst
+        self.sst_path = sst_path
         self.clim = clim
         self.oni = oni
         self.oni_path=oni_path

@@ -474,7 +474,7 @@ class Trainer():
                     # skip steps so no gt has to be outputed, saves ram and computation
                     if val_step % (self.cfg.validation_step_skip+1) != 0: continue
 
-                    val_loss_value = self.get_loss(output,gt) #/ self.cfg.batch_size
+                    val_loss_value = self.get_loss(output,gt) #/ self.cfg.batch_size_validation
                     loss_list[val_step].append(val_loss_value)
 
                     if self.cfg.ddp:
@@ -484,7 +484,7 @@ class Trainer():
                     # loss for each variable
                     if self.cfg.advanced_logging and self.mse_all_vars : # !! only for first multi validation step, could include next step with -> ... -> ... in print statement on same line
                         val_g_truth_era5 = self.util.normalise(val_data[val_step+1][0]).to(self.util.device)
-                        loss_per_var = loss_fn_pervar(output, val_g_truth_era5).mean(dim=(0,2,3))/ self.cfg.batch_size
+                        loss_per_var = loss_fn_pervar(output, val_g_truth_era5).mean(dim=(0,2,3))#/ self.cfg.batch_size_validation
                         if self.cfg.ddp:
                             dist.all_reduce(loss_per_var,dist.ReduceOp.SUM)
                             loss_per_var = loss_per_var / dist.get_world_size()
@@ -710,27 +710,29 @@ class Trainer():
         # self.output_data = [[]]*(self.cfg.multi_step_validation+1)
         self.output_data = [[]for _ in range(self.cfg.multi_step_validation)] # time_delta, time, variable, lat, lon
         self.time_dim = []
-        self.time_delta = [np.timedelta64(i*6, 'h') for i in range(1,self.cfg.multi_step_validation+1)]
+        self.time_delta = [np.timedelta64(i*6, 'h').astype("timedelta64[ns]") for i in range(1,self.cfg.multi_step_validation+1)]
+        to_dt64 = lambda x: np.datetime64(x).astype("datetime64[ns]")
+        to_dt   = lambda x: datetime.strptime(str(x), '%Y%m%d%H')
         with torch.no_grad():
             for i, data in enumerate(self.validation_loader):
-                with amp.autocast(self.cfg.enable_amp):
-                    for step in range(self.cfg.multi_step_validation):
-                        if step == 0 : 
-                            input = self.util.normalise(data[step][0]).to(self.util.device)
-                            data_time = datetime.strptime(str(data[0][1].item()), '%Y%m%d%H')
-                            self.time_dim.append(np.datetime64(data_time))  # ?? doesn't work with batches
-                        else: input = output
-                        # if data_time.strftime("%H") == "00":continue# [ns] ??
-                        self.mem_log("loading data")
-                        output, gt = self.model_forward(input,data,step,return_gt=False)
-                        self.output_data[step] += [*(output.cpu().numpy())]
-                        # self.output_data[step].append(output.cpu().numpy())
-                    print(str(i).rjust(6),"/",len(self.validation_loader)," -  ",data_time.strftime("%d %b %Y"),flush=True)
-                    if (i+1)%10 == 0:
-                        self.save_to_netcdf()
-                        return
-                            # logging
-            
+                # with amp.autocast(self.cfg.enable_amp):
+                for step in range(self.cfg.multi_step_validation):
+                    if step == 0 : 
+                        input = self.util.normalise(data[step][0]).to(self.util.device)
+                        data_time = list(map(to_dt,data[0][-1].tolist())) # data[0][-1][0].item()
+                        self.time_dim += list(map(to_dt64,data_time)) # ?? doesn't work with batches
+                    else: input = output
+                    # if data_time.strftime("%H") == "00":continue# [ns] ??
+                    self.mem_log("loading data")
+                    output, gt = self.model_forward(input,data,step,return_gt=False)
+                    self.output_data[step] += [*(output.cpu().numpy())]
+                    # self.output_data[step].append(output.cpu().numpy())
+                print(str(i).rjust(6),"/",len(self.validation_loader)," -  ",list(map(lambda x: x.strftime("%d %b %Y : %Hhr"), data_time)),flush=True)
+                if (i+1)%10 == 0:
+                    self.save_to_zarr()
+                    return
+                        # logging
+        
                 self.mem_log("fin",fin=True)
                 if (i+1) % 100 == 0:
                     system_monitor(printout=True,pids=[os.getpid()],names=["python"])
@@ -739,7 +741,7 @@ class Trainer():
                 self.step = self.iter*self.cfg.batch_size+len(self.dataset)*self.epoch
   
 
-    def save_to_netcdf(self):
+    def save_to_zarr(self):
         '''
         Take the output_data from a inference run and save it as a netcdf file that conforms with the weatherbench2 forcast format, with coordinates:
         latitude: float64, level: int32, longitude: float64, prediction_timedelta: timedelta64[ns], time: datetime64[ns]
@@ -793,10 +795,15 @@ class Trainer():
                 )
             )
 
-        xr.Dataset(data_vars=data_dict).to_netcdf(
-            os.path.join(self.cfg.path,'forecast_lead_time='+str(self.cfg.multi_step_validation)+
-                         'time='+self.time_dim[0].tolist().strftime("%d%b%Y")+'-'
-                         +self.time_dim[-1].tolist().strftime("%d%b%Y")+'.nc'))
+        if self.cfg.no_shuffle:
+            start_time = datetime.strptime(self.time_dim[0].astype(str)[:-3], '%Y-%m-%dT%H:%M:%S.%f').strftime("%d.%m.%Y")
+            end_time = datetime.strptime(self.time_dim[-1].astype(str)[:-3], '%Y-%m-%dT%H:%M:%S.%f').strftime("%d.%m.%Y")
+            time_str = 'time='+start_time+'-'+end_time
+        else:
+            time_str = 'time='+self.cfg.validationset_start_year+'-'+self.cfg.validationset_end_year+'-shuffled'
+        zarr_save_path = os.path.join(self.cfg.path,'forecast_lead_time='+str(self.cfg.multi_step_validation)+"_"+time_str + '.zarr')
+        print("saving zarr to ",zarr_save_path,flush=True)
+        xr.Dataset(data_vars=data_dict).to_zarr(zarr_save_path)
 
         # dataset = xr.Dataset(data_vars=data_dict,coords=dict(
         #             latitude=(["latitude"], np.arange(-90,90.25,0.25)[::-1]),

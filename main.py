@@ -147,8 +147,11 @@ def main(rank=0,args={},arg_groups={},world_size=1):
     # save_string to save output data if model.run is called (only for runs not for training)
     if args.path is None:
         outputDirPath = os.path.join(Path(".").absolute(),"S2S_on_SFNO/outputs",args.model_type)
+        if args.model_version == "film":
+            outputDirPath = os.path.join(outputDirPath,"film-"+args.film_gen_type)
     else:
-        outputDirPath = os.path.join(args.path,args.model_type)
+        outputDirPath = args.path
+    args.path  = outputDirPath
 
     if args.time_limit is not None:
         time_arr = args.time_limit.split("-") 
@@ -159,9 +162,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
         seconds += datetime.timedelta(hours=x.tm_hour,minutes=x.tm_min,seconds=x.tm_sec).total_seconds()
         args.time_limit = seconds
 
-    if args.model_version == "film":
-        outputDirPath = os.path.join(outputDirPath,"film-"+args.film_gen_type)
-    args.path  = outputDirPath
+    
     # timestring for logging and saveing purposes
     args.timestr = timestr
     if not os.path.exists(args.path):
@@ -196,11 +197,14 @@ def main(rank=0,args={},arg_groups={},world_size=1):
                     dest = next(x for x in parser._actions if x.option_strings[0] == passed_arg).dest
                     # skip Architectural changes
                     if dest in (list(vars(arg_groups["Architecture"]).keys())+list(vars(arg_groups["Architecture Film Gen"]).keys())): continue # do we want to skip Architecture as well?
+                    # modify parameters if an other is given:
+                    if dest == "batch_size":
+                        model_args["batch_size_validation"] =  vars(args)["batch_size_validation"]
                     model_args[dest] = vars(args)[dest]
 
             # set flags back to default
             for k,v in vars(args).items():
-                if k in ['timestamp','wandb','ddp','enable-amp']:
+                if k in ['train','timestamp','wandb','ddp','enable-amp']:
                     if k == 'enable-amp' and args.train: continue
                     model_args[k] = v
 
@@ -278,31 +282,31 @@ def main(rank=0,args={},arg_groups={},world_size=1):
             trainer.finalise()
 
     elif do_return_trainer:
-        trainer = Trainer(model,vars(args))
+        trainer = Trainer(model,kwargs)
         return trainer
 
     elif args.test_performance:
-        trainer = Trainer(model,vars(args))
+        trainer = Trainer(model,kwargs)
         trainer.test_performance()
         return
 
     elif args.test_dataloader_speed:
-        trainer = Trainer(model,vars(args))
+        trainer = Trainer(model,kwargs)
         trainer.test_dataloader_speed()
         return
 
     elif args.test_batch_size:
-        trainer = Trainer(model,vars(args))
+        trainer = Trainer(model,kwargs)
         trainer.test_batch_size()
         return
 
     elif args.save_data:
-        trainer = Trainer(model,vars(args))
+        trainer = Trainer(model,kwargs)
         trainer.save_data()
         return
 
     elif args.save_forecast:
-        trainer = Trainer(model,vars(args))
+        trainer = Trainer(model,kwargs)
         trainer.save_forecast()
         return
 
@@ -339,7 +343,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
         os.makedirs(os.path.join(save_path,"variable_plots"), exist_ok=True)
 
         # model.evaluate_model(checkpoint_list_shorten,save_path)
-        trainer = Trainer(model,vars(args))
+        trainer = Trainer(model,kwargs)
         trainer.evaluate_model(checkpoint_list_shorten,save_path)
 
     elif args.run:
