@@ -205,8 +205,10 @@ class SST_galvani(Dataset):
             ground_truth=False,
             precompute_temporal_average=False,
             dataset_idx_offset=29220,
+            sst=True
         ):
         self.temporal_step = temporal_step
+        self.output_sst = sst
         self.past_sst = past_sst
         self.clim = clim
         self.oni = oni
@@ -321,27 +323,27 @@ class SST_galvani(Dataset):
                 return_data.append([nino34_anom, time ])
             return return_data
 
+        data = [[]]
         if self.oni_path:
             data = [[self.dataset_oni[self.start_idx - self.dataset_idx_offset + idx][None].float()]]
         else:
-            if self.sst_path is not None:
-                sst_dataset = self.dataset_sst
-            else:
-                sst_dataset = self.dataset
-            if not self.past_sst:# default
-                input = sst_dataset.isel(time=slice(self.start_idx+idx, self.start_idx+idx + self.temporal_step))[["sea_surface_temperature"]].to_array()
-            else:
-                input = sst_dataset.isel(time=slice(self.start_idx+idx -self.temporal_step -1 , self.start_idx+idx + 1))[["sea_surface_temperature"]].to_array()
-            if self.gt: # not implemented
-                g_truth = self.dataset.isel(time=slice(self.start_idx+idx+1, self.start_idx+idx+1 + self.temporal_step))[["sea_surface_temperature"]].to_array()
-                data = [ format(input), format(g_truth)]
-            else:
-                data =  [format(input)]
-            
-            if self.oni:
-                data = sst_to_nino(data)
-
-
+            if self.output_sst:
+                if self.sst_path is not None:
+                    sst_dataset = self.dataset_sst
+                else:
+                    sst_dataset = self.dataset
+                if not self.past_sst:# default
+                    input = sst_dataset.isel(time=slice(self.start_idx+idx, self.start_idx+idx + self.temporal_step))[["sea_surface_temperature"]].to_array()
+                else:
+                    input = sst_dataset.isel(time=slice(self.start_idx+idx -self.temporal_step -1 , self.start_idx+idx + 1))[["sea_surface_temperature"]].to_array()
+                if self.gt: # not implemented
+                    g_truth = self.dataset.isel(time=slice(self.start_idx+idx+1, self.start_idx+idx+1 + self.temporal_step))[["sea_surface_temperature"]].to_array()
+                    data = [ format(input), format(g_truth)]
+                else:
+                    data =  [format(input)]
+                
+                if self.oni:
+                    data = sst_to_nino(data)
         if self.cls is not None:
                 # for d in data:
                 #     d.insert(0,(self.cls[idx]).float())

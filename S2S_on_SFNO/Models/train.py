@@ -691,17 +691,22 @@ class Trainer():
     def time_limit_stop(self):
         if self.cfg.rank == 0: 
             if self.cfg.time_limit is not None:
-                if (self.time_limit - (time()-self.start_time))  < 15*60:
+                if (self.cfg.time_limit - (time()-self.start_time))  < 15*60:
                     print("Time limit reached, stopping training",flush=True)
                     self.finalise("slurm time limit reached")
         if self.cfg.ddp:
             dist.barrier()
 
     def save_forecast(self):
+        '''
+        saves a forecast in a netcdf file, compatible with the weatherbench2 format
+        the dataloader loads the inital era5 data and all the cls tokens for the forecast periode
+        maybe if we forecast a long time, this is too much data to load at once and we would need a second dataloader for the cls tokens
+        '''
         self.ready_model()
-        self.set_dataloader(run=True)
         self.model.eval()
         self.mem_log("loading data")
+        self.set_dataloader(run=True)
         # self.output_data = [[]]*(self.cfg.multi_step_validation+1)
         self.output_data = [[]for _ in range(self.cfg.multi_step_validation)] # time_delta, time, variable, lat, lon
         self.time_dim = []

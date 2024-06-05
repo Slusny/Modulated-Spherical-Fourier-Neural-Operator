@@ -198,10 +198,15 @@ def main(rank=0,args={},arg_groups={},world_size=1):
                     if dest in (list(vars(arg_groups["Architecture"]).keys())+list(vars(arg_groups["Architecture Film Gen"]).keys())): continue # do we want to skip Architecture as well?
                     model_args[dest] = vars(args)[dest]
 
+            # set flags back to default
+            for k,v in vars(args).items():
+                if k in ['timestamp','wandb','ddp','enable-amp']:
+                    if k == 'enable-amp' and args.train: continue
+                    model_args[k] = v
+
             # copy parameters present in current version, but not in checkpoint
             for k,v in vars(args).items():
                 if k not in model_args.keys():
-                    #if k == "timestr" or k =="save_path": continue
                     model_args[k] = v
 
             # copy film architecture hyperparameters if different film-layer is given

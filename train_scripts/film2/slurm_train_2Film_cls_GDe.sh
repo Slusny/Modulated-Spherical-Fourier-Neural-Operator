@@ -5,7 +5,7 @@
 
 timelimit="03-00:00"
 
-#SBATCH --job-name=2fdDGe #21gcn
+#SBATCH --job-name=2fdGDe #21gcn
 
 #resources:
 
@@ -29,10 +29,10 @@ timelimit="03-00:00"
 # the maximum time the scripts needs to run
 # "minutes:seconds", "hours:minutes:seconds", "days-hours","days-hours:minutes" and "days-hours:minutes:seconds"
 
-#SBATCH --error=/home/goswami/gkd965/jobs/job.2filmCLS.DGe.ddp.%J.out
+#SBATCH --error=/home/goswami/gkd965/jobs/job.2filmCLS.GDe.ddp.%J.out
 # write the error output to job.*jobID*.err
 
-#SBATCH --output=/home/goswami/gkd965/jobs/job.2filmCLS.DGe.ddp.%J.out
+#SBATCH --output=/home/goswami/gkd965/jobs/job.2filmCLS.GDe.ddp.%J.out
 # write the standard output to job.*jobID*.out
 
 #SBATCH --mail-type=ALL
@@ -55,7 +55,7 @@ timelimit="03-00:00"
 singularity exec --nv --bind /mnt/qb/goswami/data/era5,/mnt/qb/work2/goswami0/gkd965,/home/scratch_local /mnt/qb/work2/goswami0/gkd965/sfno_packages8.sif /opt/conda/envs/model/bin/python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version film --film-gen mae --train --cls /mnt/qb/work2/goswami0/gkd965/checkpoints/mae/glorious-deluge-23/checkpoint_mae_latest_None_iter=0_epoch=8-cls_encoder-1979-2019.npy --advanced-logging --film-layers 2 --batch-size 1 --multi-step-training 2 --training-step-skip 4 --validation-interval 3 --validation-epochs 2 --multi-step-validation 2 --validation-step-skip 15 --save-checkpoint-interval 3 --training-workers 6  --learning-rate 0.00005 --scheduler CosineAnnealingLR --scheduler-horizon 270275 --loss-fn L2Sphere --trainingset-start-year 1979 --trainingset-end-year 2016 --validationset-start-year 2016 --validationset-end-year 2018 --training-epochs 5  --notes 'encoder cls, future sst,glorious-deluge-23' --checkpointing-decoder --enable-amp --accumulation-steps 16 --ddp --wandb --wandb-project "1film" --time-limit $timelimit --jobID $SLURM_JOB_ID 
 
 #ssh 2 Film DDP
-                                                                                                                                                                                    # python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version film --film-gen mae --train --cls /mnt/qb/work2/goswami0/gkd965/checkpoints/mae/glorious-deluge-23/checkpoint_mae_latest_None_iter=0_epoch=8-cls_encoder-1979-2019.npy --advanced-logging --film-layers 2 --batch-size 1 --multi-step-training 2 --training-step-skip 4 --validation-interval 3 --validation-epochs 2 --multi-step-validation 2 --validation-step-skip 15 --save-checkpoint-interval 3 --training-workers 6  --learning-rate 0.00005 --scheduler CosineAnnealingLR --scheduler-horizon 270275 --loss-fn L2Sphere --trainingset-start-year 1979 --trainingset-end-year 2016 --validationset-start-year 2016 --validationset-end-year 2018 --training-epochs 5  --notes 'encoder cls, future sst,glorious-deluge-23' --checkpointing-decoder --enable-amp --accumulation-steps 16 --ddp --wandb --wandb-project "1film" --time-limit $timelimit --jobID '00005' > /home/goswami/gkd965/jobs/job.2Film.DGe.ddp.00005.out 2> /home/goswami/gkd965/jobs/job.2Film.DGe.ddp.00005.out
+                                                                                                                                                                                    # python /home/goswami/gkd965/MasterML/main.py --model sfno --model-version film --film-gen mae --train --cls /mnt/qb/work2/goswami0/gkd965/checkpoints/mae/glorious-deluge-23/checkpoint_mae_latest_None_iter=0_epoch=8-cls_encoder-1979-2019.npy --advanced-logging --film-layers 2 --batch-size 1 --multi-step-training 2 --training-step-skip 4 --validation-interval 3 --validation-epochs 2 --multi-step-validation 2 --validation-step-skip 15 --save-checkpoint-interval 3 --training-workers 6  --learning-rate 0.00005 --scheduler CosineAnnealingLR --scheduler-horizon 270275 --loss-fn L2Sphere --trainingset-start-year 1979 --trainingset-end-year 2016 --validationset-start-year 2016 --validationset-end-year 2018 --training-epochs 5  --notes 'encoder cls, future sst,glorious-deluge-23' --checkpointing-decoder --enable-amp --accumulation-steps 16 --ddp --wandb --wandb-project "1film" --time-limit $timelimit --jobID '00005' > /home/goswami/gkd965/jobs/job.2Film.GDe.ddp.00005.out 2> /home/goswami/gkd965/jobs/job.2Film.GDe.ddp.00005.out
 
 # ssh
 # python /home/goswami/gkd965/MasterML/main.py --model mae --train --validation-interval 20 --save-checkpoint-interval 8 --validation-epochs 2 --training-workers 6  --learning-rate 0.0005 --advanced-logging --scheduler CosineAnnealingLR --scheduler-horizon 432442 --loss-fn NormalCRPS --trainingset-start-year 1979 --trainingset-end-year 2016 --validationset-start-year 2016 --validationset-end-year 2018 --training-epochs 8 --batch-size 64 --patch-size 7 15 30 --wandb --jobID '71530' > /home/goswami/gkd965/jobs/job.mae.71530.out 2> /home/goswami/gkd965/jobs/job.mae.71530.err
