@@ -731,6 +731,7 @@ class Trainer():
                         out_idx += 1
                     # self.output_data[step].append(output.cpu().numpy())
                 print(str(i).rjust(6),"/",len(self.validation_loader)," -  ",list(map(lambda x: x.strftime("%d %b %Y : %Hhr"), data_time)),flush=True)
+                system_monitor(printout=True,pids=[os.getpid()],names=["python"])
                 if (i+1)%10 == 0:
                     self.save_to_zarr()
                     return
