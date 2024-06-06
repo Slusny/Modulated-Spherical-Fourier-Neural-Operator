@@ -727,7 +727,7 @@ class Trainer():
                     self.mem_log("loading data")
                     output, gt = self.model_forward(input,data,step,return_gt=False)
                     if step % (self.cfg.validation_step_skip+1) == 0:
-                        self.output_data[step] += [*(output.cpu().numpy())]
+                        self.output_data[out_idx] += [*(output.cpu().numpy())]
                         out_idx += 1
                     # self.output_data[step].append(output.cpu().numpy())
                 print(str(i).rjust(6),"/",len(self.validation_loader)," -  ",list(map(lambda x: x.strftime("%d %b %Y : %Hhr"), data_time)),flush=True)
