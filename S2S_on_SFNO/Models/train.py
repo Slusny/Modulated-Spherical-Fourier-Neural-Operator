@@ -708,8 +708,8 @@ class Trainer():
         self.mem_log("loading data")
         self.set_dataloader(run=True)
         # self.output_data = [[]]*(self.cfg.multi_step_validation+1)
-        self.output_data = [[]for _ in range(self.cfg.multi_step_validation)] # time_delta, time, variable, lat, lon
-        self.time_dim = []
+        self.output_data = [[]for _ in range(0,self.cfg.multi_step_validation+1,1+self.cfg.validation_step_skip)] #range(self.cfg.multi_step_validation)] # time_delta, time, variable, lat, lon
+        self.time_dim = [] 
         self.time_delta = [np.timedelta64(i*6, 'h').astype("timedelta64[ns]") for i in range(1,self.cfg.multi_step_validation+1)]
         to_dt64 = lambda x: np.datetime64(x).astype("datetime64[ns]")
         to_dt   = lambda x: datetime.strptime(str(x), '%Y%m%d%H')
@@ -718,6 +718,7 @@ class Trainer():
                 # with amp.autocast(self.cfg.enable_amp):
                 for step in range(self.cfg.multi_step_validation):
                     if step == 0 : 
+                        out_idx = 0
                         input = self.util.normalise(data[step][0]).to(self.util.device)
                         data_time = list(map(to_dt,data[0][-1].tolist())) # data[0][-1][0].item()
                         self.time_dim += list(map(to_dt64,data_time)) # ?? doesn't work with batches
@@ -725,7 +726,9 @@ class Trainer():
                     # if data_time.strftime("%H") == "00":continue# [ns] ??
                     self.mem_log("loading data")
                     output, gt = self.model_forward(input,data,step,return_gt=False)
-                    self.output_data[step] += [*(output.cpu().numpy())]
+                    if step % (self.cfg.validation_step_skip+1) == 0:
+                        self.output_data[step] += [*(output.cpu().numpy())]
+                        out_idx += 1
                     # self.output_data[step].append(output.cpu().numpy())
                 print(str(i).rjust(6),"/",len(self.validation_loader)," -  ",list(map(lambda x: x.strftime("%d %b %Y : %Hhr"), data_time)),flush=True)
                 if (i+1)%10 == 0:
