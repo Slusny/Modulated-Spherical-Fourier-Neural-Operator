@@ -38,17 +38,25 @@ class Trainer():
     takes a initialized model class as first parameter and a dictionary of configuration
     '''
     def __init__(self, model, kwargs):
+
+        # parameters
         self.cfg = Attributes(**kwargs)
         self.util = model
         self.model = model.model
+        self.scale = 1.0
+
+        # logging
         self.mem_log_not_done = True
         self.local_logging=True
-        self.scale = 1.0
-        self.mse_all_vars = self.cfg.model_type == "sfno"
+        self.start_time = time()
         self.epoch = 0
         self.step = 0
         self.iter = 0
-        self.start_time = time()
+
+        # validation
+        self.mse_all_vars = self.cfg.model_type == "sfno"
+        self.loss_fn_pervar = torch.nn.MSELoss(reduction='none')
+        self.valid_loss_fn = torch.nn.MSELoss()
 
     def train(self):
         self.setup()
@@ -174,6 +182,8 @@ class Trainer():
     
     def train_epoch_ddp(self):
         batch_loss = 0
+        if self.cfg.rank == 0: print("Start training of epoch ",self.epoch,flush=True)
+        dist.barrier()
 
         self.mem_log("loading data")
         for i, data in enumerate(self.training_loader):
@@ -454,7 +464,6 @@ class Trainer():
             return self.loss_fn(output,gt)
     
     def validation(self):
-        loss_fn_pervar = torch.nn.MSELoss(reduction='none')
         self.model.eval()
         with torch.no_grad():
             # For loop over validation dataset, calculates the validation loss mean for number of kwargs["validation_epochs"]
@@ -474,7 +483,7 @@ class Trainer():
                     # skip steps so no gt has to be outputed, saves ram and computation
                     if val_step % (self.cfg.validation_step_skip+1) != 0: continue
 
-                    val_loss_value = self.get_loss(output,gt) #/ self.cfg.batch_size_validation
+                    val_loss_value =  self.valid_loss_fn(output,gt) #self.get_loss(output,gt) #/ self.cfg.batch_size_validation
                     loss_list[val_step].append(val_loss_value)
 
                     if self.cfg.ddp:
@@ -484,7 +493,7 @@ class Trainer():
                     # loss for each variable
                     if self.cfg.advanced_logging and self.mse_all_vars : # !! only for first multi validation step, could include next step with -> ... -> ... in print statement on same line
                         val_g_truth_era5 = self.util.normalise(val_data[val_step+1][0]).to(self.util.device)
-                        loss_per_var = loss_fn_pervar(output, val_g_truth_era5).mean(dim=(0,2,3))#/ self.cfg.batch_size_validation
+                        loss_per_var = self.loss_fn_pervar(output, val_g_truth_era5).mean(dim=(0,2,3))#/ self.cfg.batch_size_validation
                         if self.cfg.ddp:
                             dist.all_reduce(loss_per_var,dist.ReduceOp.SUM)
                             loss_per_var = loss_per_var / dist.get_world_size()
@@ -712,7 +721,7 @@ class Trainer():
         self.time_dim = [] 
         self.time_delta = [np.timedelta64(i*6, 'h').astype("timedelta64[ns]") for i in range(0,self.cfg.multi_step_validation+1,1+self.cfg.validation_step_skip)]
         self.time_delta.pop(0)
-        self.time_delta.insert(0, np.timedelta64(6, 'h').astype("timedelta64[ns"))
+        self.time_delta.insert(0, np.timedelta64(6, 'h').astype("timedelta64[ns]"))
         to_dt64 = lambda x: np.datetime64(x).astype("datetime64[ns]")
         to_dt   = lambda x: datetime.strptime(str(x), '%Y%m%d%H')
         with torch.no_grad():
@@ -806,7 +815,7 @@ class Trainer():
             end_time = datetime.strptime(self.time_dim[-1].astype(str)[:-3], '%Y-%m-%dT%H:%M:%S.%f').strftime("%d.%m.%Y")
             time_str = 'time='+start_time+'-'+end_time
         else:
-            time_str = 'time='+self.cfg.validationset_start_year+'-'+self.cfg.validationset_end_year+'-shuffled'
+            time_str = 'time='+str(self.cfg.validationset_start_year)+'-'+str(self.cfg.validationset_end_year)+'-shuffled'
         zarr_save_path = os.path.join(self.cfg.path,'forecast_lead_time='+str(self.cfg.multi_step_validation)+"_"+time_str + '.zarr')
         print("saving zarr to ",zarr_save_path,flush=True)
         xr.Dataset(data_vars=data_dict).to_zarr(zarr_save_path)
