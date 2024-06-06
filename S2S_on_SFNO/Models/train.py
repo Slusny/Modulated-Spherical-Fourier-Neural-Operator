@@ -710,7 +710,9 @@ class Trainer():
         # self.output_data = [[]]*(self.cfg.multi_step_validation+1)
         self.output_data = [[]for _ in range(0,self.cfg.multi_step_validation+1,1+self.cfg.validation_step_skip)] #range(self.cfg.multi_step_validation)] # time_delta, time, variable, lat, lon
         self.time_dim = [] 
-        self.time_delta = [np.timedelta64(i*6, 'h').astype("timedelta64[ns]") for i in range(1,self.cfg.multi_step_validation+1)]
+        self.time_delta = [np.timedelta64(i*6, 'h').astype("timedelta64[ns]") for i in range(0,self.cfg.multi_step_validation+1,1+self.cfg.validation_step_skip)]
+        self.time_delta.pop(0)
+        self.time_delta.insert(0, np.timedelta64(6, 'h').astype("timedelta64[ns"))
         to_dt64 = lambda x: np.datetime64(x).astype("datetime64[ns]")
         to_dt   = lambda x: datetime.strptime(str(x), '%Y%m%d%H')
         with torch.no_grad():
@@ -726,7 +728,7 @@ class Trainer():
                     # if data_time.strftime("%H") == "00":continue# [ns] ??
                     self.mem_log("loading data")
                     output, gt = self.model_forward(input,data,step,return_gt=False)
-                    if step % (self.cfg.validation_step_skip+1) == 0:
+                    if (step+1) % (self.cfg.validation_step_skip+1) == 0 or step == 0:
                         self.output_data[out_idx] += [*(output.cpu().numpy())]
                         out_idx += 1
                     # self.output_data[step].append(output.cpu().numpy())
