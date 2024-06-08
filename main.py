@@ -204,8 +204,8 @@ def main(rank=0,args={},arg_groups={},world_size=1):
 
             # set flags back to default
             for k,v in vars(args).items():
-                if k in ['train','timestamp','wandb','ddp','enable-amp']:
-                    if k == 'enable-amp' and args.train: continue
+                if k in ['train','timestamp','wandb','ddp','enable_amp','time_limit','debug']:
+                    if k == 'enable_amp' and args.train: continue
                     model_args[k] = v
 
             # copy parameters present in current version, but not in checkpoint
@@ -245,10 +245,10 @@ def main(rank=0,args={},arg_groups={},world_size=1):
                         kwargs[k] = v
             del film_cp
 
-        if rank == 0:
-            print("\nScript updated with Checkpoint parameters:")
-            for k,v in kwargs.items():
-                 print("    ",k," : ",v)
+            if rank == 0:
+                print("\nScript updated with Checkpoint parameters:")
+                for k,v in sorted(kwargs.items()):
+                    print("    ",k," : ",v)
         model = load_model(args.model_type, kwargs)
 
     if args.fields:
@@ -268,7 +268,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
 
         print("")
         print("Started training ")
-        LOG.info("Process ID: %s", os.getpid())
+        LOG.info("Process (rank="+str(rank)+") ID: %s", os.getpid())
 
 
         trainer = Trainer(model,kwargs)

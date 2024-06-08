@@ -84,7 +84,7 @@ class Trainer():
                     wandb_dir = "/mnt/qb/work2/goswami0/gkd965/wandb"
                 else:
                     wandb_dir = "./wandb"
-                if self.cfg.wandb_project is None:
+                if self.cfg.wandb_project is not None:
                     project_name = self.cfg.wandb_project
                 else:
                     project_name = self.cfg.model_type + " - " +self.cfg.model_version
@@ -188,11 +188,16 @@ class Trainer():
         self.mem_log("loading data")
         for i, data in enumerate(self.training_loader):
 
+            if self.cfg.rank == 0: print("in loader ",i,flush=True)
+            dist.barrier()
+
             self.time_limit_stop()
             
             loss = 0
             # Adjust learning weights
             if ((i + 1) % (self.cfg.accumulation_steps + 1) == 0) or ((i + 1) == (len(self.training_loader)-2)):
+                if self.cfg.rank == 0: print("updateing params ",flush=True)
+                dist.barrier()
                 # train again but sync
                 with amp.autocast(self.cfg.enable_amp):
                     for step in range(self.cfg.multi_step_training+1):
@@ -207,6 +212,9 @@ class Trainer():
                     # only for logging the loss for the batch
                     batch_loss += loss.item()
                 
+                if self.cfg.rank == 0: print("before gscaler backward ",flush=True)
+                dist.barrier()
+
                 #backward
                 self.mem_log("backward pass",fin=True)
                 if self.cfg.enable_amp:
@@ -214,6 +222,9 @@ class Trainer():
                 else:
                     loss.backward()
                 
+                if self.cfg.rank == 0: print("before gscaler update ",flush=True)
+                dist.barrier()
+
                 # Update Optimizer
                 if self.cfg.enable_amp:
                     self.gscaler.step(self.optimizer)
@@ -222,10 +233,16 @@ class Trainer():
                     self.optimizer.step()
                 self.model.zero_grad()
 
+                if self.cfg.rank == 0: print("before validation ",flush=True)
+                dist.barrier()
+
                 self.iter += 1
                 # validation
                 if self.cfg.validation_interval > 0 and (self.iter) % (self.cfg.validation_interval)  == 0:
                     self.validation()
+
+                if self.cfg.rank == 0: print("fin update params ",flush=True)
+                dist.barrier()
 
                 # logging
                 self.step = self.iter*self.cfg.batch_size*(self.cfg.accumulation_steps+1)*self.cfg.world_size+len(self.dataset)*self.epoch
@@ -444,8 +461,8 @@ class Trainer():
             )
         shuffle= not self.cfg.no_shuffle
         if self.cfg.ddp:
-            self.training_loader = DataLoader(self.dataset,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size,shuffle=False,pin_memory=True,sampler=DistributedSampler(self.dataset,shuffle=shuffle))
-            self.validation_loader = DataLoader(self.dataset_validation,num_workers=0, batch_size=self.cfg.batch_size_validation,shuffle=False,pin_memory=True,sampler=DistributedSampler(self.dataset_validation,shuffle=shuffle))
+            self.training_loader = DataLoader(self.dataset,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size,shuffle=False,pin_memory=False,sampler=DistributedSampler(self.dataset,shuffle=shuffle))           # pin_memory=False True, aaaah doens't add the 9GB on GPU, somehow workers add GPU memory, expecally if over system limit?
+            self.validation_loader = DataLoader(self.dataset_validation,num_workers=0, batch_size=self.cfg.batch_size_validation,shuffle=False,pin_memory=False,sampler=DistributedSampler(self.dataset_validation,shuffle=shuffle))
 
         else:
             self.training_loader = DataLoader(self.dataset,shuffle=shuffle,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
@@ -818,7 +835,7 @@ class Trainer():
             time_str = 'time='+str(self.cfg.validationset_start_year)+'-'+str(self.cfg.validationset_end_year)+'-shuffled'
         zarr_save_path = os.path.join(self.cfg.path,'forecast_lead_time='+str(self.cfg.multi_step_validation)+"_"+time_str + '.zarr')
         print("saving zarr to ",zarr_save_path,flush=True)
-        xr.Dataset(data_vars=data_dict).to_zarr(zarr_save_path)
+        xr.Dataset(data_vars=data_dict).chunk({'time': 1}).to_zarr(zarr_save_path)
 
         # dataset = xr.Dataset(data_vars=data_dict,coords=dict(
         #             latitude=(["latitude"], np.arange(-90,90.25,0.25)[::-1]),

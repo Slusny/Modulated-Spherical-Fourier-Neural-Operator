@@ -6,7 +6,8 @@ from weatherbench2 import config
 from weatherbench2.metrics import MSE, ACC, Bias
 from weatherbench2.evaluation import evaluate_in_memory, evaluate_with_beam
 
-forecast_path = '/mnt/qb/work2/goswami0/gkd965/checkpoints/solar-spaceship-111-sID{0005}/forecast_lead_time=84_time=2016-2018-shuffled.zarr'
+# forecast_path = '/mnt/qb/work2/goswami0/gkd965/checkpoints/solar-spaceship-111-sID{0005}/forecast_lead_time=84_time=2016-2018-shuffled.zarr'
+forecast_path = '/mnt/qb/work2/goswami0/gkd965/checkpoints/solar-spaceship-111-sID{0005}/forecast_lead_time=7_time=01.01.2016-08.01.2016.zarr'
 obs_path = '/mnt/qb/goswami/data/era5/weatherbench2/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr'
 climatology_path = '/mnt/qb/goswami/data/era5/weatherbench2/1990-2019_6h_1440x721.zarr'
 
@@ -40,10 +41,12 @@ eval_configs = {
   )
 }
 
-evaluate_with_beam(
-    data_config,
-    eval_configs,
-    runner='DirectRunner',
-    num_threads=5,
-    input_chunks={'time': 20},
-)
+# evaluate_with_beam(
+#     data_config,
+#     eval_configs,
+#     runner='DirectRunner',
+#     num_threads=5,
+#     input_chunks={'time': 1},
+# )
+
+evaluate_in_memory(data_config, eval_configs)
