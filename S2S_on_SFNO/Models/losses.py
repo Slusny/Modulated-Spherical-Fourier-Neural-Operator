@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch_harmonics as harmonics
 import numpy as np
 
-class CosineMSELoss():
+class CosineMSELoss(torch.nn.Module):
     def __init__(self, reduction=None):
         super().__init__()
         self._mse = torch.nn.MSELoss(reduction='none')
