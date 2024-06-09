@@ -64,7 +64,7 @@ param_sfc_ERA5 = ["10m_u_component_of_wind", "10m_v_component_of_wind", "2m_temp
 ds = ds[param_sfc_ERA5]
 
 target_chunks = {"time": 1}
-max_mem = "200GB"
+max_mem = "300GB"
 
 print("started rechunking",flush=True)
 target_store = os.path.join(save_path,era5_new)
