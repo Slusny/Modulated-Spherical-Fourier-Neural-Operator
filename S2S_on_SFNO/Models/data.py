@@ -39,6 +39,8 @@ class ERA5_galvani(Dataset):
             
             u100_path = "/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/u100m_1959-2022_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr",
             v100_path = "/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/v100m_1959-2023-10_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr",
+            
+            sst_path = None,
 
             start_year=2000,
             end_year=2022,
@@ -52,16 +54,20 @@ class ERA5_galvani(Dataset):
             multi_step=0,
             skip_step=0,
             run=False,
+            dataset_idx_offset=29220,
+
         ):
         self.model = model
         self.past_sst = past_sst
         self.sst = sst
+        self.sst_path = sst_path
         self.run = run
         self.multi_step = multi_step
         self.skip_step = skip_step
         self.coarse_level = coarse_level
         self.uv100 = uv100
         self.temporal_step = temporal_step
+        self.dataset_idx_offset = dataset_idx_offset
         if path.endswith(".zarr"):  self.dataset = xr.open_zarr(path,chunks=None)
         else:                       self.dataset = xr.open_dataset(path,chunks=None)
         if self.uv100:
@@ -76,7 +82,8 @@ class ERA5_galvani(Dataset):
             else:                           self.dataset_u100 = xr.open_mfdataset(u100_path,chunks=None) # sd: 1959-01-01, end date : 2022-12-30T18
             if v100_path.endswith(".zarr"): self.dataset_v100 = xr.open_zarr(v100_path,chunks=None)
             else:                           self.dataset_v100 = xr.open_mfdataset(v100_path,chunks=None) # sd: 1959-01-01 end date: 2023-10-31
-
+        if sst_path is not None:
+            self.dataset_sst = xr.open_zarr(sst_path,chunks=None)
         if cls:
             self.cls = torch.from_numpy(np.load(cls))
         else:
@@ -116,6 +123,7 @@ class ERA5_galvani(Dataset):
         print("")
 
     def __len__(self):
+        return 27
         return self.end_idx - self.start_idx
     
     def __getitem__(self, idx):
@@ -148,13 +156,18 @@ class ERA5_galvani(Dataset):
             return [data.float(),time]
         
         def get_sst(idx):
+            if self.sst_path is not None:
+                sst_dataset = self.dataset_sst
+            else:
+                sst_dataset = self.dataset
             # temporal step 0 for normal sst output
             if not self.past_sst:
-                sst = self.dataset.isel(time=slice(self.start_idx+idx, self.start_idx+idx + self.temporal_step + self.multi_step+1))[["sea_surface_temperature"]].to_array()
+                sst = sst_dataset.isel(time=slice(self.start_idx+idx, self.start_idx+idx + self.temporal_step + self.multi_step+1))[["sea_surface_temperature"]].to_array()
             else:# default
-                sst = self.dataset.isel(time=slice(self.start_idx+idx -self.temporal_step -1 , self.start_idx+idx +self.multi_step+2))[["sea_surface_temperature"]].to_array()
+                sst = sst_dataset.isel(time=slice(self.start_idx+idx -self.temporal_step -1 , self.start_idx+idx +self.multi_step+2))[["sea_surface_temperature"]].to_array()
             
-            sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean().to_numpy()
+            if self.sst_path is None:
+                sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean().to_numpy()
             return torch.from_numpy(sst)
 
         if self.sst:
@@ -170,7 +183,7 @@ class ERA5_galvani(Dataset):
             if self.sst:
                 era5.insert(1,(sst[i:i+self.temporal_step]).float())
             elif self.cls is not None:
-                era5.insert(1,(self.cls[idx+i]).float())
+                era5.insert(1,(self.cls[self.start_idx - self.dataset_idx_offset + idx+i]).float())
             data.append(era5)
 
         return data
@@ -180,6 +193,7 @@ class SST_galvani(Dataset):
             self, 
             path = "/mnt/qb/goswami/data/era5/weatherbench2/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr", # start date: 1959-01-01 end date : 2023-01-10T18:00
             path_clim = "/mnt/qb/goswami/data/era5/weatherbench2/1990-2019_6h_1440x721.zarr",
+            sst_path = None,
             start_year=2000,
             end_year=2022,
             steps_per_day=4,
@@ -193,9 +207,12 @@ class SST_galvani(Dataset):
             ground_truth=False,
             precompute_temporal_average=False,
             dataset_idx_offset=29220,
+            sst=True
         ):
         self.temporal_step = temporal_step
+        self.output_sst = sst
         self.past_sst = past_sst
+        self.sst_path = sst_path
         self.clim = clim
         self.oni = oni
         self.oni_path=oni_path
@@ -212,6 +229,9 @@ class SST_galvani(Dataset):
             if path_clim.endswith(".zarr"):  self.dataset_clim = xr.open_zarr(path_clim,chunks=None)
             else:                            self.dataset_clim = xr.open_dataset(path_clim,chunks=None)
         
+        if sst_path is not None:
+            self.dataset_sst = xr.open_zarr(sst_path,chunks=None)
+
         self.nino35 = {"latitude":slice(5, -5), "longitude":slice(190, 240)}
 
         if cls:
@@ -306,24 +326,27 @@ class SST_galvani(Dataset):
                 return_data.append([nino34_anom, time ])
             return return_data
 
+        data = [[]]
         if self.oni_path:
-            data = [[self.dataset_oni[self.start_idx - self.dataset_idx_offset + idx].float()]]
+            data = [[self.dataset_oni[self.start_idx - self.dataset_idx_offset + idx][None].float()]]
         else:
-            if not self.past_sst:# default
-                input = self.dataset.isel(time=slice(self.start_idx+idx, self.start_idx+idx + self.temporal_step))
-            else:
-                input = self.dataset.isel(time=slice(self.start_idx+idx -self.temporal_step -1 , self.start_idx+idx + 1))
-            input = input[["sea_surface_temperature"]].to_array()
-            if self.gt: # not implemented
-                g_truth = self.dataset.isel(time=slice(self.start_idx+idx+1, self.start_idx+idx+1 + self.temporal_step))[["sea_surface_temperature"]].to_array()
-                data = [ format(input), format(g_truth)]
-            else:
-                data =  [format(input)]
-            
-            if self.oni:
-                data = sst_to_nino(data)
-
-
+            if self.output_sst:
+                if self.sst_path is not None:
+                    sst_dataset = self.dataset_sst
+                else:
+                    sst_dataset = self.dataset
+                if not self.past_sst:# default
+                    input = sst_dataset.isel(time=slice(self.start_idx+idx, self.start_idx+idx + self.temporal_step))[["sea_surface_temperature"]].to_array()
+                else:
+                    input = sst_dataset.isel(time=slice(self.start_idx+idx -self.temporal_step -1 , self.start_idx+idx + 1))[["sea_surface_temperature"]].to_array()
+                if self.gt: # not implemented
+                    g_truth = self.dataset.isel(time=slice(self.start_idx+idx+1, self.start_idx+idx+1 + self.temporal_step))[["sea_surface_temperature"]].to_array()
+                    data = [ format(input), format(g_truth)]
+                else:
+                    data =  [format(input)]
+                
+                if self.oni:
+                    data = sst_to_nino(data)
         if self.cls is not None:
                 # for d in data:
                 #     d.insert(0,(self.cls[idx]).float())

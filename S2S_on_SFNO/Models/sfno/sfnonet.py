@@ -904,7 +904,7 @@ class Film_wrapper(nn.Module):
                 x = self.film_head(sst)
         else:
             x = self.film_gen(sst)
-        return x.reshape(self.cfg.batch_size,2,self.cfg.film_layers,self.num_film_features)
+        return x.reshape(sst.shape[0],2,self.cfg.film_layers,self.num_film_features)
 
 
 class FeedForward(nn.Module):

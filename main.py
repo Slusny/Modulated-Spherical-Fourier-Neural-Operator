@@ -13,7 +13,8 @@ import torch
 import numpy as np
 import glob
 import re
-
+import datetime
+import math
 # to get eccodes working on Ubuntu 20.04
 # os.environ["LD_PRELOAD"] = '/usr/lib/x86_64-linux-gnu/libffi.so.7'
 # in shell : export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libffi.so.7
@@ -27,7 +28,7 @@ from S2S_on_SFNO.Models.models import available_models, load_model #########
 from S2S_on_SFNO.utils import Timer
 from S2S_on_SFNO.outputs import available_outputs
 from S2S_on_SFNO.Models.train import Trainer
-from S2S_on_SFNO.utils import Attributes
+from S2S_on_SFNO.utils import Attributes, FinTraining
 
 import torch.multiprocessing as mp
 from torch.distributed import init_process_group, destroy_process_group, get_rank, get_world_size
@@ -139,19 +140,29 @@ def main(rank=0,args={},arg_groups={},world_size=1):
         print("using film generator: gcn_custom",flush=True)
         args.film_gen_type = "gcn_custom"
     # scheduler is updated in every validation interval. To arive at the total horizon in standard iters we divide by the validation interval
-    args.scheduler_horizon = args.scheduler_horizon//args.validation_interval//args.batch_size
+    args.scheduler_horizon = math.floor(args.scheduler_horizon/(abs(args.validation_interval)*args.batch_size*(args.accumulation_steps+1)))
 
     # Format Output path
     timestr = time.strftime("%Y%m%dT%H%M")
     # save_string to save output data if model.run is called (only for runs not for training)
     if args.path is None:
         outputDirPath = os.path.join(Path(".").absolute(),"S2S_on_SFNO/outputs",args.model_type)
+        if args.model_version == "film":
+            outputDirPath = os.path.join(outputDirPath,"film-"+args.film_gen_type)
     else:
-        outputDirPath = os.path.join(args.path,args.model_type)
-
-    if args.model_version == "film":
-        outputDirPath = os.path.join(outputDirPath,"film-"+args.film_gen_type)
+        outputDirPath = args.path
     args.path  = outputDirPath
+
+    if args.time_limit is not None:
+        time_arr = args.time_limit.split("-") 
+        seconds = 0.
+        if len(time_arr) == 2:
+            seconds += int(time_arr[0])*24*3600
+        x = time.strptime(time_arr[-1], "%H:%M")
+        seconds += datetime.timedelta(hours=x.tm_hour,minutes=x.tm_min,seconds=x.tm_sec).total_seconds()
+        args.time_limit = seconds
+
+    
     # timestring for logging and saveing purposes
     args.timestr = timestr
     if not os.path.exists(args.path):
@@ -186,7 +197,16 @@ def main(rank=0,args={},arg_groups={},world_size=1):
                     dest = next(x for x in parser._actions if x.option_strings[0] == passed_arg).dest
                     # skip Architectural changes
                     if dest in (list(vars(arg_groups["Architecture"]).keys())+list(vars(arg_groups["Architecture Film Gen"]).keys())): continue # do we want to skip Architecture as well?
+                    # modify parameters if an other is given:
+                    if dest == "batch_size":
+                        model_args["batch_size_validation"] =  vars(args)["batch_size_validation"]
                     model_args[dest] = vars(args)[dest]
+
+            # set flags back to default
+            for k,v in vars(args).items():
+                if k in ['train','timestamp','wandb','ddp','enable_amp','time_limit','debug']:
+                    if k == 'enable_amp' and args.train: continue
+                    model_args[k] = v
 
             # copy parameters present in current version, but not in checkpoint
             for k,v in vars(args).items():
@@ -209,6 +229,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
                 for k,v in sorted(model_args.items()):
                     print("    ",k," : ",v)
             kwargs = model_args
+            if args.no_wandb: model_args["wandb"] = False
             model = load_model(model_args["model_type"], kwargs)
             # trainer is still called with the original args not model_args but model_args should only modify architecture - do it nevertheless
     else:
@@ -224,69 +245,70 @@ def main(rank=0,args={},arg_groups={},world_size=1):
                         kwargs[k] = v
             del film_cp
 
-        if rank == 0:
-            print("\nScript updated with Checkpoint parameters:")
-            for k,v in kwargs.items():
-                 print("    ",k," : ",v)
+            if rank == 0:
+                print("\nScript updated with Checkpoint parameters:")
+                for k,v in sorted(kwargs.items()):
+                    print("    ",k," : ",v)
         model = load_model(args.model_type, kwargs)
 
     if args.fields:
         model.print_fields()
-        sys.exit(0)
+        return
 
     # This logic is a bit convoluted, but it is for backwards compatibility.
     if args.retrieve_requests or (args.requests_extra and not args.archive_requests):
         model.print_requests()
-        sys.exit(0)
+        return
 
     if args.assets_list:
         model.print_assets_list()
-        sys.exit(0)
+        return
 
     elif args.train:
 
         print("")
         print("Started training ")
-        LOG.info("Process ID: %s", os.getpid())
+        LOG.info("Process (rank="+str(rank)+") ID: %s", os.getpid())
 
 
         trainer = Trainer(model,kwargs)
         try:
             trainer.train()
+        except FinTraining as e:
+            print("Training finished due to",e)
         except :
             LOG.error(traceback.format_exc())
             print("shutting down training")
             trainer.finalise()
-            sys.exit(0)
 
     elif do_return_trainer:
-        trainer = Trainer(model,vars(args))
+        trainer = Trainer(model,kwargs)
         return trainer
 
     elif args.test_performance:
-        trainer = Trainer(model,vars(args))
+        trainer = Trainer(model,kwargs)
         trainer.test_performance()
-        sys.exit(0)
+        return
 
     elif args.test_dataloader_speed:
-        trainer = Trainer(model,vars(args))
+        trainer = Trainer(model,kwargs)
         trainer.test_dataloader_speed()
-        sys.exit(0)
+        return
 
     elif args.test_batch_size:
-        trainer = Trainer(model,vars(args))
+        trainer = Trainer(model,kwargs)
         trainer.test_batch_size()
-        sys.exit(0)
+        return
 
     elif args.save_data:
-        trainer = Trainer(model,vars(args))
+        trainer = Trainer(model,kwargs)
         trainer.save_data()
-        sys.exit(0)
+        return
 
     elif args.save_forecast:
-        trainer = Trainer(model,vars(args))
+        trainer = Trainer(model,kwargs)
         trainer.save_forecast()
-        sys.exit(0)
+        return
 
     elif args.eval_model:
         print("evaluating models")
@@ -321,7 +343,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
         os.makedirs(os.path.join(save_path,"variable_plots"), exist_ok=True)
 
         # model.evaluate_model(checkpoint_list_shorten,save_path)
-        trainer = Trainer(model,vars(args))
+        trainer = Trainer(model,kwargs)
         trainer.evaluate_model(checkpoint_list_shorten,save_path)
 
     elif args.run:
@@ -342,7 +364,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
             )
             if kwargs["model_type"] == "mae":
                 model.save_cls()
-            sys.exit(1)
+                return
     else:
         print("No action specified (--train or --run). Exiting.")
     model.finalise()
@@ -469,6 +491,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--save-data",
         action="store_true",
+    )
+
+    parser.add_argument(
+        "--time-limit",
+        action="store",
+        default=None,
+        help="time limit in slurm, to save a model before it ends",
     )
 
     # Data
@@ -837,7 +866,7 @@ if __name__ == "__main__":
         action="store",
         help="Which loss function to use",
         default="MSE",
-        choices=["MSE","CosineMSE","L2Sphere","NormalCRPS"],
+        choices=["MSE","CosineMSE","L2Sphere","NormalCRPS","L1"],
     )
     training.add_argument(
         "--loss-reduction",
@@ -942,7 +971,12 @@ if __name__ == "__main__":
         help='use weights and biases'
     )
     logging_parser.add_argument(
-        '--wandb_resume', 
+        '--no-wandb', 
+        action='store_true',
+        help='dont use weights and biases'
+    )
+    logging_parser.add_argument(
+        '--wandb-resume', 
         action='store', 
         default=None,             
         type=str, 
@@ -955,6 +989,13 @@ if __name__ == "__main__":
         type=str, 
         help='notes for wandb')
 
+    logging_parser.add_argument(
+        '--wandb-project', 
+        action='store', 
+        default=None,             
+        type=str, 
+        help='which project to log to. if none given defaults to {model}-{model-version}')
+    
     logging_parser.add_argument(
         '--tags', 
         action='store', 

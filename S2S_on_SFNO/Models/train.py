@@ -19,7 +19,7 @@ from S2S_on_SFNO.Models.provenance import system_monitor
 from .losses import CosineMSELoss, L2Sphere, NormalCRPS
 from S2S_on_SFNO.utils import Timer, Attributes
 
-from ..utils import LocalLog
+from ..utils import LocalLog,FinTraining
 
 import logging
 LOG = logging.getLogger('S2S_on_SFNO')
@@ -32,23 +32,31 @@ from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import  get_rank
 
-
 class Trainer():
     '''
     Trainer class for the models
     takes a initialized model class as first parameter and a dictionary of configuration
     '''
     def __init__(self, model, kwargs):
+
+        # parameters
         self.cfg = Attributes(**kwargs)
         self.util = model
         self.model = model.model
+        self.scale = 1.0
+
+        # logging
         self.mem_log_not_done = True
         self.local_logging=True
-        self.scale = 1.0
-        self.mse_all_vars = self.cfg.model_type == "sfno"
+        self.start_time = time()
         self.epoch = 0
         self.step = 0
         self.iter = 0
+
+        # validation
+        self.mse_all_vars = self.cfg.model_type == "sfno"
+        self.loss_fn_pervar = torch.nn.MSELoss(reduction='none')
+        self.valid_loss_fn = torch.nn.MSELoss()
 
     def train(self):
         self.setup()
@@ -59,7 +67,7 @@ class Trainer():
             else:
                 self.train_epoch() 
             self.post_epoch() 
-        self.finalise()
+        self.finalise("end of training epochs reached")
 
     def set_logger(self):
         if self.cfg.rank == 0:
@@ -76,8 +84,12 @@ class Trainer():
                     wandb_dir = "/mnt/qb/work2/goswami0/gkd965/wandb"
                 else:
                     wandb_dir = "./wandb"
+                if self.cfg.wandb_project is not None:
+                    project_name = self.cfg.wandb_project
+                else:
+                    project_name = self.cfg.model_type + " - " +self.cfg.model_version
                 if self.cfg.wandb_resume is not None :
-                    wandb_run = wandb.init(project=self.cfg.model_type + " - " +self.cfg.model_version, 
+                    wandb_run = wandb.init(project=project_name, 
                         config=self.cfg.__dict__,
                         notes=self.cfg.notes,
                         tags=self.cfg.tags,
@@ -86,7 +98,7 @@ class Trainer():
                         dir=wandb_dir,
                         )
                 else:
-                    wandb_run = wandb.init(project=self.cfg.model_type + " - " +self.cfg.model_version, 
+                    wandb_run = wandb.init(project=project_name, 
                         config=self.cfg.__dict__,
                         notes=self.cfg.notes,
                         tags=self.cfg.tags,
@@ -105,7 +117,7 @@ class Trainer():
                 file_name = self.cfg.model_type+"_"+self.cfg.model_version+film_gen_str+"_"+self.cfg.timestr
                 if self.cfg.jobID is not None:  file_name = file_name+"-{sID"+self.cfg.jobID+"}"
                 new_save_path = os.path.join(self.cfg.save_path,file_name)
-                os.mkdir(new_save_path)
+                if not os.path.exists(new_save_path): os.mkdir(new_save_path)
                 self.cfg.save_path = new_save_path
                 print("    no wandb",flush=True)
             print("    Save path: %s", self.cfg.save_path,flush=True)
@@ -122,6 +134,8 @@ class Trainer():
         self.mem_log("loading data")
         for i, data in enumerate(self.training_loader):
             
+            self.time_limit_stop()
+
             loss = 0
             with amp.autocast(self.cfg.enable_amp):
                 for step in range(self.cfg.multi_step_training+1):
@@ -130,7 +144,7 @@ class Trainer():
                     output, gt = self.model_forward(input,data,step,return_gt= step % (self.cfg.training_step_skip+1)==0)
                     
                     if step % (self.cfg.training_step_skip+1) == 0:
-                        loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1)/self.cfg.batch_size *self.cfg.discount_factor**step
+                        loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1) *self.cfg.discount_factor**step #/self.cfg.batch_size
                     
                 loss = loss / (self.cfg.accumulation_steps+1)
                 # only for logging the loss for the batch
@@ -168,13 +182,22 @@ class Trainer():
     
     def train_epoch_ddp(self):
         batch_loss = 0
+        if self.cfg.rank == 0: print("Start training of epoch ",self.epoch,flush=True)
+        dist.barrier()
 
         self.mem_log("loading data")
         for i, data in enumerate(self.training_loader):
+
+            if self.cfg.rank == 0: print("in loader ",i,flush=True)
+            dist.barrier()
+
+            self.time_limit_stop()
             
             loss = 0
             # Adjust learning weights
             if ((i + 1) % (self.cfg.accumulation_steps + 1) == 0) or ((i + 1) == (len(self.training_loader)-2)):
+                if self.cfg.rank == 0: print("updateing params ",flush=True)
+                dist.barrier()
                 # train again but sync
                 with amp.autocast(self.cfg.enable_amp):
                     for step in range(self.cfg.multi_step_training+1):
@@ -183,12 +206,15 @@ class Trainer():
                         output, gt = self.model_forward(input,data,step,return_gt= step % (self.cfg.training_step_skip+1)==0)
                         
                         if step % (self.cfg.training_step_skip+1) == 0:
-                            loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1)/self.cfg.batch_size *self.cfg.discount_factor**step
+                            loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1) *self.cfg.discount_factor**step #/self.cfg.batch_size
                         
                     loss = loss / (self.cfg.accumulation_steps+1)
                     # only for logging the loss for the batch
                     batch_loss += loss.item()
                 
+                if self.cfg.rank == 0: print("before gscaler backward ",flush=True)
+                dist.barrier()
+
                 #backward
                 self.mem_log("backward pass",fin=True)
                 if self.cfg.enable_amp:
@@ -196,6 +222,9 @@ class Trainer():
                 else:
                     loss.backward()
                 
+                if self.cfg.rank == 0: print("before gscaler update ",flush=True)
+                dist.barrier()
+
                 # Update Optimizer
                 if self.cfg.enable_amp:
                     self.gscaler.step(self.optimizer)
@@ -204,10 +233,16 @@ class Trainer():
                     self.optimizer.step()
                 self.model.zero_grad()
 
+                if self.cfg.rank == 0: print("before validation ",flush=True)
+                dist.barrier()
+
                 self.iter += 1
                 # validation
                 if self.cfg.validation_interval > 0 and (self.iter) % (self.cfg.validation_interval)  == 0:
                     self.validation()
+
+                if self.cfg.rank == 0: print("fin update params ",flush=True)
+                dist.barrier()
 
                 # logging
                 self.step = self.iter*self.cfg.batch_size*(self.cfg.accumulation_steps+1)*self.cfg.world_size+len(self.dataset)*self.epoch
@@ -222,7 +257,7 @@ class Trainer():
                             output, gt = self.model_forward(input,data,step,return_gt= step % (self.cfg.training_step_skip+1)==0)
                             
                             if step % (self.cfg.training_step_skip+1) == 0:
-                                loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1)/self.cfg.batch_size *self.cfg.discount_factor**step
+                                loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1) *self.cfg.discount_factor**step #/self.cfg.batch_size
                             
                         loss = loss / (self.cfg.accumulation_steps+1)
                         # only for logging the loss for the batch
@@ -247,10 +282,13 @@ class Trainer():
     def post_epoch(self):
         self.epoch += 1
         self.iter = 0
-        if self.cfg.rank==0:print("End of epoch ",self.epoch,flush=True)
         self.validation()
-        self.save_checkpoint()
-        self.local_log.save("training_log_epoch{}.npy".format(self.epoch))
+        if self.cfg.rank == 0:
+            print("End of epoch ",self.epoch,flush=True)
+            self.save_checkpoint()
+            self.local_log.save("training_log_epoch{}.npy".format(self.epoch))
+        if self.cfg.ddp:
+            dist.barrier()
 
     def model_forward(self,input,data,step,return_gt=True):
         self.mem_log("forward pass")
@@ -288,7 +326,7 @@ class Trainer():
         self.create_scheduler()
         self.set_dataloader()
 
-    def finalise(self):
+    def finalise(self,msg=""):
         if not self.cfg.debug:
             if self.cfg.rank == 0:
                 self.local_log.save("training_log.npy")
@@ -296,11 +334,10 @@ class Trainer():
                 wandb.finish()
         if self.cfg.ddp:
             dist.barrier()
-            # sys.exit(0)
+            raise FinTraining(msg)
         else:
-            pass
-            # sys.exit(0)
-
+            raise FinTraining(msg)
+        
     def ready_model(self):
         self.util.load_model(self.util.checkpoint_path)
         self.model.train()
@@ -330,9 +367,9 @@ class Trainer():
             self.scheduler.step(valid_mean)
         elif self.cfg.scheduler_type == 'CosineAnnealingLR':
             self.scheduler.step()
-            if (self.step) >= self.cfg.scheduler_horizon:
+            if (self.step/(self.cfg.validation_interval*self.cfg.batch_size*(self.cfg.accumulation_steps+1))) >= self.cfg.scheduler_horizon:
                 LOG.info("Terminating training after reaching params.max_epochs while LR scheduler is set to CosineAnnealingLR") 
-                self.finalise()
+                self.finalise("end of scheduler horizon reached")
         elif self.cfg.scheduler_type == 'CosineAnnealingWarmRestarts':
             self.scheduler.step()
         
@@ -353,6 +390,8 @@ class Trainer():
             self.loss_fn = L2Sphere(relative=True, squared=True,reduction=self.cfg.loss_reduction)
         elif self.cfg.loss_fn == "NormalCRPS":
             self.loss_fn = NormalCRPS(reduction=self.cfg.loss_reduction)
+        elif self.cfg.loss_fn == "L1":
+            self.loss_fn = torch.nn.L1Loss()
         elif self.cfg.loss_fn == "MSE":
             self.loss_fn = torch.nn.MSELoss()
 
@@ -422,8 +461,8 @@ class Trainer():
             )
         shuffle= not self.cfg.no_shuffle
         if self.cfg.ddp:
-            self.training_loader = DataLoader(self.dataset,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size,shuffle=False,pin_memory=True,sampler=DistributedSampler(self.dataset,shuffle=shuffle))
-            self.validation_loader = DataLoader(self.dataset_validation,num_workers=0, batch_size=self.cfg.batch_size_validation,shuffle=False,pin_memory=True,sampler=DistributedSampler(self.dataset_validation,shuffle=shuffle))
+            self.training_loader = DataLoader(self.dataset,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size,shuffle=False,pin_memory=False,sampler=DistributedSampler(self.dataset,shuffle=shuffle))           # pin_memory=False True, aaaah doens't add the 9GB on GPU, somehow workers add GPU memory, expecally if over system limit?
+            self.validation_loader = DataLoader(self.dataset_validation,num_workers=0, batch_size=self.cfg.batch_size_validation,shuffle=False,pin_memory=False,sampler=DistributedSampler(self.dataset_validation,shuffle=shuffle))
 
         else:
             self.training_loader = DataLoader(self.dataset,shuffle=shuffle,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
@@ -442,7 +481,6 @@ class Trainer():
             return self.loss_fn(output,gt)
     
     def validation(self):
-        loss_fn_pervar = torch.nn.MSELoss(reduction='none')
         self.model.eval()
         with torch.no_grad():
             # For loop over validation dataset, calculates the validation loss mean for number of kwargs["validation_epochs"]
@@ -462,7 +500,7 @@ class Trainer():
                     # skip steps so no gt has to be outputed, saves ram and computation
                     if val_step % (self.cfg.validation_step_skip+1) != 0: continue
 
-                    val_loss_value = self.get_loss(output,gt)/ self.cfg.batch_size
+                    val_loss_value =  self.valid_loss_fn(output,gt) #self.get_loss(output,gt) #/ self.cfg.batch_size_validation
                     loss_list[val_step].append(val_loss_value)
 
                     if self.cfg.ddp:
@@ -472,7 +510,7 @@ class Trainer():
                     # loss for each variable
                     if self.cfg.advanced_logging and self.mse_all_vars : # !! only for first multi validation step, could include next step with -> ... -> ... in print statement on same line
                         val_g_truth_era5 = self.util.normalise(val_data[val_step+1][0]).to(self.util.device)
-                        loss_per_var = loss_fn_pervar(output, val_g_truth_era5).mean(dim=(0,2,3))/ self.cfg.batch_size
+                        loss_per_var = self.loss_fn_pervar(output, val_g_truth_era5).mean(dim=(0,2,3))#/ self.cfg.batch_size_validation
                         if self.cfg.ddp:
                             dist.all_reduce(loss_per_var,dist.ReduceOp.SUM)
                             loss_per_var = loss_per_var / dist.get_world_size()
@@ -485,8 +523,12 @@ class Trainer():
                     loss_pervar_list = [x for x in loss_pervar_list if x != []]
                     loss_value = torch.tensor(loss_list).mean(dim=1).cpu()
                     loss_value_std = torch.tensor(loss_list).std(dim=1).cpu()
-                    loss_pervar = torch.tensor(loss_pervar_list).mean(dim=1).cpu()
-                    loss_pervar_std = torch.tensor(loss_pervar_list).std(dim=1).cpu()
+                    if self.mse_all_vars:
+                        loss_pervar = torch.tensor(loss_pervar_list).mean(dim=1).cpu()
+                        loss_pervar_std = torch.tensor(loss_pervar_list).std(dim=1).cpu()
+                    else:
+                        loss_pervar = None
+                        loss_pervar_std = None
                     break
                     
 
@@ -502,7 +544,7 @@ class Trainer():
             self.scale = self.scale + 0.002 # 5e-5 #
 
         # save model and training statistics for checkpointing
-        if (self.iter+1) % (self.cfg.validation_interval*self.cfg.save_checkpoint_interval) == 0 and self.cfg.save_checkpoint_interval > 0:
+        if (self.iter) % (self.cfg.validation_interval*self.cfg.save_checkpoint_interval) == 0 and self.cfg.save_checkpoint_interval > 0:
             self.save_checkpoint()
         
         # return to training
@@ -539,16 +581,16 @@ class Trainer():
 
 
             # per variable
-            if self.cfg.advanced_logging and self.mse_all_vars and self.cfg.model_type != "mae":
-                # for i in range(loss_pervar.shape[0]):
-                    # step=i
-                for i,step in enumerate(list(range(0,self.cfg.multi_step_validation+1,1+self.cfg.validation_step_skip))):
-                    for idx_var,var_name in enumerate(self.util.ordering):
-                        val_log_local["MSE "+var_name+ " step={}".format(step)]     = loss_pervar[i][idx_var].item()
-                        val_log_local["MSE "+var_name+ " std step={}".format(step)] = loss_pervar_std[i][idx_var].item()
-                        if step % (1+self.cfg.validation_step_skip) == 0: 
-                            val_log_wandb["MSE "+var_name+ " step={}".format(step)]     = round(loss_pervar[i][idx_var].item(),5)
-            
+                if self.cfg.advanced_logging and self.mse_all_vars and self.cfg.model_type != "mae":
+                    # for i in range(loss_pervar.shape[0]):
+                        # step=i
+                    for i,step in enumerate(list(range(0,self.cfg.multi_step_validation+1,1+self.cfg.validation_step_skip))):
+                        for idx_var,var_name in enumerate(self.util.ordering):
+                            val_log_local["MSE "+var_name+ " step={}".format(step)]     = loss_pervar[i][idx_var].item()
+                            val_log_local["MSE "+var_name+ " std step={}".format(step)] = loss_pervar_std[i][idx_var].item()
+                            if step % (1+self.cfg.validation_step_skip) == 0: 
+                                val_log_wandb["MSE "+var_name+ " step={}".format(step)]     = round(loss_pervar[i][idx_var].item(),5)
+                
             # log scheduler
             if self.scheduler is not None and self.scheduler != "None": 
                 lr = self.scheduler.get_last_lr()[0]
@@ -672,35 +714,57 @@ class Trainer():
         if self.cfg.ddp:
             dist.barrier()
 
+    def time_limit_stop(self):
+        if self.cfg.rank == 0: 
+            if self.cfg.time_limit is not None:
+                if (self.cfg.time_limit - (time()-self.start_time))  < 15*60:
+                    print("Time limit reached, stopping training",flush=True)
+                    self.finalise("slurm time limit reached")
+        if self.cfg.ddp:
+            dist.barrier()
+
     def save_forecast(self):
+        '''
+        saves a forecast in a netcdf file, compatible with the weatherbench2 format
+        the dataloader loads the inital era5 data and all the cls tokens for the forecast periode
+        maybe if we forecast a long time, this is too much data to load at once and we would need a second dataloader for the cls tokens
+        '''
         self.ready_model()
-        self.set_dataloader(run=True)
         self.model.eval()
         self.mem_log("loading data")
+        self.set_dataloader(run=True)
         # self.output_data = [[]]*(self.cfg.multi_step_validation+1)
-        self.output_data = [[]for _ in range(self.cfg.multi_step_validation)] # time_delta, time, variable, lat, lon
-        self.time_dim = []
-        self.time_delta = [np.timedelta64(i*6, 'h') for i in range(1,self.cfg.multi_step_validation+1)]
+        self.output_data = [[]for _ in range(0,self.cfg.multi_step_validation+1,1+self.cfg.validation_step_skip)] #range(self.cfg.multi_step_validation)] # time_delta, time, variable, lat, lon
+        self.time_dim = [] 
+        self.time_delta = [np.timedelta64(i*6, 'h').astype("timedelta64[ns]") for i in range(0,self.cfg.multi_step_validation+1,1+self.cfg.validation_step_skip)]
+        self.time_delta.pop(0)
+        self.time_delta.insert(0, np.timedelta64(6, 'h').astype("timedelta64[ns]"))
+        to_dt64 = lambda x: np.datetime64(x).astype("datetime64[ns]")
+        to_dt   = lambda x: datetime.strptime(str(x), '%Y%m%d%H')
         with torch.no_grad():
             for i, data in enumerate(self.validation_loader):
-                with amp.autocast(self.cfg.enable_amp):
-                    for step in range(self.cfg.multi_step_validation):
-                        if step == 0 : 
-                            input = self.util.normalise(data[step][0]).to(self.util.device)
-                            data_time = datetime.strptime(str(data[0][1].item()), '%Y%m%d%H')
-                            self.time_dim.append(np.datetime64(data_time))  # ?? doesn't work with batches
-                        else: input = output
-                        # if data_time.strftime("%H") == "00":continue# [ns] ??
-                        self.mem_log("loading data")
-                        output, gt = self.model_forward(input,data,step,return_gt=False)
-                        self.output_data[step] += [*(output.cpu().numpy())]
-                        # self.output_data[step].append(output.cpu().numpy())
-                    print(str(i).rjust(6),"/",len(self.validation_loader)," -  ",data_time.strftime("%d %b %Y"),flush=True)
-                    if (i+1)%10 == 0:
-                        self.save_to_netcdf()
-                        sys.exit(0)
-                            # logging
-            
+                # with amp.autocast(self.cfg.enable_amp):
+                for step in range(self.cfg.multi_step_validation):
+                    if step == 0 : 
+                        out_idx = 0
+                        input = self.util.normalise(data[step][0]).to(self.util.device)
+                        data_time = list(map(to_dt,data[0][-1].tolist())) # data[0][-1][0].item()
+                        self.time_dim += list(map(to_dt64,data_time)) # ?? doesn't work with batches
+                    else: input = output
+                    # if data_time.strftime("%H") == "00":continue# [ns] ??
+                    self.mem_log("loading data")
+                    output, gt = self.model_forward(input,data,step,return_gt=False)
+                    if (step+1) % (self.cfg.validation_step_skip+1) == 0 or step == 0:
+                        self.output_data[out_idx] += [*(output.cpu().numpy())]
+                        out_idx += 1
+                    # self.output_data[step].append(output.cpu().numpy())
+                print(str(i).rjust(6),"/",len(self.validation_loader)," -  ",list(map(lambda x: x.strftime("%d %b %Y : %Hhr"), data_time)),flush=True)
+                system_monitor(printout=True,pids=[os.getpid()],names=["python"])
+                if (i+1)%10 == 0:
+                    self.save_to_zarr()
+                    return
+                        # logging
+        
                 self.mem_log("fin",fin=True)
                 if (i+1) % 100 == 0:
                     system_monitor(printout=True,pids=[os.getpid()],names=["python"])
@@ -709,7 +773,7 @@ class Trainer():
                 self.step = self.iter*self.cfg.batch_size+len(self.dataset)*self.epoch
   
 
-    def save_to_netcdf(self):
+    def save_to_zarr(self):
         '''
         Take the output_data from a inference run and save it as a netcdf file that conforms with the weatherbench2 forcast format, with coordinates:
         latitude: float64, level: int32, longitude: float64, prediction_timedelta: timedelta64[ns], time: datetime64[ns]
@@ -763,10 +827,15 @@ class Trainer():
                 )
             )
 
-        xr.Dataset(data_vars=data_dict).to_netcdf(
-            os.path.join(self.cfg.path,'forecast_lead_time='+str(self.cfg.multi_step_validation)+
-                         'time='+self.time_dim[0].tolist().strftime("%d%b%Y")+'-'
-                         +self.time_dim[-1].tolist().strftime("%d%b%Y")+'.nc'))
+        if self.cfg.no_shuffle:
+            start_time = datetime.strptime(self.time_dim[0].astype(str)[:-3], '%Y-%m-%dT%H:%M:%S.%f').strftime("%d.%m.%Y")
+            end_time = datetime.strptime(self.time_dim[-1].astype(str)[:-3], '%Y-%m-%dT%H:%M:%S.%f').strftime("%d.%m.%Y")
+            time_str = 'time='+start_time+'-'+end_time
+        else:
+            time_str = 'time='+str(self.cfg.validationset_start_year)+'-'+str(self.cfg.validationset_end_year)+'-shuffled'
+        zarr_save_path = os.path.join(self.cfg.path,'forecast_lead_time='+str(self.cfg.multi_step_validation)+"_"+time_str + '.zarr')
+        print("saving zarr to ",zarr_save_path,flush=True)
+        xr.Dataset(data_vars=data_dict).chunk({'time': 1}).to_zarr(zarr_save_path)
 
         # dataset = xr.Dataset(data_vars=data_dict,coords=dict(
         #             latitude=(["latitude"], np.arange(-90,90.25,0.25)[::-1]),
@@ -1017,7 +1086,7 @@ def train_test(kwargs):
             print("std 1",outputs1[1].std())
             print("---------------------")
 
-        sys.exit(0)
+        return
 # 0 ---------------------
 # mean 0 tensor(0.2065, grad_fn=<MeanBackward0>)
 # std 0 tensor(3.0127, grad_fn=<StdBackward0>)

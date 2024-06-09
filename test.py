@@ -332,12 +332,36 @@ import torch
 #     for i in range(1000):
 #         z.append(y)
 #     torch.stack(z)
-l = []
-for i in range(3):
-    x = torch.rand((2,5),device="cuda:0")
-    l.append(x)
+# l = []
+# for i in range(3):
+#     x = torch.rand((2,5),device="cuda:0")
+#     l.append(x)
 
-x = torch.stack(l)
-print(x.device)
-print(x)
-print(x.shape)
+# x = torch.stack(l)
+# print(x.device)
+# print(x)
+# print(x.shape)
+
+
+from S2S_on_SFNO.utils import Attributes, FinTraining
+
+def test():
+    print("test")
+    try:
+        # raise Exception("test")
+        x = 1/0
+    except :
+        print("error")
+
+print("testing execption")
+def main():
+    print("start")
+    raise FinTraining("test")
+    print("over")
+
+try:
+    main()
+except FinTraining as e:
+    print("exep ",e)
+except:
+    print("oh no")

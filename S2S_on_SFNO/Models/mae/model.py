@@ -209,29 +209,13 @@ class Linear_probing(Model):
 
     def load_statistics(self):
         # if assets path is already in the mae subfolder don drill down further
-
         return
-
-        if (self.assets[-4:] == "/mae" or self.assets[-4:] == "mae/"):
-            mae=""
-        else:
-            mae = "mae"
-        self.means_film = np.load(os.path.join(self.assets,mae, "global_means_cls.npy"))
-        self.means_film = self.means_film.astype(np.float32)
-        self.stds_film = np.load(os.path.join(self.assets,mae, "global_stds_cls.npy"))
-        self.stds_film = self.stds_film.astype(np.float32)
     
     def normalise(self, data, reverse=False):
         """Normalise data using pre-saved global statistics"""
 
         return data
-
-        if reverse:
-            new_data = data * self.stds_film + self.means_film
-        else:
-            new_data = (data - self.means_film) / self.stds_film
-        return new_data
-
+    
     def evaluate_model(self, checkpoint_list,save_path):
         """Evaluate model using checkpoint list"""
         pass
@@ -244,34 +228,35 @@ class Linear_probing(Model):
         Run model on validation data and save cls tokens for encoder and decoder
         The cls token numpy lists can be used as input for a Film-Generator, so the MAE does not to run each training iteration for filmed SFNO.
         '''
-        with Timer("calcuate all class tokens for validation data"):
+        with Timer("calculate the Linear Probing validation loss"):
             print("Use Validation Data to run model:")
             self.mem_log_not_done = True
             dataset_validation = SST_galvani(
                 path=self.cfg.trainingdata_path, 
                 start_year=self.cfg.validationset_start_year,
                 end_year=self.cfg.validationset_end_year,
-                temporal_step=self.cfg.temporal_step)
+                temporal_step=self.cfg.temporal_step,
+                oni=self.cfg.oni,
+                oni_path=self.cfg.oni_path,
+                cls=self.cfg.cls,
+                )
+
             dataloader = DataLoader(dataset_validation,shuffle=False,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size)
             self.load_model(self.checkpoint_path) # checkpoint_path
             self.model.eval()
-            self.load_statistics()
             self.model.to(self.device)
-            self.cls_encoder_list = []
-            self.cls_decoder_list = []
+            abs_loss = nn.L1Loss(reduction='none')
+            loss_list = []
             with torch.no_grad():
                 for i, data in enumerate(dataloader): #in enumerate(dataloader): # tqdm(enumerate(dataloader))
-                    input_sst  = self.normalise(data[0][0]).to(self.device)
-                    if (i+1) % ((len(dataset_validation)/self.cfg.batch_size)//10) == 0: print((i+1)/len(dataset_validation),"% done")
-                    self.mem_log("")
-                    output, masks, cls_encoder, cls_decoder  = self.model(input_sst, 0.)
-                    self.mem_log("",fin=i>1)
-                    self.cls_encoder_list += cls_encoder.squeeze(dim=1).cpu().tolist()
-                    self.cls_decoder_list += cls_decoder.squeeze(dim=1).cpu().tolist()
-                    if (i+1) % self.cfg.save_checkpoint_interval == 0 and self.cfg.save_checkpoint_interval > 0:
-                        self.save_cls()
-            print("done")
-            self.save_cls()
+                    input_cls  = self.normalise(data[0][0]).to(self.device)
+                    out_oni  = self.model(input_cls)
+                    loss_list += abs_loss(out_oni, data[1][0].to(self.device))[:,0].tolist()
+            print("mean loss: ",np.mean(loss_list))
+            print("std loss: ",np.std(loss_list))
+            # save_path = os.path.join(self.cfg.cls.split(".")[0]+"_linprobe_eval.npy"
+            save_path = os.path.join(self.cfg.resume_checkpoint.split(".")[0]+"_linprobe_eval.npy")
+            np.save(save_path,np.array(loss_list))
 
     def save_cls(self):
         cp_path = self.checkpoint_path.split(".")[0]
