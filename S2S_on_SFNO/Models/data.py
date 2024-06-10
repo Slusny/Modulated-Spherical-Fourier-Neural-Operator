@@ -123,7 +123,7 @@ class ERA5_galvani(Dataset):
         print("")
 
     def __len__(self):
-        return 27
+        return 27 #32 # 27
         return self.end_idx - self.start_idx
     
     def __getitem__(self, idx):

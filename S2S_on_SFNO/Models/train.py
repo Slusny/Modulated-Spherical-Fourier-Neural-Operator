@@ -188,16 +188,18 @@ class Trainer():
         self.mem_log("loading data")
         for i, data in enumerate(self.training_loader):
 
-            if self.cfg.rank == 0: print("in loader ",i,flush=True)
-            dist.barrier()
+            # if self.cfg.rank == 0: print("in loader ",i,flush=True)
+            # dist.barrier()
 
             self.time_limit_stop()
             
             loss = 0
             # Adjust learning weights
             if ((i + 1) % (self.cfg.accumulation_steps + 1) == 0) or ((i + 1) == (len(self.training_loader)-2)):
-                if self.cfg.rank == 0: print("updateing params ",flush=True)
-                dist.barrier()
+                
+                # if self.cfg.rank == 0: print("updateing params ",flush=True)
+                # dist.barrier()
+
                 # train again but sync
                 with amp.autocast(self.cfg.enable_amp):
                     for step in range(self.cfg.multi_step_training+1):
@@ -212,8 +214,8 @@ class Trainer():
                     # only for logging the loss for the batch
                     batch_loss += loss.item()
                 
-                if self.cfg.rank == 0: print("before gscaler backward ",flush=True)
-                dist.barrier()
+                # if self.cfg.rank == 0: print("before gscaler backward, loss: ",loss,flush=True)
+                # dist.barrier()
 
                 #backward
                 self.mem_log("backward pass",fin=True)
@@ -222,8 +224,8 @@ class Trainer():
                 else:
                     loss.backward()
                 
-                if self.cfg.rank == 0: print("before gscaler update ",flush=True)
-                dist.barrier()
+                # if self.cfg.rank == 0: print("before gscaler update ",flush=True)
+                # dist.barrier()
 
                 # Update Optimizer
                 if self.cfg.enable_amp:
@@ -233,16 +235,16 @@ class Trainer():
                     self.optimizer.step()
                 self.model.zero_grad()
 
-                if self.cfg.rank == 0: print("before validation ",flush=True)
-                dist.barrier()
+                # if self.cfg.rank == 0: print("before validation ",flush=True)
+                # dist.barrier()
 
                 self.iter += 1
                 # validation
                 if self.cfg.validation_interval > 0 and (self.iter) % (self.cfg.validation_interval)  == 0:
                     self.validation()
 
-                if self.cfg.rank == 0: print("fin update params ",flush=True)
-                dist.barrier()
+                # if self.cfg.rank == 0: print("fin update params ",flush=True)
+                # dist.barrier()
 
                 # logging
                 self.step = self.iter*self.cfg.batch_size*(self.cfg.accumulation_steps+1)*self.cfg.world_size+len(self.dataset)*self.epoch
@@ -278,6 +280,7 @@ class Trainer():
         if self.cfg.ddp:
             self.training_loader.sampler.set_epoch(self.epoch)
             self.validation_loader.sampler.set_epoch(self.epoch)   
+        return
     
     def post_epoch(self):
         self.epoch += 1
@@ -461,8 +464,8 @@ class Trainer():
             )
         shuffle= not self.cfg.no_shuffle
         if self.cfg.ddp:
-            self.training_loader = DataLoader(self.dataset,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size,shuffle=False,pin_memory=False,sampler=DistributedSampler(self.dataset,shuffle=shuffle),drop_last=True)           # pin_memory=False True, aaaah doens't add the 9GB on GPU, somehow workers add GPU memory, expecally if over system limit?
-            self.validation_loader = DataLoader(self.dataset_validation,num_workers=0, batch_size=self.cfg.batch_size_validation,shuffle=False,pin_memory=False,sampler=DistributedSampler(self.dataset_validation,shuffle=shuffle),drop_last=True)
+            self.training_loader = DataLoader(self.dataset,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size,shuffle=False,pin_memory=False,sampler=DistributedSampler(self.dataset,shuffle=shuffle,drop_last=True),drop_last=True)           # pin_memory=False True, aaaah doens't add the 9GB on GPU, somehow workers add GPU memory, expecally if over system limit?
+            self.validation_loader = DataLoader(self.dataset_validation,num_workers=0, batch_size=self.cfg.batch_size_validation,shuffle=False,pin_memory=False,sampler=DistributedSampler(self.dataset_validation,shuffle=shuffle,drop_last=True),drop_last=True)
 
         else:
             self.training_loader = DataLoader(self.dataset,shuffle=shuffle,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size,drop_last=True)
@@ -501,11 +504,12 @@ class Trainer():
                     if val_step % (self.cfg.validation_step_skip+1) != 0: continue
 
                     val_loss_value =  self.valid_loss_fn(output,gt) #self.get_loss(output,gt) #/ self.cfg.batch_size_validation
-                    loss_list[val_step].append(val_loss_value)
 
                     if self.cfg.ddp:
                         dist.all_reduce(val_loss_value,dist.ReduceOp.SUM)
                         val_loss_value = val_loss_value / dist.get_world_size()
+
+                    loss_list[val_step].append(val_loss_value)
 
                     # loss for each variable
                     if self.cfg.advanced_logging and self.mse_all_vars : # !! only for first multi validation step, could include next step with -> ... -> ... in print statement on same line
@@ -530,6 +534,51 @@ class Trainer():
                         loss_pervar = None
                         loss_pervar_std = None
                     break
+
+                #     if self.cfg.ddp:
+                #         val_ = [torch.zeros_like(pred_lbl_fl) for _ in range(size)]
+                #         dist.all_reduce(val_loss_value,dist.ReduceOp.SUM)
+                #         val_loss_value = val_loss_value / dist.get_world_size()
+
+                #     # loss for each variable
+                #     if self.cfg.advanced_logging and self.mse_all_vars : # !! only for first multi validation step, could include next step with -> ... -> ... in print statement on same line
+                #         val_g_truth_era5 = self.util.normalise(val_data[val_step+1][0]).to(self.util.device)
+                #         loss_per_var = self.loss_fn_pervar(output, val_g_truth_era5).mean(dim=(0,2,3))#/ self.cfg.batch_size_validation
+                #         if self.cfg.ddp:
+                #             dist.all_reduce(loss_per_var,dist.ReduceOp.SUM)
+                #             loss_per_var = loss_per_var / dist.get_world_size()
+
+                #         loss_pervar_list[val_step].append(loss_per_var.tolist()) 
+
+                # # end of validation 
+                # if val_idx == (self.cfg.validation_epochs-1):
+                #     loss_list = [x for x in loss_list if x != []]
+                #     loss_pervar_list = [x for x in loss_pervar_list if x != []]
+                #     loss_value = torch.tensor(loss_list).mean(dim=1).cpu()
+                #     loss_value_std = torch.tensor(loss_list).std(dim=1).cpu()
+                #     if self.mse_all_vars:
+                #         loss_pervar = torch.tensor(loss_pervar_list).mean(dim=1).cpu()
+                #         loss_pervar_std = torch.tensor(loss_pervar_list).std(dim=1).cpu()
+                #     else:
+                #         loss_pervar = None
+                #         loss_pervar_std = None
+                #     break
+
+                # preds, labels = get_all_preds(model, test_set)
+  
+                # #argmax returns the index with the largest value across axis of a #tensor
+                # pred_lbl_fl = preds.argmax(1).float()
+                # lbl_fl = labels.float()#size is the world size
+                # prediction_list = [torch.zeros_like(pred_lbl_fl) for _ in range(size)]
+                # labels_list = [torch.zeros_like(pred_lbl_fl) for _ in range(size)]
+                    
+                # if dist.get_rank() == 0:
+                #     gather(pred_lbl_fl, prediction_list)
+                #     gather(lbl_fl, labels_list)
+                # else:
+                #     gather(pred_lbl_fl)
+                #     gather(lbl_fl)
+
                     
 
         self.valid_log(loss_value,loss_pervar,loss_value_std,loss_pervar_std)

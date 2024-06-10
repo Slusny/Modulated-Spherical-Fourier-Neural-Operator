@@ -1136,4 +1136,6 @@ Do Transformers need to have a square input
 -  clone state dict from checkpoint and then delete that checkpoint to gain memory
 
 - seperate batch_size and workers for training and validation
+
+- distributed optimizer
 '''
