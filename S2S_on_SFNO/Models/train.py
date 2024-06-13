@@ -789,6 +789,9 @@ class Trainer():
         the dataloader loads the inital era5 data and all the cls tokens for the forecast periode
         maybe if we forecast a long time, this is too much data to load at once and we would need a second dataloader for the cls tokens
         '''
+
+        renorm = True
+
         self.ready_model()
         self.model.eval()
         self.mem_log("loading data")
@@ -815,6 +818,8 @@ class Trainer():
                     # if data_time.strftime("%H") == "00":continue# [ns] ??
                     self.mem_log("loading data")
                     output, gt = self.model_forward(input,data,step,return_gt=False)
+                    if renorm:
+                        output = self.util.normalise(output.cpu(),reverse=True)
                     if (step+1) % (self.cfg.validation_step_skip+1) == 0 or step == 0:
                         self.output_data[out_idx] += [*(output.cpu().numpy())]
                         out_idx += 1
@@ -907,7 +912,7 @@ class Trainer():
             time_str = 'time='+str(self.cfg.validationset_start_year)+'-'+str(self.cfg.validationset_end_year)+'-shuffled'
 
         if file_name is None:
-            file_name = 'forecast_lead_time='+str(self.cfg.multi_step_validation)+"_"+time_str
+            file_name = 'forecast_lead_time='+str(self.cfg.multi_step_validation)+"_days="+self.time_dim.size+"_"+time_str + "_denormalised"
         zarr_save_path = os.path.join(self.cfg.path,file_name + '.zarr')
         print("saving zarr to ",zarr_save_path,flush=True)
         if iter ==0 :

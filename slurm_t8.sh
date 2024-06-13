@@ -17,10 +17,10 @@
 
 #SBATCH --partition=2080-galvani#a100-galvani#cpu-galvani#2080-galvani#cpu-long#cpu-short #gpu-v100  #gpu-2080ti #cpu-long
 
-#SBATCH --mem=300#200G # Per CPU -> Per Core /10 kp --- 900
+#SBATCH --mem=350#200G # Per CPU -> Per Core /10 kp --- 900
 # the job will need 12GB of memory equally distributed on 4 cpus.(251GB are available in total on one node)
 
-##SBATCH --gres=gpu:3
+#SBATCH --gres=gpu:8
 #the job can use and see 1 GPUs (4 GPUs are available in total on one node) use SBATCH --gres=gpu:1080ti:1 to explicitly demand a Geforce 1080 Ti GPU. Use SBATCH --gres=gpu:A4000:1 to explicitly demand a RTX A4000 GPU
 
 ##SBATCH --exclude=galvani-cn209
