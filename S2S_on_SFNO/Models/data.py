@@ -123,7 +123,6 @@ class ERA5_galvani(Dataset):
         print("")
 
     def __len__(self):
-        return 27 #32 # 27
         return self.end_idx - self.start_idx
     
     def __getitem__(self, idx):
@@ -175,7 +174,7 @@ class ERA5_galvani(Dataset):
 
         data = []
         for i in range(0, self.multi_step+2):
-            if (self.run and i > 0) or (i % (self.skip_step+1) !=1 and i != 0):
+            if (self.run and i > 0) or (i % (self.skip_step+1) !=1 and i != 0 and self.skip_step > 0):
                 # if we run the model autoregressivly and don't want to evaluate, just save the output, we only need the first era5 data and no following data
                 era5 = [[]]
             else:

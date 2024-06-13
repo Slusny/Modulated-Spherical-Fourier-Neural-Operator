@@ -16,7 +16,7 @@ import torch.distributed as dist
 # BatchSampler(drop_last=True)
 
 from S2S_on_SFNO.Models.provenance import system_monitor
-from .losses import CosineMSELoss, L2Sphere, NormalCRPS
+from .losses import CosineMSELoss, L2Sphere, L2Sphere_noSine, NormalCRPS
 from S2S_on_SFNO.utils import Timer, Attributes
 
 from ..utils import LocalLog,FinTraining
@@ -49,7 +49,10 @@ class Trainer():
         self.mem_log_not_done = True
         self.local_logging=True
         self.start_time = time()
-        self.epoch = 0
+        if self.cfg.set_epoch is None:
+            self.epoch = 0
+        else:
+            self.epoch = self.cfg.set_epoch
         self.step = 0
         self.iter = 0
 
@@ -364,6 +367,9 @@ class Trainer():
             self.scheduler =  torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer,T_0=self.cfg.scheduler_horizon)
         else:
             self.scheduler = None
+        if self.cfg.resume_scheduler:
+            self.scheduler.load_state_dict(torch.load(self.util.checkpoint_path)["scheduler_state_dict"])
+
     
     def step_scheduler(self,valid_mean):
         if self.cfg.scheduler_type == 'ReduceLROnPlateau':
@@ -385,12 +391,17 @@ class Trainer():
             self.optimizer = torch.optim.LBFGS(self.util.get_parameters())# store the optimizer and scheduler in the model class
         elif self.cfg.optimizer == "AdamW":
             self.optimizer = torch.distributed.optim.ZeroRedundancyOptimizer(self.util.parameters(),optimizer_class=torch.optim.Adam,lr=self.cfg.learning_rate)
-            
+        if self.cfg.resume_optimizer:
+            self.optimizer.load_state_dict(torch.load(self.util.checkpoint_path)["optimizer_state_dict"])
+
     def create_loss(self):
         if self.cfg.loss_fn == "CosineMSE":
             self.loss_fn = CosineMSELoss(reduction=self.cfg.loss_reduction)
         elif self.cfg.loss_fn == "L2Sphere":
             self.loss_fn = L2Sphere(relative=True, squared=True,reduction=self.cfg.loss_reduction)
+        elif self.cfg.loss_fn == "L2Sphere_noSine":
+            self.loss_fn = L2Sphere_noSine(relative=True, squared=True,reduction=self.cfg.loss_reduction)
+            
         elif self.cfg.loss_fn == "NormalCRPS":
             self.loss_fn = NormalCRPS(reduction=self.cfg.loss_reduction)
         elif self.cfg.loss_fn == "L1":
@@ -790,6 +801,7 @@ class Trainer():
         self.time_delta.insert(0, np.timedelta64(6, 'h').astype("timedelta64[ns]"))
         to_dt64 = lambda x: np.datetime64(x).astype("datetime64[ns]")
         to_dt   = lambda x: datetime.strptime(str(x), '%Y%m%d%H')
+        saves = 0
         with torch.no_grad():
             for i, data in enumerate(self.validation_loader):
                 # with amp.autocast(self.cfg.enable_amp):
@@ -808,27 +820,31 @@ class Trainer():
                         out_idx += 1
                     # self.output_data[step].append(output.cpu().numpy())
                 print(str(i).rjust(6),"/",len(self.validation_loader)," -  ",list(map(lambda x: x.strftime("%d %b %Y : %Hhr"), data_time)),flush=True)
-                system_monitor(printout=True,pids=[os.getpid()],names=["python"])
-                if (i+1)%10 == 0:
-                    self.save_to_zarr()
-                    return
+                
+                    # return
                         # logging
         
                 self.mem_log("fin",fin=True)
-                if (i+1) % 100 == 0:
+                if (i+1) % 10 == 0:
                     system_monitor(printout=True,pids=[os.getpid()],names=["python"])
+                
+                if (i+1)%self.cfg.num_iterations == 0:
+                    self.save_to_zarr_forecast(saves)
+                    saves +=1
                     # logging
                 self.iter += 1
                 self.step = self.iter*self.cfg.batch_size+len(self.dataset)*self.epoch
+            self.save_to_zarr_forecast(saves)
   
 
-    def save_to_zarr(self):
+    def save_to_zarr_forecast(self,iter=0,file_name=None):
         '''
         Take the output_data from a inference run and save it as a netcdf file that conforms with the weatherbench2 forcast format, with coordinates:
         latitude: float64, level: int32, longitude: float64, prediction_timedelta: timedelta64[ns], time: datetime64[ns]
         '''
         
-        # cut out 2,3 (100m)
+        # cant overwrite existing file
+        
         wb_ordering_scf = {
             "10m_u_component_of_wind":0,
             "10m_v_component_of_wind":1,
@@ -851,6 +867,13 @@ class Trainer():
         lat_coords = np.arange(-90,90.25,0.25)
         lat_coords = lat_coords[::-1]
         self.output_data = np.array(self.output_data)
+
+        # order dates if shuffled
+        if not self.cfg.no_shuffle:
+            idx = sorted(range(len(self.time_dim)), key=lambda k: self.time_dim[k])
+            self.time_dim = np.array(self.time_dim)[idx]
+            self.output_data = self.output_data[:,idx]
+
         for out_var,idx in wb_ordering_scf.items():
             # if out_var in self.output_variables:
             data_dict[out_var] = xr.DataArray(self.output_data[:,:,idx],
@@ -882,16 +905,100 @@ class Trainer():
             time_str = 'time='+start_time+'-'+end_time
         else:
             time_str = 'time='+str(self.cfg.validationset_start_year)+'-'+str(self.cfg.validationset_end_year)+'-shuffled'
-        zarr_save_path = os.path.join(self.cfg.path,'forecast_lead_time='+str(self.cfg.multi_step_validation)+"_"+time_str + '.zarr')
-        print("saving zarr to ",zarr_save_path,flush=True)
-        xr.Dataset(data_vars=data_dict).chunk({'time': 1}).to_zarr(zarr_save_path)
 
-        # dataset = xr.Dataset(data_vars=data_dict,coords=dict(
-        #             latitude=(["latitude"], np.arange(-90,90.25,0.25)[::-1]),
-        #             longitude=([ "longitude"], np.arange(0,360,0.25)),
-        #             step=[np.timedelta64(step*60*60*10**9, 'ns')]
-        #         ))time=np.datetime64(str(year)+'-01-01T00:00:00.000000000') + np.timedelta64(s, 'h'))
+        if file_name is None:
+            file_name = 'forecast_lead_time='+str(self.cfg.multi_step_validation)+"_"+time_str
+        zarr_save_path = os.path.join(self.cfg.path,file_name + '.zarr')
+        print("saving zarr to ",zarr_save_path,flush=True)
+        if iter ==0 :
+            xr.Dataset(data_vars=data_dict).chunk({'time': 1, 'prediction_timedelta':1, 'latitude':721,'longitude':1440}).to_zarr(zarr_save_path)
+        else:
+            xr.Dataset(data_vars=data_dict).chunk({'time': 1, 'prediction_timedelta':1, 'latitude':721,'longitude':1440}).to_zarr(zarr_save_path,mode="a",append_dim="time")
         
+        # clean up
+        self.output_data = [[]for _ in range(0,self.cfg.multi_step_validation+1,1+self.cfg.validation_step_skip)]
+        self.time_dim = []
+        
+    
+    def save_to_zarr(self,iter=0,file_name=None):
+        '''
+        Take the output_data from a inference run and save it as a netcdf file that conforms with the weatherbench2 forcast format, with coordinates:
+        latitude: float64, level: int32, longitude: float64, prediction_timedelta: timedelta64[ns], time: datetime64[ns]
+        '''
+        
+        # cant overwrite existing file
+        
+        wb_ordering_scf = {
+            "10m_u_component_of_wind":0,
+            "10m_v_component_of_wind":1,
+            "2m_temperature":4,
+            "surface_pressure":5,
+            "mean_sea_level_pressure":6,
+            "total_column_water_vapour":7
+        }
+        wb_ordering_pl = {
+            "u_component_of_wind": np.arange(8,21),
+            "v_component_of_wind":np.arange(21,34), 
+            "geopotential":np.arange(34,47), 
+            "temperature":np.arange(47,60), 
+            "relative_humidity":np.arange(60,73),  
+        }
+        level = [1000, 925, 850, 700, 600, 500, 400, 300, 250, 200, 150, 100, 50]
+        level.reverse()
+
+        data_dict={}
+        lat_coords = np.arange(-90,90.25,0.25)
+        lat_coords = lat_coords[::-1]
+        self.output_data = np.array(self.output_data)
+
+        # order dates if shuffled
+        if not self.cfg.no_shuffle:
+            idx = sorted(range(len(self.time_dim)), key=lambda k: self.time_dim[k])
+            self.time_dim = np.array(self.time_dim)[idx]
+            self.output_data = self.output_data[idx]
+
+        for out_var,idx in wb_ordering_scf.items():
+            # if out_var in self.output_variables:
+            data_dict[out_var] = xr.DataArray(self.output_data[:,idx],
+                dims=["time","latitude","longitude"],
+                coords=dict(
+                    time=("time",self.time_dim),
+                    latitude=("latitude", lat_coords),
+                    longitude=("longitude",np.arange(0,360,0.25)),
+                )
+            )
+
+        for out_var,idx in wb_ordering_pl.items():
+            # if out_var in self.output_variables:
+            data_dict[out_var] = xr.DataArray(self.output_data[:,idx],
+                dims=["time","level","latitude","longitude"],
+                coords=dict(
+                    time=("time",self.time_dim),
+                    level=("level",level),
+                    latitude=("latitude", lat_coords),
+                    longitude=("longitude",np.arange(0,360,0.25)),
+                )
+            )
+
+        if self.cfg.no_shuffle:
+            start_time = datetime.strptime(self.time_dim[0].astype(str)[:-3], '%Y-%m-%dT%H:%M:%S.%f').strftime("%d.%m.%Y")
+            end_time = datetime.strptime(self.time_dim[-1].astype(str)[:-3], '%Y-%m-%dT%H:%M:%S.%f').strftime("%d.%m.%Y")
+            time_str = 'time='+start_time+'-'+end_time
+        else:
+            time_str = 'time='+str(self.cfg.validationset_start_year)+'-'+str(self.cfg.validationset_end_year)+'-shuffled'
+
+        if file_name is None:
+            file_name = 'data'+"_"+time_str
+        zarr_save_path = os.path.join(self.cfg.path,file_name + '.zarr')
+        print("saving zarr to ",zarr_save_path,flush=True)
+        if iter ==0 :
+            xr.Dataset(data_vars=data_dict).chunk({'time': 1, 'latitude':721,'longitude':1440}).to_zarr(zarr_save_path)
+        else:
+            xr.Dataset(data_vars=data_dict).chunk({'time': 1, 'latitude':721,'longitude':1440}).to_zarr(zarr_save_path,mode="a",append_dim="time")
+        
+        # clean up
+        self.output_data = []
+        self.time_dim = []
                 
     def test_model_speed(self):
         with Timer("Model speed test"):
@@ -934,17 +1041,40 @@ class Trainer():
                 data_sst = torch.randn(1,2,721,1440)
     
     def save_data(self):
-        self.set_dataloader()
+        self.set_dataloader(run=True)
         print("saving data from dataloader")
+        # numpy
         dataset = []
+        # zarr
+        self.output_data = []
+        self.time_dim = []
+        to_dt64 = lambda x: np.datetime64(x).astype("datetime64[ns]")
+        to_dt   = lambda x: datetime.strptime(str(x), '%Y%m%d%H')
+        saves = 0
+        self.util.load_statistics() 
+
         percent = 0
         for i, data in enumerate(self.training_loader):
             if i % (len(self.training_loader)//10) == 0:
                 print("done ",percent," %")
                 percent+=10
-            dataset.append(data[0][0].item())
+            if self.cfg.output == "numpy": dataset.append(data[0][0].item())
+            # save normalised era5 data
+            elif self.cfg.output == "zarr":
+                input = self.util.normalise(data[0][0])
+                self.output_data += [*(input.numpy())]
+                data_time = list(map(to_dt,data[0][-1].tolist())) # data[0][-1][0].item()
+                self.time_dim += list(map(to_dt64,data_time)) # ?? doesn't work with batches
+    
+                if (i+1) % self.cfg.num_iterations == 0: 
+                    system_monitor(printout=True,pids=[os.getpid()],names=["python"])
+                    self.save_to_zarr(saves,file_name="era5_data_normalised_sfno_01.01.2016_31.12.2017")
+                    saves +=1
+            else:
+                raise NotImplementedError
         print("done dataloader test")
-        np.save(os.path.join(self.cfg.save_path,"oni.npy"),np.array(dataset))
+        if self.cfg.output == "numpy": np.save(os.path.join(self.cfg.save_path,"oni.npy"),np.array(dataset))
+        elif self.cfg.output == "zarr" and len(self.output_data) > 0: self.save_to_zarr(saves,file_name="era5_data_normalised_sfno_01.01.2016_31.12.2017")
         return
     
     def test_dataloader_speed(self):

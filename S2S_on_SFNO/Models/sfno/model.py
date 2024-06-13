@@ -224,9 +224,9 @@ class FourCastNetv2(ATMModel):
             weights = {k: v for k, v in weights.items() if k not in drop_vars}
 
             # print state of loaded model:
-            if self.advanced_logging and 'hyperparameters' in checkpoint.items():
-                print("loaded model with following hyperparameters:")
-                for k,v in checkpoint['hyperparameters'].items():print("    ",k,":",v)
+            # if self.advanced_logging and 'hyperparameters' in checkpoint.items():
+            #     print("loaded model with following hyperparameters:")
+            #     for k,v in checkpoint['hyperparameters'].items():print("    ",k,":",v)
 
             # Make sure the parameter names are the same as the checkpoint
             # need to use strict = False to avoid this error message when

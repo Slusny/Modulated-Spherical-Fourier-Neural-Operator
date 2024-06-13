@@ -235,6 +235,8 @@ OUTPUTS = dict(
     grib=FileOutput,
     netcdf=NetCDFOutput,
     none=NoneOutput,
+    zarr=NoneOutput,
+    numpy=NoneOutput,
 )
 
 

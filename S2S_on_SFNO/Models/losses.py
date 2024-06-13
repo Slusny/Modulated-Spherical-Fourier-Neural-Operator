@@ -4,26 +4,78 @@ import torch_harmonics as harmonics
 import numpy as np
 
 class CosineMSELoss(torch.nn.Module):
-    def __init__(self, reduction=None):
+    def __init__(self, reduction='mean', eps=1e-4):
         super().__init__()
         self._mse = torch.nn.MSELoss(reduction='none')
         self.reduction = reduction  
+        self.eps = eps
 
     def forward(self, x, y):
         B, C, H, W = x.shape
 
         weights = torch.cos(torch.linspace(-torch.pi / 2, torch.pi / 2, H, device=x.device, dtype=x.dtype))
-        weights /= weights.sum()
+        weights = torch.clamp(weights, min=0.0) 
+        weights += self.eps 
+        weights /= weights.sum(dim=-1, keepdim=True)
         weights = weights[None, None, :, None]
 
         loss = self._mse(x, y)
-        loss = (loss * weights).sum(dim=[2,3]) / W
         if self.reduction == "mean":
-            return loss.mean()
+            return (loss * weights).mean() # dim=[2,3]
         if self.reduction == "sum":
-            return loss.sum()
+            return (loss * weights).sum() / W
         if self.reduction == "none":
-            return loss  # B, C
+            return (loss * weights)  # B, C
+
+
+# class CosineMSELoss(nn.Module):
+#     def __init__(self, eps=1e-4, cache=True, with_poles=True,reduction=None):
+#         super().__init__()
+#         self.eps = eps
+#         self.cache = cache
+#         self.with_poles = with_poles
+
+#         self._mse = nn.MSELoss(reduction='none')
+#         self._weights = None
+
+#     def extra_repr(self):
+#         return "eps={eps}, cache={cache}, with_poles={with_poles}".format(**self.__dict__)
+
+#     @torch.no_grad()
+#     def _get_weights(self, latidudes):
+#         if self.cache and self._weights is not None:
+#             return self._weights
+#         weights = torch.cos(latidudes * (2 * torch.pi / 360))
+#         weights = torch.clamp(weights, min=0.0)  # ensure non-negative, this is very important due to numerical accuracy issues
+#         weights += self.eps  # give poles a very small weight
+#         weights /= weights.sum(dim=-1, keepdim=True)
+
+#         if weights.dim() == 1:
+#             weights = weights[None, None, :, None]  # Lat -> B,C,Lat,Lon
+#         elif weights.dim() == 2:
+#             weights = weights[:, None, :, None] # B, Lat -> B,C,Lat,Lon
+        
+#         if self.cache:
+#             self._weights = weights
+
+#         return weights
+
+
+#     def forward(self, x, y, latitudes=None):
+        
+#         B, C, H, W = x.shape
+
+#         if latitudes is None:
+#             if self.with_poles:
+#                 latitudes = torch.linspace(-90, 90, H, device=x.device, dtype=x.dtype)
+#             else:
+#                 latitudes = torch.linspace(-90 + 180 / H, 90 - 180 / H, H, device=x.device, dtype=x.dtype)
+        
+#         weights = self._get_weights(latitudes)
+#         squared_diffs = self._mse(x, y)
+#         loss = (squared_diffs * weights).sum(dim=[2,3]) / W
+
+#         return loss  # B, C
 
 class L2Sphere(torch.nn.Module):
     def __init__(self, relative=True, squared=False,reduction="sum",dampening=None):
@@ -39,6 +91,7 @@ class L2Sphere(torch.nn.Module):
         w_jacobian = torch.cos(torch.linspace(-torch.pi / 2, torch.pi / 2, H, device=prd.device, dtype=prd.dtype))
         # w_jacobian = w_jacobian[None, None, :, None]
         sphere_weights = w_quad * w_jacobian
+        sphere_weights = torch.abs(sphere_weights)
         sphere_weights = sphere_weights[None, None, :, None]   
 
         if self.reduction == "none":
@@ -62,6 +115,45 @@ class L2Sphere(torch.nn.Module):
             return loss.sum()
         else:
             return loss
+
+class L2Sphere_noSine(torch.nn.Module):
+    def __init__(self, relative=True, squared=False,reduction="sum",dampening=None):
+        super(L2Sphere_noSine, self).__init__()
+        
+        self.relative = relative
+        self.squared = squared
+        self.reduction = reduction
+
+    def forward(self, prd, tar):
+        B, C, H, W = prd.shape
+        w_quad = torch.tensor(harmonics.quadrature.legendre_gauss_weights(H, -1, 1)[1], device=prd.device, dtype=prd.dtype)
+        # w_jacobian = torch.cos(torch.linspace(-torch.pi / 2, torch.pi / 2, H, device=prd.device, dtype=prd.dtype))
+        # w_jacobian = w_jacobian[None, None, :, None]
+        sphere_weights = w_quad 
+        sphere_weights = sphere_weights[None, None, :, None]   
+
+        if self.reduction == "none":
+            loss = (sphere_weights*(prd - tar)**2)
+            if self.relative:
+                loss = loss / (sphere_weights*tar**2).sum(dim=(-1,-2))
+            return loss
+        
+        loss = (sphere_weights*(prd - tar)**2).sum(dim=(-1,-2))
+        if self.relative:
+            loss = loss / (sphere_weights*tar**2).sum(dim=(-1,-2))
+        
+        if not self.squared:
+            loss = torch.sqrt(loss)
+
+        if self.reduction == "mean":
+            # mean is done by weights
+            # return loss.mean()
+            return loss.sum()
+        elif self.reduction == "sum":
+            return loss.sum()
+        else:
+            return loss
+
 
 def spectral_l2loss_sphere(solver, prd, tar, relative=False, squared=True):
     # compute coefficients

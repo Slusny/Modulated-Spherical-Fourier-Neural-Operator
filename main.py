@@ -866,7 +866,7 @@ if __name__ == "__main__":
         action="store",
         help="Which loss function to use",
         default="MSE",
-        choices=["MSE","CosineMSE","L2Sphere","NormalCRPS","L1"],
+        choices=["MSE","CosineMSE","L2Sphere",'L2Sphere_noSine',"NormalCRPS","L1"],
     )
     training.add_argument(
         "--loss-reduction",
@@ -923,6 +923,21 @@ if __name__ == "__main__":
         action="store",
         type=int,
         default=0.9,
+    )
+    training.add_argument(
+        "--set-epoch",
+        action="store",
+        type=int,
+        default=None,
+        help="set the epoch to a specific integer. This is useful if training is resumed. The epoch is used as the seed for the dataloader",
+    )
+    training.add_argument(
+        "--resume-scheduler",
+        action="store_true",
+    )
+    training.add_argument(
+        "--resume-optimizer",
+        action="store_true",
     )
 
 
