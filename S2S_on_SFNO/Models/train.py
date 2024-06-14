@@ -818,10 +818,12 @@ class Trainer():
                     # if data_time.strftime("%H") == "00":continue# [ns] ??
                     self.mem_log("loading data")
                     output, gt = self.model_forward(input,data,step,return_gt=False)
-                    if renorm:
-                        output = self.util.normalise(output.cpu(),reverse=True)
+                    
                     if (step+1) % (self.cfg.validation_step_skip+1) == 0 or step == 0:
-                        self.output_data[out_idx] += [*(output.cpu().numpy())]
+                        if renorm:
+                            self.output_data[out_idx] += [*(self.util.normalise(output.cpu().numpy(),reverse=True))]
+                        else:
+                            self.output_data[out_idx] += [*(output.cpu().numpy())]
                         out_idx += 1
                     # self.output_data[step].append(output.cpu().numpy())
                 print(str(i).rjust(6),"/",len(self.validation_loader)," -  ",list(map(lambda x: x.strftime("%d %b %Y : %Hhr"), data_time)),flush=True)
@@ -830,16 +832,20 @@ class Trainer():
                         # logging
         
                 self.mem_log("fin",fin=True)
-                if (i+1) % 10 == 0:
+                if (i+1) % self.cfg.save_checkpoint_interval == 0:
                     system_monitor(printout=True,pids=[os.getpid()],names=["python"])
-                
-                if (i+1)%self.cfg.num_iterations == 0:
                     self.save_to_zarr_forecast(saves)
                     saves +=1
+                
+                if (i+1)%self.cfg.num_iterations == 0 and self.cfg.num_iterations > 0:
+                    self.save_to_zarr_forecast(saves)
+                    return
                     # logging
                 self.iter += 1
                 self.step = self.iter*self.cfg.batch_size+len(self.dataset)*self.epoch
-            self.save_to_zarr_forecast(saves)
+            if len(self.output_data[0]) > 0:
+                self.save_to_zarr_forecast(saves)
+            return
   
 
     def save_to_zarr_forecast(self,iter=0,file_name=None):
@@ -909,10 +915,11 @@ class Trainer():
             end_time = datetime.strptime(self.time_dim[-1].astype(str)[:-3], '%Y-%m-%dT%H:%M:%S.%f').strftime("%d.%m.%Y")
             time_str = 'time='+start_time+'-'+end_time
         else:
-            time_str = 'time='+str(self.cfg.validationset_start_year)+'-'+str(self.cfg.validationset_end_year)+'-shuffled'
+            time_str = 'time='+str(self.cfg.validationset_start_year)+'-'+str(self.cfg.validationset_end_year)+'_shuffled'
 
         if file_name is None:
-            file_name = 'forecast_lead_time='+str(self.cfg.multi_step_validation)+"_days="+self.time_dim.size+"_"+time_str + "_denormalised"
+            cp_name = self.util.checkpoint_path.split("/")[-1].split(".")[0]
+            file_name = 'forecast_'+cp_name+'_lead_time='+str(self.cfg.multi_step_validation)+"_"+time_str + "_denormalised"
         zarr_save_path = os.path.join(self.cfg.path,file_name + '.zarr')
         print("saving zarr to ",zarr_save_path,flush=True)
         if iter ==0 :

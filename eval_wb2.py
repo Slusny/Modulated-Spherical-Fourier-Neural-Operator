@@ -7,6 +7,10 @@ from weatherbench2 import config
 from weatherbench2.metrics import MSE, ACC, Bias
 from weatherbench2.evaluation import evaluate_in_memory, evaluate_with_beam
 
+#! ----------------
+# need test dataset 2018
+#! ----------------
+
 # wrong chunks
 # file_name = 'forecast_lead_time=56_time=01.01.2016-01.01.2016.zarr'
 # no shuffle
@@ -18,11 +22,24 @@ from weatherbench2.evaluation import evaluate_in_memory, evaluate_with_beam
 # obs_path = '/mnt/qb/goswami/data/era5/weatherbench2/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr'
 # climatology_path = '/mnt/qb/goswami/data/era5/weatherbench2/1990-2019_6h_1440x721.zarr'
 
-
-file_name = 'forecast_lead_time=112_time=2016-2018-shuffled.zarr'
-checkpoint_dir = '/mnt/qb/work2/goswami0/gkd965/checkpoints/jolly-blaze-113-sID{13578}'
+#ERA5
 obs_path = '/mnt/qb/goswami/data/era5/weatherbench2/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr'
+# normalized
+# obs_path =  '/mnt/qb/goswami/data/era5/era5_data_normalised_sfno_01.01.2016_31.12.2017.zarr'
+
 climatology_path = '/mnt/qb/goswami/data/era5/weatherbench2/1990-2019_6h_1440x721.zarr'
+
+# # jolly-blaze
+# file_name = 'forecast_lead_time=112_steps=300_time=2016-2018-shuffled_denormalised.zarr'
+# checkpoint_dir = '/mnt/qb/work2/goswami0/gkd965/checkpoints/jolly-blaze-113-sID{13578}'
+
+# #snfo
+# file_name = 'forecast_lead_time=112_steps=350_time=2016-2018-shuffled_denormalised.zarr'
+# checkpoint_dir = '/mnt/qb/work2/goswami0/gkd965/checkpoints/sfno'
+
+# microwave
+file_name = 'forecastcheckpoint_sfno_film_mae_iter=0_epoch=1_lead_time=112_steps=200_time=2016-2018-shuffled_denormalised.zarr'
+checkpoint_dir = '/mnt/qb/work2/goswami0/gkd965/checkpoints/whole-microwave-125-sID{32922}/'
 
 
 out_name = file_name.replace('.zarr', '_')
@@ -49,7 +66,7 @@ selection = config.Selection(
         
     ],
     levels=[300, 850,925,1000],
-    time_slice=slice('2016-01-01', '2017-12-31'),
+    time_slice='2016-01-01'#slice('2016-01-01', '2017-12-31'),
 )
 
 data_config = config.Data(selection=selection, paths=paths)
