@@ -187,10 +187,10 @@ class FourCastNetv2(ATMModel):
 
         if self.resume_checkpoint:
             self.checkpoint_path = self.resume_checkpoint
-        elif self.pre_trained_sfno:
-            self.checkpoint_path = os.path.join(self.assets,self.model_type, "weights.tar")
-        else:
+        elif self.no_pretrained_sfno:
             self.checkpoint_path = None
+        else:
+            self.checkpoint_path = os.path.join(self.assets,self.model_type, "weights.tar")
 
 
         # create model
@@ -215,7 +215,7 @@ class FourCastNetv2(ATMModel):
         model = self.model # since self.model is a class this is passed by reference and modified in place
 
         # Load weights
-        if checkpoint_file is None:
+        if checkpoint_file is not None:
             checkpoint = torch.load(checkpoint_file,map_location=self.device)
 
             if "model_state" in checkpoint.keys(): weights = checkpoint["model_state"]
@@ -349,7 +349,7 @@ class FourCastNetv2(ATMModel):
 
                 # Save the results
                 step = (i + 1) * self.hour_steps
-                output = self.normalise(output, reverse=True).cpu().numpy()
+                output = self.normalise(output.cpu().numpy(), reverse=True)
 
                 if i == 0 and LOG.isEnabledFor(logging.DEBUG):
                     LOG.debug("Mean/stdev of denormalised values: %s", output.shape)

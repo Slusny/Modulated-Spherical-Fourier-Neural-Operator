@@ -106,7 +106,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
         args.input = "file"
 
     if args.metadata is None:
-        args.metadata = []
+        args.metadata = {}
 
     if args.expver is not None:
         args.metadata["expver"] = args.expver
@@ -509,7 +509,7 @@ if __name__ == "__main__":
     )
     data.add_argument(
         "--input",
-        default="cds",
+        default="none",
         help="Source to use for downloading data, local file or cluster(uni tuebingen) specific data structure",
         choices=available_inputs(),
     )
@@ -844,9 +844,8 @@ if __name__ == "__main__":
         help="Load model from checkpoint and use its configuration to initialize the model"
     )
     training.add_argument(
-        "--pre-trained-sfno",
+        "--no-pretrained-sfno",
         action="store_true",
-        default=True,
         help="Use pretrained sfno model from ecmwf"
     )
     training.add_argument(

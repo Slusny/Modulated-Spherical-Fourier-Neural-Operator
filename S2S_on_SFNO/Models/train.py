@@ -832,7 +832,7 @@ class Trainer():
                         # logging
         
                 self.mem_log("fin",fin=True)
-                if (i+1) % self.cfg.save_checkpoint_interval == 0:
+                if (i+1) % self.cfg.save_checkpoint_interval == 0 and self.cfg.save_checkpoint_interval > 0 :
                     system_monitor(printout=True,pids=[os.getpid()],names=["python"])
                     self.save_to_zarr_forecast(saves)
                     saves +=1
@@ -842,7 +842,6 @@ class Trainer():
                     return
                     # logging
                 self.iter += 1
-                self.step = self.iter*self.cfg.batch_size+len(self.dataset)*self.epoch
             if len(self.output_data[0]) > 0:
                 self.save_to_zarr_forecast(saves)
             return
