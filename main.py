@@ -15,6 +15,7 @@ import glob
 import re
 import datetime
 import math
+import dask
 # to get eccodes working on Ubuntu 20.04
 # os.environ["LD_PRELOAD"] = '/usr/lib/x86_64-linux-gnu/libffi.so.7'
 # in shell : export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libffi.so.7
@@ -61,6 +62,10 @@ print("cuda available? : ",cuda_available,flush=True)
 do_return_trainer = False
 
 def main(rank=0,args={},arg_groups={},world_size=1):
+    
+    # to speed up prallel loading of data
+    dask.config.set(scheduler='synchronous')
+
     args.rank = rank
     args.world_size = world_size
     # args = Attributes(v)
@@ -920,7 +925,7 @@ if __name__ == "__main__":
     training.add_argument(
         "--discount-factor",
         action="store",
-        type=int,
+        type=float,
         default=0.9,
     )
     training.add_argument(
@@ -936,6 +941,10 @@ if __name__ == "__main__":
     )
     training.add_argument(
         "--resume-optimizer",
+        action="store_true",
+    )
+    training.add_argument(
+        "--no-scratch",
         action="store_true",
     )
 

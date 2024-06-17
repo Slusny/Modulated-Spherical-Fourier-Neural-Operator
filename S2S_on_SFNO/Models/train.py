@@ -80,7 +80,7 @@ class Trainer():
                 # config_wandb = vars(args).copy()
                 # for key in ['notes','tags','wandb']:del config_wandb[key]
                 # del config_wandb
-                if os.environ.get("SCRATCH") is not None:
+                if os.environ.get("SCRATCH") is not None and not self.cfg.no_scratch:
                     wandb_dir = os.path.join(os.environ["SCRATCH"],"wandb")
                     if not os.path.exists(wandb_dir): os.mkdir(wandb_dir)
                 elif os.path.exists("/mnt/qb/work2/goswami0/gkd965/wandb"):
@@ -132,8 +132,7 @@ class Trainer():
         
 
     def train_epoch(self):
-        batch_loss = 0
-
+        batch_loss =  [0. for _ in range(0,self.cfg.multi_step_training+2)]
         self.mem_log("loading data")
         for i, data in enumerate(self.training_loader):
             
@@ -147,11 +146,12 @@ class Trainer():
                     output, gt = self.model_forward(input,data,step,return_gt= step % (self.cfg.training_step_skip+1)==0)
                     
                     if step % (self.cfg.training_step_skip+1) == 0:
-                        loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1) *self.cfg.discount_factor**step #/self.cfg.batch_size
-                    
-                loss = loss / (self.cfg.accumulation_steps+1)
+                        loss_step = self.get_loss(output, gt)/(self.cfg.multi_step_training+1)/ (self.cfg.accumulation_steps+1) *self.cfg.discount_factor**step #/self.cfg.batch_size
+                        loss = loss + loss_step
+                        batch_loss[step] += loss_step.item()
+
                 # only for logging the loss for the batch
-                batch_loss += loss.item()
+                batch_loss[-1] += loss.item()
             
             #backward
             self.mem_log("backward pass",fin=True)
@@ -179,12 +179,12 @@ class Trainer():
                 # logging
                 self.step = self.iter*self.cfg.batch_size*(self.cfg.accumulation_steps+1)+len(self.dataset)*self.epoch
                 self.iter_log(batch_loss,scale=None)
-                batch_loss = 0
+                batch_loss =  [0. for _ in range(0,self.cfg.multi_step_training+2)]
   
         # end of epoch
     
     def train_epoch_ddp(self):
-        batch_loss = 0
+        batch_loss =  [0. for _ in range(0,self.cfg.multi_step_training+2)]
         if self.cfg.rank == 0: print("Start training of epoch ",self.epoch,flush=True)
         dist.barrier()
 
@@ -211,11 +211,12 @@ class Trainer():
                         output, gt = self.model_forward(input,data,step,return_gt= step % (self.cfg.training_step_skip+1)==0)
                         
                         if step % (self.cfg.training_step_skip+1) == 0:
-                            loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1) *self.cfg.discount_factor**step #/self.cfg.batch_size
-                        
-                    loss = loss / (self.cfg.accumulation_steps+1)
+                            step_loss = self.get_loss(output, gt)/(self.cfg.multi_step_training+1)/ (self.cfg.accumulation_steps+1) *self.cfg.discount_factor**step #/self.cfg.batch_size
+                            loss = loss + step_loss
+                            batch_loss[step] += step_loss.item()
+
                     # only for logging the loss for the batch
-                    batch_loss += loss.item()
+                    batch_loss[-1] += loss.item()
                 
                 # if self.cfg.rank == 0: print("before gscaler backward, loss: ",loss,flush=True)
                 # dist.barrier()
@@ -252,7 +253,7 @@ class Trainer():
                 # logging
                 self.step = self.iter*self.cfg.batch_size*(self.cfg.accumulation_steps+1)*self.cfg.world_size+len(self.dataset)*self.epoch
                 self.iter_log(batch_loss,scale=None)
-                batch_loss = 0
+                batch_loss =  [0. for _ in range(0,self.cfg.multi_step_training+2)]
             else:
                 with self.model.no_sync():
                     with amp.autocast(self.cfg.enable_amp):
@@ -262,12 +263,13 @@ class Trainer():
                             output, gt = self.model_forward(input,data,step,return_gt= step % (self.cfg.training_step_skip+1)==0)
                             
                             if step % (self.cfg.training_step_skip+1) == 0:
-                                loss = loss + self.get_loss(output, gt)/(self.cfg.multi_step_training+1) *self.cfg.discount_factor**step #/self.cfg.batch_size
-                            
-                        loss = loss / (self.cfg.accumulation_steps+1)
+                                step_loss = self.get_loss(output, gt)/(self.cfg.multi_step_training+1)/ (self.cfg.accumulation_steps+1) *self.cfg.discount_factor**step #/self.cfg.batch_size
+                                loss = loss + step_loss
+                                batch_loss[step] += step_loss.item()
+
+                        batch_loss[-1] += loss.item()
                         # only for logging the loss for the batch
-                        batch_loss += loss.item()
-                    
+                        
                     #backward
                     self.mem_log("backward pass",fin=(self.cfg.accumulation_steps > 0))
                     if self.cfg.enable_amp:
@@ -618,6 +620,7 @@ class Trainer():
                 
     def valid_log(self,loss_value,loss_pervar,loss_value_std,loss_pervar_std):
         if self.cfg.rank == 0: 
+            round_val = 8
 
             if self.cfg.multi_step_validation > 0:multistep_notice = " (steps=... mutli-step-validation, each step an auto-regressive 6h-step)"
             else: multistep_notice = ""                                             
@@ -634,10 +637,10 @@ class Trainer():
                 val_log_local["validation loss std step={}".format(step)] = loss_value_std[i].item()
                 if step % (1+self.cfg.validation_step_skip) == 0: 
                     key = "validation loss step={}".format(step)
-                    val_log_wandb[key]                                     = round(loss_value[i].item(),5)
-                    val_log_wandb["validation loss std step={}".format(step)] = round(loss_value_std[i].item(),5)
+                    val_log_wandb[key]                                     = round(loss_value[i].item(),round_val)
+                    val_log_wandb["validation loss std step={}".format(step)] = round(loss_value_std[i].item(),round_val)
                     # LOG
-                    LOG.info(key+ " : " +str(val_log_wandb[key]) + " +/- " + str(round(loss_value_std[i].item(),5)))
+                    LOG.info(key+ " : " +str(val_log_wandb[key]) + " +/- " + str(round(loss_value_std[i].item(),round_val)))
 
 
             # per variable
@@ -649,7 +652,7 @@ class Trainer():
                             val_log_local["MSE "+var_name+ " step={}".format(step)]     = loss_pervar[i][idx_var].item()
                             val_log_local["MSE "+var_name+ " std step={}".format(step)] = loss_pervar_std[i][idx_var].item()
                             if step % (1+self.cfg.validation_step_skip) == 0: 
-                                val_log_wandb["MSE "+var_name+ " step={}".format(step)]     = round(loss_pervar[i][idx_var].item(),5)
+                                val_log_wandb["MSE "+var_name+ " step={}".format(step)]     = round(loss_pervar[i][idx_var].item(),round_val)
                 
             # log scheduler
             if self.scheduler is not None and self.scheduler != "None": 
@@ -674,7 +677,7 @@ class Trainer():
                     mse_var_log_str = "    "+var_name.ljust(5)+" : "
                     # for step in range(0,loss_pervar.shape[0],1+self.cfg.validation_step_skip):
                     for step in range(0,loss_pervar.shape[0]):
-                        mse_var_log_str += str(round(loss_pervar[step][idx_var].item(),5)).ljust(8)
+                        mse_var_log_str += str(round(loss_pervar[step][idx_var].item(),round_val)).ljust(8)
                         if step < (loss_pervar.shape[0]-1):mse_var_log_str += " -> "
                     print(mse_var_log_str,flush=True)
             
@@ -686,16 +689,16 @@ class Trainer():
                 else:
                     gamma_np = self.model.gamma.cpu().clone().detach().numpy()
                     beta_np  = self.model.beta.cpu().clone().detach().numpy()
-                print("gamma values mean : ",round(gamma_np.mean(),6),"+/-",round(gamma_np.std(),6),flush=True)
-                print("beta values mean  : ",round(beta_np.mean(),6),"+/-",round(beta_np.std(),6),flush=True)
-                val_log_wandb["gamma"] = round(gamma_np.mean(),6)
-                val_log_wandb["beta"]  = round(beta_np.mean(),6)
-                val_log_wandb["gamma_std"] = round(gamma_np.std(),6)
-                val_log_wandb["beta_std"]  = round(beta_np.std(),6)
-                val_log_local["gamma"] = round(gamma_np.mean(),6)
-                val_log_local["beta"]  = round(beta_np.mean(),6)
-                val_log_local["gamma_std"] = round(gamma_np.std(),6)
-                val_log_local["beta_std"]  = round(beta_np.std(),6)
+                print("gamma values mean : ",round(gamma_np.mean(),round_val),"+/-",round(gamma_np.std(),round_val),flush=True)
+                print("beta values mean  : ",round(beta_np.mean(),round_val),"+/-",round(beta_np.std(),round_val),flush=True)
+                val_log_wandb["gamma"] = round(gamma_np.mean(),round_val)
+                val_log_wandb["beta"]  = round(beta_np.mean(),round_val)
+                val_log_wandb["gamma_std"] = round(gamma_np.std(),round_val)
+                val_log_wandb["beta_std"]  = round(beta_np.std(),round_val)
+                val_log_local["gamma"] = round(gamma_np.mean(),round_val)
+                val_log_local["beta"]  = round(beta_np.mean(),round_val)
+                val_log_local["gamma_std"] = round(gamma_np.std(),round_val)
+                val_log_local["beta_std"]  = round(beta_np.std(),round_val)
             
             # local logging
             self.local_log.log(val_log_local)
@@ -720,15 +723,21 @@ class Trainer():
     def iter_log(self,batch_loss,scale=None):
         if self.cfg.rank == 0: 
             # local logging
-            self.local_log.log({"loss": round(batch_loss,6),"step":self.step})
+            log_dict = {"step":self.step}
+            for i in range(len(batch_loss)):
+                if i == len(batch_loss)-1:
+                    log_dict["loss"] = round(batch_loss[i],6)
+                elif batch_loss[i] != 0:
+                    log_dict["loss step={}".format(i)] = round(batch_loss[i],6)
+            self.local_log.log(log_dict)
 
             if self.cfg.wandb and self.cfg.rank == 0:
-                wandb.log({"loss": round(batch_loss,5),"step":self.step })
+                wandb.log(log_dict)
             if self.cfg.advanced_logging:
                 if scale is not None:
-                    print("After ", self.step, " Samples - Loss: ", round(batch_loss,5)," - scale: ",round(scale,5))
+                    print("After ", self.step, " Samples - Loss: ", round(batch_loss[-1],5)," - scale: ",round(scale,5))
                 else :
-                    print("After ", self.step, " Samples - Loss: ", round(batch_loss,5),flush=True)
+                    print("After ", self.step, " Samples - Loss: ", round(batch_loss[-1],5),flush=True)
         if self.cfg.ddp:
             dist.barrier()
 
@@ -1036,20 +1045,29 @@ class Trainer():
                     cls = torch.randn((self.cfg.batch_size,512))
                     data = [[cls],[nino]]
                     dataset.append(data)
-                return dataset
-            elif self.cfg.model_type == "sfno":
-                if self.cfg.film_gen_type == "mae" and self.cfg.cls is not None:
-                    dataset = []
-                    for i in range(num):
-                        data = []
-                        for i in range(0, self.auto_regressive_steps+2):
-                            era5 = torch.randn((self.cfg.batch_size,73,180,360))
-                            cls = torch.randn((self.cfg.batch_size,512))
-                            data.append([era5, cls])
-                        dataset.append(data)
-            else:
-                data = torch.randn(1,2,721,1440)
-                data_sst = torch.randn(1,2,721,1440)
+        elif self.cfg.model_type == "sfno":
+            if self.cfg.film_gen_type == "mae" and self.cfg.cls is not None:
+                dataset = []
+                for i in range(num):
+                    data = []
+                    for i in range(0, self.cfg.multi_step_training+2):
+                        era5 = torch.randn((self.cfg.batch_size,73,721,1440))
+                        cls = torch.randn((self.cfg.batch_size,512))
+                        data.append([era5, cls])
+                    dataset.append(data)
+            if self.cfg.film_gen_type == "gcn" or self.cfg.film_gen_type == "transformer" :
+                dataset = []
+                for i in range(num):
+                    data = []
+                    for i in range(0, self.cfg.multi_step_training+2):
+                        era5 = torch.randn((self.cfg.batch_size,73,721,1440))
+                        sst = torch.randn((self.cfg.batch_size,self.cfg.temporal_step,180,360))
+                        data.append([era5, sst])
+                    dataset.append(data)
+        else:
+            dataset = torch.randn(1,2,721,1440)
+            dataset = torch.randn(1,2,721,1440)
+        return dataset
     
     def save_data(self):
         self.set_dataloader(run=True)
@@ -1111,25 +1129,36 @@ class Trainer():
         self.cfg.validation_interval = -1
         self.cfg.save_checkpoint_interval = -1
         self.set_logger()
+        if self.cfg.enable_amp == True:
+            self.gscaler = amp.GradScaler()
         self.create_loss()
         self.create_optimizer()
         self.create_scheduler()
         self.ready_model()
         while True:
-            try:
-                self.training_loader = self.gen_test_data(num_iterations)
-                self.dataset = self.training_loader
-                print(f"Testing batch size {self.cfg.batch_size}")
-                with Timer("\truntime "+str(self.cfg.batch_size),divisor=num_iterations):
-                    self.train_epoch()
-                self.cfg.batch_size += batch_size_step
-                batch_size_step = batch_size_step*2
-            except RuntimeError:
-                print(f"\tOOM at batch size {self.cfg.batch_size}")
-                batch_size_step = batch_size_step//2
-                break
-            if batch_size_step == 0:
-                break
+            # try:
+            #     self.training_loader = self.gen_test_data(num_iterations)
+            #     self.dataset = self.training_loader
+            #     print(f"Testing batch size {self.cfg.batch_size}")
+            #     with Timer("\truntime "+str(self.cfg.batch_size),divisor=num_iterations):
+            #         self.train_epoch()
+            #     self.cfg.batch_size += batch_size_step
+            #     batch_size_step = batch_size_step*2
+            # except RuntimeError:
+            #     print(f"\tOOM at batch size {self.cfg.batch_size}")
+            #     batch_size_step = batch_size_step//2
+            #     break
+            # if batch_size_step == 0:
+            #     break
+            #
+            self.training_loader = self.gen_test_data(num_iterations)
+            self.dataset = self.training_loader
+            print(f"Testing batch size {self.cfg.batch_size}")
+            with Timer("\truntime "+str(self.cfg.batch_size),divisor=num_iterations):
+                self.train_epoch()
+            self.cfg.batch_size += batch_size_step
+            batch_size_step = batch_size_step*2
+            #
         torch.cuda.empty_cache()
         print(f"Final batch size {self.cfg.batch_size}")
         return self.cfg.batch_size

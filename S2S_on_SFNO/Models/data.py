@@ -194,7 +194,7 @@ class ERA5_galvani(Dataset):
             
             if self.sst_path is None:
                 sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean().to_numpy()
-            return torch.from_numpy(sst)
+            return torch.from_numpy(sst)[0] # remove variable dimension -- new, check if breaks oni calculation
 
         if self.sst:
             sst = get_sst(idx)

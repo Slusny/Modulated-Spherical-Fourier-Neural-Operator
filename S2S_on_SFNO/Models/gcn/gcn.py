@@ -10,7 +10,7 @@ import numpy as np
 from .layers import GraphConvolution
 
 class GCN(torch.nn.Module):
-    def __init__(self,batch_size,device,depth=8,embed_dim=512, out_features=256,coarse_level=4,assets="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
+    def __init__(self,batch_size,device,depth=8,in_features=1,embed_dim=512, out_features=256,coarse_level=4,assets="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
         super().__init__()
 
         # Model
@@ -18,7 +18,7 @@ class GCN(torch.nn.Module):
         self.hidden_size = embed_dim
         self.out_features = out_features
         self.activation = nn.LeakyReLU()
-        self.conv1 = GCNConv(1, self.hidden_size,cached=True)
+        self.conv1 = GCNConv(in_features, self.hidden_size,cached=True)
         self.perceptive_field = depth
         self.conv_layers = nn.ModuleList([GCNConv(self.hidden_size, self.hidden_size,cached=True) for _ in range(self.perceptive_field)])
         self.head_film = nn.Linear(self.hidden_size,out_features )
@@ -37,7 +37,7 @@ class GCN(torch.nn.Module):
         num_edges = edge_index.shape[1]
 
         # repeat nan_mask for each sst-matrix in batch 
-        self.batch_nan_mask = np.repeat(nan_mask[ np.newaxis,: ], batch_size, axis=0)
+        self.batch_nan_mask = np.repeat(nan_mask[ np.newaxis,: ], batch_size, axis=0) # 
 
         # handle batch by appending sst-matrices to long 1D array, edge_index gets repeated and offseted to create the distinct graphs 
         self.batch = torch.tensor(list(range(batch_size))*num_nodes).reshape((num_nodes,batch_size)).T.flatten().to(device)
@@ -49,7 +49,8 @@ class GCN(torch.nn.Module):
         # node values (sst): (num_nodes,1) ...
 
     def forward(self, sst):
-        x = sst[self.batch_nan_mask][None].T
+        # x = sst[self.batch_nan_mask][None].T
+        x = sst[0,:,self.batch_nan_mask[0]].T # only for batch size 1
         # orig = x
         # # No Skip
         # h = self.conv1(x, self.edge_index_batch)
@@ -70,7 +71,7 @@ class GCN(torch.nn.Module):
         
 
         # Skip
-        x = x + self.activation(self.conv1(x, self.edge_index_batch))
+        x = self.activation(self.conv1(x, self.edge_index_batch))
         for conv in self.conv_layers:
             x = x + self.activation(conv(x, self.edge_index_batch))
         x = global_mean_pool(x, self.batch)
@@ -93,7 +94,7 @@ class GCN(torch.nn.Module):
 
 # Blowes up STD (7 layers -> std=8.3)
 class GCN_custom(nn.Module):
-    def __init__(self,batch_size,device,depth,embed_dim=512, out_features=256,coarse_level=4,assets="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
+    def __init__(self,batch_size,device,depth,in_features=1,embed_dim=512, out_features=256,coarse_level=4,assets="/mnt/qb/work2/goswami0/gkd965/Assets/gcn"):
         """
         Paramters: last lin layer: 131072, conv hidden layer (sparse): 262144
         But Pararmeters SFNO: 
@@ -118,7 +119,7 @@ class GCN_custom(nn.Module):
         self.device = device
         self.hidden_size = embed_dim
         self.out_features = out_features
-        self.conv1 = GraphConvolution(1, self.hidden_size)
+        self.conv1 = GraphConvolution(in_features, self.hidden_size)
         self.perceptive_field = depth # 3
         self.conv_layers = nn.ModuleList([GraphConvolution(self.hidden_size, self.hidden_size) for _ in range(self.perceptive_field)])
         self.activation = nn.LeakyReLU() # change parameter for leaky relu also in initalization of GraphConvolution layer
@@ -156,7 +157,8 @@ class GCN_custom(nn.Module):
         # x = x.mean(dim=-2)
 
         # Skip
-        x = x + self.activation(self.conv1(x, self.adj))
+        # x = x + self.activation(self.conv1(x, self.adj))
+        x = self.activation(self.conv1(x, self.adj))
         for conv in self.conv_layers:
             x = x + self.activation(conv(x, self.adj))
         x = x.mean(dim=-2)
