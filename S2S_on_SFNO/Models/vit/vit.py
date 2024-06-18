@@ -173,7 +173,7 @@ class ViT(nn.Module):
         return x.reshape(batch,-1,self.dim)
     
     def forward(self, img):
-        img = img[None] #?? do i need this, get a key error if i don't
+        # img = img[None] #?? do i need this, get a key error if i don't
         b = 1 #cringe
         # x = self.to_patch_embedding(img)
 

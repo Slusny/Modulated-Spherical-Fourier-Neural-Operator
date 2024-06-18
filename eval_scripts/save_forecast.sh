@@ -9,7 +9,7 @@ python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --film
 
 
 # Sfno
-python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version latest --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/work2/goswami0/gkd965/checkpoints/sfno  --num-iterations 73 --batch-size 5 --save-checkpoint-interval 10 --training-workers 8
+python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version latest --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/work2/goswami0/gkd965/checkpoints/sfno  --num-iterations 3 --batch-size 1 --save-checkpoint-interval 1 --training-workers 8 -no-shuffle
 
 #73*5=365
 # 36*5=180

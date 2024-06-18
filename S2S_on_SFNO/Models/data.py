@@ -8,6 +8,16 @@ import os
 from datetime import datetime
 import sys
 
+def combine_relative_humidity():
+    levels = [50, 100, 150, 200, 250, 300, 400, 500, 600, 700, 850, 925, 1000]
+    datasets = []
+    for level in levels:
+        # print(f"/mnt/qb/goswami/data/era5/multi_pressure_level/relative_humidity/{level}/relative_humidity_1979_*.nc")
+        ds = xr.open_mfdataset(f"/mnt/qb/goswami/data/era5/multi_pressure_level/relative_humidity/{level}/relative_humidity_*.nc",chunks={'time':1,'level':13,'longitude':1440,'latitude':721})
+        level_ = xr.DataArray([level],[('level',[level])])
+        datasets.append(ds.expand_dims(level=level_))
+    return xr.concat(datasets,dim="level")
+
 class ERA5_galvani(Dataset):
     """
         Dataset for the ERA5 data on Galvani cluster at university of tuebingen.
@@ -40,6 +50,8 @@ class ERA5_galvani(Dataset):
             u100_path = "/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/u100m_1959-2022_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr",
             v100_path = "/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/v100m_1959-2023-10_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr",
             
+            relative_humidity_cds = True, 
+
             sst_path = None,
 
             start_year=2000,
@@ -60,6 +72,7 @@ class ERA5_galvani(Dataset):
         self.model = model
         self.past_sst = past_sst
         self.sst = sst
+        self.relative_humidity_cds =  relative_humidity_cds
         self.sst_path = sst_path
         self.run = run
         self.multi_step = multi_step
@@ -84,6 +97,8 @@ class ERA5_galvani(Dataset):
             else:                           self.dataset_v100 = xr.open_mfdataset(v100_path,chunks=None) # sd: 1959-01-01 end date: 2023-10-31
         if sst_path is not None:
             self.dataset_sst = xr.open_zarr(sst_path,chunks=None)
+        if relative_humidity_cds:
+            self.relative_humidity_data = combine_relative_humidity()
         if cls:
             self.cls = torch.from_numpy(np.load(cls))
         else:
@@ -129,26 +144,38 @@ class ERA5_galvani(Dataset):
         level_list = self.model.param_level_pl[1].copy()
         level_list.reverse()
 
-        def format(sample,sst=None):
+        def format(sample,idx):
             scf = sample[self.model.param_sfc_ERA5].to_array().to_numpy()
-            pl = sample[list(self.model.levels_per_pl.keys())].sel(level=level_list).to_array().to_numpy()
-            pl = pl.reshape((pl.shape[0]*pl.shape[1], pl.shape[2], pl.shape[3]))
             time = str(sample.time.to_numpy())
             time = torch.tensor(int(time[0:4]+time[5:7]+time[8:10]+time[11:13])) # time in format YYYYMMDDHH
             if self.uv100:
                 # ERA5 data on QB
-                u100_t = self.dataset_u100.isel(time=self.start_idx + idx)
-                v100_t = self.dataset_v100.isel(time=self.start_idx + idx)
+                u100_t = self.dataset_u100.isel(time=idx)
+                v100_t = self.dataset_v100.isel(time=idx)
                 if "expver" in set(u100_t.coords.dims): u100_t = u100_t.sel(expver=1)
                 if "expver" in set(v100_t.coords.dims): v100_t = v100_t.sel(expver=1)
                 u100 = u100_t["u100"].to_numpy()[None]
                 v100 = v100_t["v100"].to_numpy()[None]
-                data =  torch.from_numpy(np.vstack((
-                    scf[:2],
-                    u100,
-                    v100,
-                    scf[2:],
-                    pl)))
+                if self.relative_humidity_cds:
+                    pl = sample[list(self.model.levels_per_pl.keys())[:-1]].sel(level=level_list).to_array().to_numpy()
+                    pl = pl.reshape((pl.shape[0]*pl.shape[1], pl.shape[2], pl.shape[3])) # go from (variable, level, lat, long) to (variable1*level...last_variable*level, lat, long)
+                    r = self.relative_humidity_data.isel(time=idx-self.dataset_idx_offset).to_array().to_numpy()
+                    data =  torch.from_numpy(np.vstack((
+                        scf[:2],
+                        u100,
+                        v100,
+                        scf[2:],
+                        pl,
+                        r[0])))
+                else:
+                    pl = sample[list(self.model.levels_per_pl.keys())].sel(level=level_list).to_array().to_numpy()
+                    pl = pl.reshape((pl.shape[0]*pl.shape[1], pl.shape[2], pl.shape[3]))
+                    data =  torch.from_numpy(np.vstack((
+                        scf[:2],
+                        u100,
+                        v100,
+                        scf[2:],
+                        pl)))
             else: 
                 data = torch.from_numpy(np.vstack((scf,pl))) # transpose to have the same shape as expected by SFNO (lat,long)
             
@@ -167,7 +194,7 @@ class ERA5_galvani(Dataset):
             
             if self.sst_path is None:
                 sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean().to_numpy()
-            return torch.from_numpy(sst)
+            return torch.from_numpy(sst)[0] # remove variable dimension -- new, check if breaks oni calculation
 
         if self.sst:
             sst = get_sst(idx)
@@ -178,7 +205,7 @@ class ERA5_galvani(Dataset):
                 # if we run the model autoregressivly and don't want to evaluate, just save the output, we only need the first era5 data and no following data
                 era5 = [[]]
             else:
-                era5 = format(self.dataset.isel(time=self.start_idx + idx + i))
+                era5 = format(self.dataset.isel(time=self.start_idx + idx + i),self.start_idx + idx + i)
             if self.sst:
                 era5.insert(1,(sst[i:i+self.temporal_step]).float())
             elif self.cls is not None:

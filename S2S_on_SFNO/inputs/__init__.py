@@ -282,12 +282,17 @@ class FileInput:
     def all_fields(self):
         return cml.load_source("file", self.file)
 
+class NoInput:
+    def __init__(self,owner,**kwargs):
+        pass
+
 
 INPUTS = dict(
     mars=MarsInput,
     file=FileInput,
     cds=CdsInput,
-    localERA5=LocalInput
+    localERA5=LocalInput,
+    none=NoInput
 )
 
 
