@@ -75,7 +75,7 @@
 
 //GCN
 
-//GCN local
+//GCN local -------------------------------------
 // python main.py --model sfno --model-version film --train --validation-interval 2 --validation-epochs 3 --training-workers 6 --batch-size 1 --learning-rate 0.000005 --multi-step-training 1 --training-step-skip 0 --film-gen gcn --film-layers 12 --save-checkpoint-interval 1 --advanced-logging --accumulation-steps 1 --loss-fn L2Sphere --scheduler CosineAnnealingLR --scheduler-horizon 432440 --training-epochs 8 --trainingset-start-year 2001 --trainingset-end-year 2002 --validationset-start-year 2002 --validationset-end-year 2003 --trainingdata-path /media/lenny/V/wb2_2001-2003.zarr --assets /mnt/ssd2/Master/S2S_on_SFNO/Assets --save-path /mnt/ssd2/Master/S2S_on_SFNO/outputs/gcn --trainingdata-v100-path /media/lenny/V/v100_2001-2003.zarr --trainingdata-u100-path /media/lenny/V/u100_2001-2003.zarr
 
 // SFNO
@@ -83,7 +83,7 @@
 
 
 //MAE - local
-// python main.py --model mae --train --era5-path /media/V/wb2_2001-2003.zarr --trainingset-start-year 2001 --trainingset-end-year 2002 --validationset-start-year 2002 --validationset-end-year 2003 --save-path /mnt/ssd2/Master/S2S_on_SFNO/outputs/mae --assets /mnt/ssd2/Master/S2S_on_SFNO/Assets/mae
+// python main.py --model mae --train --trainingdata-path", "/media/lenny/V/wb2_2001-2003.zarr --trainingset-start-year 2001 --trainingset-end-year 2002 --validationset-start-year 2002 --validationset-end-year 2003 --save-path /mnt/ssd2/Master/S2S_on_SFNO/outputs/mae --assets /mnt/ssd2/Master/S2S_on_SFNO/Assets/mae
 // python main.py --model mae --train --validation-interval 20 --save-checkpoint-interval 5 --validation-epochs 2 --training-workers 6  --learning-rate 0.0005 --advanced-logging --scheduler CosineAnnealingLR --scheduler-horizon 108110 --loss-fn NormalCRPS --batch-size 128 --training-epochs 2 --patch-size 14 9 9 --trainingset-start-year 2001 --trainingset-end-year 2002 --validationset-start-year 2002 --validationset-end-year 2003 --trainingdata-path /media/lenny/V/wb2_2001-2003.zarr --assets /mnt/ssd2/Master/S2S_on_SFNO/Assets --save-path /mnt/ssd2/Master/S2S_on_SFNO/outputs/mae  
 // # eval
 //      main.py --validation-epochs 15 --training-workers 7 --batch-size 1 --multi-step-validation 5 --validation-step-skip 5 --eval-model --eval-checkpoint-path /media/lenny/V/Master/checkpoints/apricot-smoke-15 --eval-checkpoint-num 2 --trainingset-start-year 2001 --trainingset-end-year 2002 --validationset-start-year 2002 --validationset-end-year 2003 --trainingdata-path /media/lenny/V/wb2_2001-2003.zarr --assets /mnt/ssd2/Master/S2S_on_SFNO/Assets 
