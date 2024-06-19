@@ -924,6 +924,9 @@ class FourCastNetv2_filmed(FourCastNetv2):
         model = self.model
         model.zero_grad()
 
+        if self.cfg.retrain_film:
+            grad_layers = ["film_gen","decoder"] + ["blocks."+str(11-i) for i in range(self.cfg.film_layers)]
+
         # Load SFNO weights
         checkpoint_sfno = torch.load(checkpoint_file,map_location=self.device)
         if "model_state" in checkpoint_sfno.keys(): weights = checkpoint_sfno["model_state"]
@@ -951,6 +954,8 @@ class FourCastNetv2_filmed(FourCastNetv2):
             # for k, v in checkpoint_sfno["model_state"].items():
             for k, v in weights.items():
                 name = k[7:]
+                if self.cfg.retrain_film and any(layer in name for layer in grad_layers) :
+                        continue
                 if name != "ged":
                     new_state_dict[name] = v
             try:
@@ -964,15 +969,20 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 model.load_state_dict(new_state_dict,strict=False)
 
         else:
+            new_state_dict = dict()
+            for k, v in weights.items():
+                if self.cfg.retrain_film and any(layer in name for layer in grad_layers) :
+                    continue
+                new_state_dict[k] = v
             try:
                 print(" - loading weights for SFNO")
-                model.load_state_dict(weights)
+                model.load_state_dict(new_state_dict)
             except RuntimeError as e:
                 LOG.error(e)
                 print("--- !! ---")
                 print("loading state dict with strict=False, please verify if the right model is loaded and strict=False is desired")
                 print("--- !! ---")
-                model.load_state_dict(weights,strict=False)
+                model.load_state_dict(new_state_dict,strict=False)
 
         #  Load Filmed weights
         if self.checkpoint_path_film:
@@ -1011,7 +1021,6 @@ class FourCastNetv2_filmed(FourCastNetv2):
         # disable grad for sfno
         #model.requires_grad = False
         if self.cfg.retrain_film:
-            grad_layers = ["film_gen","decoder"] + ["blocks."+str(11-i) for i in range(self.cfg.film_layers)]
             for name, param in model.named_parameters():
                 if not any(layer in name for layer in grad_layers) :
                     param.requires_grad = False 
@@ -1524,7 +1533,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
     def get_parameters(self):
         if self.cfg.retrain_film:
-            return self.model.get_parameters()
+            return self.model.parameters()
         else:
             return self.model.film_gen.get_parameters()
 
