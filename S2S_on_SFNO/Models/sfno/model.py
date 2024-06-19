@@ -1010,12 +1010,18 @@ class FourCastNetv2_filmed(FourCastNetv2):
 
         # disable grad for sfno
         #model.requires_grad = False
-        for name, param in model.named_parameters():
-            if not "film_gen" in name:
-                param.requires_grad = False 
-            # if "film_gen" in name:
-                # param.requires_grad = True
-            # param.requires_grad = False 
+        if self.cfg.retrain_film:
+            grad_layers = ["film_gen","decoder"] + ["blocks."+str(11-i) for i in range(self.cfg.film_layers)]
+            for name, param in model.named_parameters():
+                if not any(layer in name for layer in grad_layers) :
+                    param.requires_grad = False 
+        else:
+            for name, param in model.named_parameters():
+                if not "film_gen" in name:
+                    param.requires_grad = False 
+                # if "film_gen" in name:
+                    # param.requires_grad = True
+                # param.requires_grad = False 
 
         return model
     
@@ -1517,7 +1523,10 @@ class FourCastNetv2_filmed(FourCastNetv2):
             plt.close(fig)
 
     def get_parameters(self):
-        return self.model.film_gen.get_parameters()
+        if self.cfg.retrain_film:
+            return self.model.get_parameters()
+        else:
+            return self.model.film_gen.get_parameters()
 
     def plot_skillscores(self,mean,std,save_path,variables,checkpoint,val_epochs):
         

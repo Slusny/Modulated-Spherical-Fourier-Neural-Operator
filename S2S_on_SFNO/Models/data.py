@@ -67,6 +67,8 @@ class ERA5_galvani(Dataset):
             skip_step=0,
             run=False,
             dataset_idx_offset=29220,
+            start_idx = None,
+            end_idx = None,
 
         ):
         self.model = model
@@ -99,12 +101,14 @@ class ERA5_galvani(Dataset):
             self.dataset_sst = xr.open_zarr(sst_path,chunks=None)
         if relative_humidity_cds:
             self.relative_humidity_data = combine_relative_humidity()
+            # self.relative_humidity_data = xr.open_zarr("/mnt/qb/goswami/data/era5/relative_humidity.zarr",chunks=None)
         if cls:
             self.cls = torch.from_numpy(np.load(cls))
         else:
             self.cls = None
         # check if the 100uv-datasets and era5 have same start and end date
         # Check if set Start date to be viable
+        
         startdate = np.array([self.dataset.time[0].to_numpy() ,self.dataset_v100.time[0].to_numpy() ,self.dataset_u100.time[0].to_numpy()])
         possible_startdate = startdate.max()
         if not (startdate == startdate[0]).all(): 
@@ -132,7 +136,11 @@ class ERA5_galvani(Dataset):
             end_year = int(np.datetime_as_string(possible_enddate,"Y"))
 
         self.start_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(dataset_start, start_year))])
-        self.end_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(dataset_start, end_year))]) -1
+        if start_idx is not None and end_idx is not None:
+            self.start_idx = self.start_idx + start_idx
+            self.end_idx = self.start_idx + end_idx
+        else:
+            self.end_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(dataset_start, end_year))]) -1
 
         print("Using years: ",start_year," - ", end_year," (total length: ",self.end_idx - self.start_idx,") (availabe date range: ",np.datetime_as_string(possible_startdate,"Y"),"-",np.datetime_as_string(possible_enddate,"Y"),")")
         print("")

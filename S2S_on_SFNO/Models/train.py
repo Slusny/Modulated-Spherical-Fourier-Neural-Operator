@@ -11,7 +11,7 @@ from .sfno.sfnonet import GCN
 from .data import SST_galvani, ERA5_galvani
 import wandb
 from time import time
-from datetime import datetime
+from datetime import datetime, date
 import torch.distributed as dist
 # BatchSampler(drop_last=True)
 
@@ -392,6 +392,8 @@ class Trainer():
         elif self.cfg.optimizer == "LBFGS":
             self.optimizer = torch.optim.LBFGS(self.util.get_parameters())# store the optimizer and scheduler in the model class
         elif self.cfg.optimizer == "AdamW":
+            self.optimizer = torch.optim.AdamW(self.util.get_parameters(), lr=self.cfg.learning_rate, weight_decay=self.cfg.weight_decay)
+        elif self.cfg.optimizer == "ZeroRedundancyOptimizer":
             self.optimizer = torch.distributed.optim.ZeroRedundancyOptimizer(self.util.parameters(),optimizer_class=torch.optim.Adam,lr=self.cfg.learning_rate)
         if self.cfg.resume_optimizer:
             self.optimizer.load_state_dict(torch.load(self.util.checkpoint_path)["optimizer_state_dict"])
@@ -792,7 +794,7 @@ class Trainer():
         if self.cfg.ddp:
             dist.barrier()
 
-    def save_forecast(self):
+    def save_forecast_old(self):
         '''
         saves a forecast in a netcdf file, compatible with the weatherbench2 format
         the dataloader loads the inital era5 data and all the cls tokens for the forecast periode
@@ -854,7 +856,130 @@ class Trainer():
             if len(self.output_data[0]) > 0:
                 self.save_to_zarr_forecast(saves)
             return
-  
+    
+    def save_forecast_dataloader(self, start_idx, end_idx, run=False):
+        if self.cfg.model_type == "mae":
+            if self.cfg.model_version =="lin-probe":
+                oni = True
+            else:
+                oni = self.cfg.oni
+            print("Validation Data:")
+            self.dataset_validation = SST_galvani(
+                path=self.cfg.trainingdata_path, 
+                start_year=self.cfg.validationset_start_year,
+                end_year=self.cfg.validationset_end_year,
+                start_idx=start_idx,
+                end_idx=end_idx,
+                temporal_step=self.cfg.temporal_step,
+                cls=self.cfg.cls,
+                oni=oni,
+                oni_path=self.cfg.oni_path,
+                )
+        else:
+            if self.cfg.model_version == 'film' and self.cfg.cls is None:
+                sst = True
+            else:
+                sst = False
+            print("Validation Data:")
+            self.dataset_validation = ERA5_galvani(
+                self.util,
+                path=self.cfg.trainingdata_path, 
+                u100_path=self.cfg.trainingdata_u100_path,
+                v100_path=self.cfg.trainingdata_v100_path,
+                start_year=self.cfg.validationset_start_year,
+                end_year=self.cfg.validationset_end_year,
+                start_idx=start_idx,
+                end_idx=end_idx,
+                multi_step=self.cfg.multi_step_validation,
+                skip_step=self.cfg.validation_step_skip,
+                sst=sst,
+                temporal_step=self.cfg.temporal_step,
+                past_sst = self.cfg.past_sst,
+                cls=self.cfg.cls,
+                run=run,
+            )
+        shuffle= not self.cfg.no_shuffle
+        if self.cfg.ddp:
+            return DataLoader(self.dataset_validation,num_workers=0, batch_size=self.cfg.batch_size_validation,shuffle=False,pin_memory=False,sampler=DistributedSampler(self.dataset_validation,shuffle=shuffle,drop_last=True),drop_last=True)
+
+        else:
+            return DataLoader(self.dataset_validation,shuffle=shuffle,num_workers=self.cfg.training_workers, batch_size=self.cfg.batch_size_validation,drop_last=True)
+
+
+    def save_forecast(self):
+        '''
+        saves a forecast in a netcdf file, compatible with the weatherbench2 format
+        the dataloader loads the inital era5 data and all the cls tokens for the forecast periode
+        maybe if we forecast a long time, this is too much data to load at once and we would need a second dataloader for the cls tokens
+        '''
+
+        renorm = True
+
+        self.ready_model()
+        self.model.eval()
+        
+        self.cfg.validationset_start_year = self.cfg.validationset_start_year
+        start = date(self.cfg.validationset_start_year, 1, 1)
+        end   = date(self.cfg.validationset_end_year, 12, 31)
+        total_steps = (end-start).days*4
+        start_indices = list(range(0, total_steps, total_steps// self.cfg.num_iterations))
+        end_indices = start_indices[1:]
+        end_indices.append(total_steps)
+        print('start indices:',start_indices)
+        print('end indices:',end_indices)
+
+        # self.output_data = [[]]*(self.cfg.multi_step_validation+1)
+        self.output_data = [[]for _ in range(0,self.cfg.multi_step_validation+1,1+self.cfg.validation_step_skip)] #range(self.cfg.multi_step_validation)] # time_delta, time, variable, lat, lon
+        self.time_dim = [] 
+        self.time_delta = [np.timedelta64(i*6, 'h').astype("timedelta64[ns]") for i in range(0,self.cfg.multi_step_validation+1,1+self.cfg.validation_step_skip)]
+        self.time_delta.pop(0)
+        self.time_delta.insert(0, np.timedelta64(6, 'h').astype("timedelta64[ns]"))
+        to_dt64 = lambda x: np.datetime64(x).astype("datetime64[ns]")
+        to_dt   = lambda x: datetime.strptime(str(x), '%Y%m%d%H')
+        saves = 0
+        with torch.no_grad():
+            for j in range(self.cfg.num_iterations):
+                dataloader = self.save_forecast_dataloader(start_indices[j], end_indices[j], run=True)
+                for i, data in enumerate(dataloader):
+                    # with amp.autocast(self.cfg.enable_amp):
+                    for step in range(self.cfg.multi_step_validation):
+                        if step == 0 : 
+                            out_idx = 0
+                            input = self.util.normalise(data[step][0]).to(self.util.device)
+                            data_time = list(map(to_dt,data[0][-1].tolist())) # data[0][-1][0].item()
+                            self.time_dim += list(map(to_dt64,data_time)) # ?? doesn't work with batches
+                        else: input = output
+                        # if data_time.strftime("%H") == "00":continue# [ns] ??
+                        self.mem_log("loading data")
+                        output, gt = self.model_forward(input,data,step,return_gt=False)
+                        
+                        if (step+1) % (self.cfg.validation_step_skip+1) == 0 or step == 0:
+                            if renorm:
+                                self.output_data[out_idx] += [*(self.util.normalise(output.cpu().numpy(),reverse=True))]
+                            else:
+                                self.output_data[out_idx] += [*(output.cpu().numpy())]
+                            out_idx += 1
+                        # self.output_data[step].append(output.cpu().numpy())
+                    print(str(i).rjust(6),"/",len(dataloader)," -  ",list(map(lambda x: x.strftime("%d %b %Y : %Hhr"), data_time)),flush=True)
+                    
+                        # return
+                            # logging
+            
+                    self.mem_log("fin",fin=True)
+                    if (i+1) % self.cfg.save_checkpoint_interval == 0 and self.cfg.save_checkpoint_interval > 0 :
+                        system_monitor(printout=True,pids=[os.getpid()],names=["python"])
+                        self.save_to_zarr_forecast(saves)
+                        saves +=1
+                        break
+                    
+                #     if (i+1)%self.cfg.num_iterations == 0 and self.cfg.num_iterations > 0:
+                #         self.save_to_zarr_forecast(saves)
+                #         return
+                #         # logging
+                #     self.iter += 1
+                # if len(self.output_data[0]) > 0:
+                #     self.save_to_zarr_forecast(saves)
+                return
 
     def save_to_zarr_forecast(self,iter=0,file_name=None):
         '''

@@ -863,7 +863,21 @@ if __name__ == "__main__":
         action="store",
         default="Adam",
         help="Optimizer to use",
-        choices=["Adam","SGD","LBFGS"],
+        choices=["Adam","SGD","LBFGS","AdamW"],
+    )
+    training.add_argument(
+        "--weight-decay",
+        action="store",
+        default=0.001,
+        help="",
+        type=float,
+    )
+    training.add_argument(
+        "--dropout",
+        action="store",
+        default=0.,
+        help="",
+        type=float,
     )
     training.add_argument(
         "--loss-fn",
@@ -947,6 +961,11 @@ if __name__ == "__main__":
         "--no-scratch",
         action="store_true",
     )
+    training.add_argument(
+        "--retrain-film",
+        action="store_true",
+    )
+
 
 
     # Evaluation
