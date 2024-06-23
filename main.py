@@ -145,7 +145,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
         print("using film generator: gcn_custom",flush=True)
         args.film_gen_type = "gcn_custom"
     # scheduler is updated in every validation interval. To arive at the total horizon in standard iters we divide by the validation interval
-    args.scheduler_horizon = math.floor(args.scheduler_horizon/(abs(args.validation_interval)*args.batch_size*(args.accumulation_steps+1)))
+    args.scheduler_horizon = math.floor(args.scheduler_horizon/(abs(args.validation_interval)*args.batch_size*(args.accumulation_steps+1)*args.world_size))
 
     # Format Output path
     timestr = time.strftime("%Y%m%dT%H%M")
@@ -883,7 +883,7 @@ training.add_argument(
     "--loss-fn",
     action="store",
     help="Which loss function to use",
-    default="MSE",
+    default="L2Sphere_noSine",
     choices=["MSE","CosineMSE","L2Sphere",'L2Sphere_noSine',"NormalCRPS","L1"],
 )
 training.add_argument(

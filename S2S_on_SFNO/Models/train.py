@@ -145,6 +145,7 @@ class Trainer():
 
     def train_epoch(self):
         batch_loss =  [0. for _ in range(0,self.cfg.multi_step_training+2)]
+        print("Start training of epoch ",self.epoch,flush=True)
         self.mem_log("loading data")
         for i, data in enumerate(self.training_loader):
             
@@ -184,13 +185,13 @@ class Trainer():
                 self.model.zero_grad()
 
                 self.iter += 1
-                # validation
-                if self.cfg.validation_interval > 0 and (self.iter) % (self.cfg.validation_interval)  == 0:
-                    self.validation()
 
                 # logging
                 self.step = self.iter*self.cfg.batch_size*(self.cfg.accumulation_steps+1)+len(self.dataset)*self.epoch
                 self.iter_log(batch_loss,scale=None)
+                # validation
+                if self.cfg.validation_interval > 0 and (self.iter) % (self.cfg.validation_interval)  == 0:
+                    self.validation()
                 batch_loss =  [0. for _ in range(0,self.cfg.multi_step_training+2)]
                 if (i + 1) >= (len(self.training_loader) -2 - self.cfg.accumulation_steps):
                     break
@@ -257,9 +258,6 @@ class Trainer():
                 # dist.barrier()
 
                 self.iter += 1
-                # validation
-                if self.cfg.validation_interval > 0 and (self.iter) % (self.cfg.validation_interval)  == 0:
-                    self.validation()
 
                 # if self.cfg.rank == 0: print("fin update params ",flush=True)
                 # dist.barrier()
@@ -267,6 +265,9 @@ class Trainer():
                 # logging
                 self.step = self.iter*self.cfg.batch_size*(self.cfg.accumulation_steps+1)*self.cfg.world_size+len(self.dataset)*self.epoch
                 self.iter_log(batch_loss,scale=None)
+                # validation
+                if self.cfg.validation_interval > 0 and (self.iter) % (self.cfg.validation_interval)  == 0:
+                    self.validation()
                 batch_loss =  [0. for _ in range(0,self.cfg.multi_step_training+2)]
                 if (i + 1) >= (len(self.training_loader) -2 - self.cfg.accumulation_steps):
                     break
@@ -306,7 +307,7 @@ class Trainer():
     def post_epoch(self):
         self.epoch += 1
         self.iter = 0
-        self.validation()
+        self.validation(no_step = True)
         if self.cfg.rank == 0:
             print("End of epoch ",self.epoch,flush=True)
             self.save_checkpoint()
@@ -377,6 +378,12 @@ class Trainer():
 
     def create_scheduler(self):
         # Scheduler
+        if self.cfg.ddp:
+            if self.cfg.rank == 0: 
+                print("scheduler: ",self.cfg.scheduler_type," set to horizon ",self.cfg.scheduler_horizon,flush=True)
+            dist.barrier()
+        else:
+            print("scheduler: ",self.cfg.scheduler_type," set to horizon ",self.cfg.scheduler_horizon,flush=True)
         if self.cfg.scheduler_type == 'ReduceLROnPlateau':
             self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, factor=0.2, patience=5, mode='min')
         elif self.cfg.scheduler_type == 'CosineAnnealingLR':
@@ -386,6 +393,7 @@ class Trainer():
         else:
             self.scheduler = None
         if self.cfg.resume_scheduler:
+            # to update the scheduler you need to overwrite T_max, and last_epoch
             params = torch.load(self.util.checkpoint_path,map_location="cpu")
             self.scheduler.load_state_dict(params["scheduler_state_dict"])
             del params
@@ -396,8 +404,8 @@ class Trainer():
             self.scheduler.step(valid_mean)
         elif self.cfg.scheduler_type == 'CosineAnnealingLR':
             self.scheduler.step()
-            if (self.step/(self.cfg.validation_interval*self.cfg.batch_size*(self.cfg.accumulation_steps+1))) >= self.cfg.scheduler_horizon:
-                LOG.info("Terminating training after reaching params.max_epochs while LR scheduler is set to CosineAnnealingLR") 
+            if (self.step/(abs(self.cfg.validation_interval)*self.cfg.batch_size*(self.cfg.accumulation_steps+1)*self.cfg.world_size)) >= self.cfg.scheduler_horizon:
+                LOG.info("Terminating training after reaching params.max_epochs={} while LR scheduler is set to CosineAnnealingLR (current total step={}, current scheduler step={})".format(self.cfg.scheduler_horizon,self.step,self.step/(self.cfg.validation_interval*self.cfg.batch_size*(self.cfg.accumulation_steps+1)))) 
                 self.finalise("end of scheduler horizon reached")
         elif self.cfg.scheduler_type == 'CosineAnnealingWarmRestarts':
             self.scheduler.step()
@@ -518,7 +526,7 @@ class Trainer():
         else:
             return self.loss_fn(output,gt)
     
-    def validation(self):
+    def validation(self,no_step=False):
         self.model.eval()
         with torch.no_grad():
             # For loop over validation dataset, calculates the validation loss mean for number of kwargs["validation_epochs"]
@@ -620,7 +628,8 @@ class Trainer():
 
         #scheduler
         valid_mean = loss_value[0]
-        self.step_scheduler(valid_mean)
+        if not no_step:
+            self.step_scheduler(valid_mean)
         
         # change scale value based on validation loss
         # if valid_mean < kwargs["val_loss_threshold"] and scale < 1.0:
