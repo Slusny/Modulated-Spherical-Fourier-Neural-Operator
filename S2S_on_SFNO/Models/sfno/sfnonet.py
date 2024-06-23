@@ -871,7 +871,7 @@ class Film_wrapper(nn.Module):
         if self.cfg.film_gen_type == "gcn":
             self.film_gen = GCN(self.cfg.batch_size,self.device, in_features=self.cfg.temporal_step ,out_features=num_film_features*self.cfg.film_layers*2 , depth=self.cfg.model_depth,embed_dim=self.cfg.embed_dim,assets=os.path.join(self.cfg.assets,"gcn"))# num layers is 1 for now
         elif self.cfg.film_gen_type == "transformer":
-            self.film_gen = ViT(patch_size=self.cfg.patch_size[-1], num_classes=num_film_features*self.cfg.film_layers*2, dim=self.cfg.embed_dim, depth=self.cfg.model_depth, heads=16, mlp_dim = self.cfg.mlp_dim, dropout = self.cfg.dropout, channels = self.cfg.temporal_step, device=self.device)
+            self.film_gen = ViT(patch_size=self.cfg.patch_size, num_classes=num_film_features*self.cfg.film_layers*2, dim=self.cfg.embed_dim, depth=self.cfg.model_depth, heads=16, mlp_dim = self.cfg.mlp_dim, nan_mask_threshold=self.cfg.nan_mask_threshold, dropout = self.cfg.dropout, channels = self.cfg.temporal_step, device=self.device)
         elif self.cfg.film_gen_type == "mae":
             if self.cfg.cls is None:
                 self.film_gen = ContextCast(self.cfg,data_dim=1,patch_size=self.cfg.patch_size, embed_dim=self.cfg.embed_dim,film_layers=self.cfg.film_layers,)

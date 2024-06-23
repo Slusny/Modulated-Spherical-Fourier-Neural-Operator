@@ -368,7 +368,10 @@ class Trainer():
         self.model.train()
         self.util.load_statistics() 
         if self.cfg.ddp:
-            self.model = DDP(self.model,device_ids=[self.util.device.index],broadcast_buffers=False)#find_unused_parameters=True # ,static_graph=True deosn't work
+            if self.cfg.film_gen_type == "transformer":
+                self.model = DDP(self.model,device_ids=[self.util.device.index],broadcast_buffers=False,find_unused_parameters=True)
+            else:
+                self.model = DDP(self.model,device_ids=[self.util.device.index],broadcast_buffers=False)#find_unused_parameters=True # ,static_graph=True deosn't work
             # with static graph: 
             # no unused parameters
             # buffers True: torch-harmonics/sht.py:191 -> torch.einsum : one of the variables needed for gradient computation has been modified by an inplace operation (/Models/sfno/layers.py", line 638, in forward)(Models/sfno/sfnonet.py", line 132, in forward)
@@ -404,7 +407,8 @@ class Trainer():
             self.scheduler.step(valid_mean)
         elif self.cfg.scheduler_type == 'CosineAnnealingLR':
             self.scheduler.step()
-            if (self.step/(abs(self.cfg.validation_interval)*self.cfg.batch_size*(self.cfg.accumulation_steps+1)*self.cfg.world_size)) >= self.cfg.scheduler_horizon:
+            # if (self.step/(abs(self.cfg.validation_interval)*self.cfg.batch_size*(self.cfg.accumulation_steps+1)*self.cfg.world_size)) >= self.cfg.scheduler_horizon:
+            if self.scheduler.last_epoch >= (self.cfg.scheduler_horizon - 1):
                 LOG.info("Terminating training after reaching params.max_epochs={} while LR scheduler is set to CosineAnnealingLR (current total step={}, current scheduler step={})".format(self.cfg.scheduler_horizon,self.step,self.step/(self.cfg.validation_interval*self.cfg.batch_size*(self.cfg.accumulation_steps+1)))) 
                 self.finalise("end of scheduler horizon reached")
         elif self.cfg.scheduler_type == 'CosineAnnealingWarmRestarts':
