@@ -954,7 +954,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
             # for k, v in checkpoint_sfno["model_state"].items():
             for k, v in weights.items():
                 name = k[7:]
-                if self.cfg.retrain_film and any(layer in name for layer in grad_layers) :
+                if self.cfg.retrain_film and any(layer in name for layer in grad_layers) and self.cfg.resume_checkpoint is None :
                         continue
                 if name != "ged":
                     new_state_dict[name] = v
@@ -971,7 +971,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         else:
             new_state_dict = dict()
             for k, v in weights.items():
-                if self.cfg.retrain_film and any(layer in name for layer in grad_layers) :
+                if self.cfg.retrain_film and any(layer in k for layer in grad_layers) and self.cfg.resume_checkpoint is None:
                     continue
                 new_state_dict[k] = v
             try:
@@ -1016,7 +1016,7 @@ class FourCastNetv2_filmed(FourCastNetv2):
         model.to(self.device)
 
         # free VRAM
-        # del checkpoint_sfno
+        del checkpoint_sfno
 
         # disable grad for sfno
         #model.requires_grad = False

@@ -81,12 +81,24 @@ class Trainer():
                 # for key in ['notes','tags','wandb']:del config_wandb[key]
                 # del config_wandb
                 if os.environ.get("SCRATCH") is not None and not self.cfg.no_scratch:
-                    wandb_dir = os.path.join(os.environ["SCRATCH"],"wandb")
+                    scratch_dir = os.environ["SCRATCH"]
+                    if not os.path.exists(scratch_dir): 
+                        scratch_dir = "/home"+scratch_dir
+                        if not os.path.exists(scratch_dir):
+                            wandb_dir = "/mnt/qb/work2/goswami0/gkd965/wandb" 
+                        else:
+                            wandb_dir = os.path.join(scratch_dir,"wandb")
+                    else:
+                        wandb_dir = os.path.join(scratch_dir,"wandb")
                     if not os.path.exists(wandb_dir): os.mkdir(wandb_dir)
                 elif os.path.exists("/mnt/qb/work2/goswami0/gkd965/wandb"):
                     wandb_dir = "/mnt/qb/work2/goswami0/gkd965/wandb"
                 else:
                     wandb_dir = "./wandb"
+                if self.cfg.wandb_resume is not None :
+                    wandb_dir = os.path.join(wandb_dir,'epoch_'+str(self.epoch))
+                    if not os.path.exists(wandb_dir): os.mkdir(wandb_dir)
+
                 if self.cfg.wandb_project is not None:
                     project_name = self.cfg.wandb_project
                 else:
@@ -111,7 +123,7 @@ class Trainer():
                 if self.cfg.jobID is not None:  file_name = wandb_run.name+"-sID{"+self.cfg.jobID+"}"
                 else:                           file_name = wandb_run.name
                 new_save_path = os.path.join(self.cfg.save_path,file_name)
-                os.mkdir(new_save_path)
+                if not os.path.exists(new_save_path): os.mkdir(new_save_path)
                 self.cfg.save_path = new_save_path
             else : 
                 wandb_run = None
@@ -161,7 +173,7 @@ class Trainer():
                 loss.backward()
 
             # Adjust learning weights
-            if ((i + 1) % (self.cfg.accumulation_steps + 1) == 0) or ((i + 1) == (len(self.training_loader)-1)):
+            if ((i + 1) % (self.cfg.accumulation_steps + 1) == 0) :
             
                 # Update Optimizer
                 if self.cfg.enable_amp:
@@ -180,6 +192,8 @@ class Trainer():
                 self.step = self.iter*self.cfg.batch_size*(self.cfg.accumulation_steps+1)+len(self.dataset)*self.epoch
                 self.iter_log(batch_loss,scale=None)
                 batch_loss =  [0. for _ in range(0,self.cfg.multi_step_training+2)]
+                if (i + 1) >= (len(self.training_loader) -2 - self.cfg.accumulation_steps):
+                    break
   
         # end of epoch
     
@@ -198,7 +212,7 @@ class Trainer():
             
             loss = 0
             # Adjust learning weights
-            if ((i + 1) % (self.cfg.accumulation_steps + 1) == 0) or ((i + 1) == (len(self.training_loader)-2)):
+            if ((i + 1) % (self.cfg.accumulation_steps + 1) == 0) :
                 
                 # if self.cfg.rank == 0: print("updateing params ",flush=True)
                 # dist.barrier()
@@ -254,6 +268,8 @@ class Trainer():
                 self.step = self.iter*self.cfg.batch_size*(self.cfg.accumulation_steps+1)*self.cfg.world_size+len(self.dataset)*self.epoch
                 self.iter_log(batch_loss,scale=None)
                 batch_loss =  [0. for _ in range(0,self.cfg.multi_step_training+2)]
+                if (i + 1) >= (len(self.training_loader) -2 - self.cfg.accumulation_steps):
+                    break
             else:
                 with self.model.no_sync():
                     with amp.autocast(self.cfg.enable_amp):
@@ -370,7 +386,9 @@ class Trainer():
         else:
             self.scheduler = None
         if self.cfg.resume_scheduler:
-            self.scheduler.load_state_dict(torch.load(self.util.checkpoint_path)["scheduler_state_dict"])
+            params = torch.load(self.util.checkpoint_path,map_location="cpu")
+            self.scheduler.load_state_dict(params["scheduler_state_dict"])
+            del params
 
     
     def step_scheduler(self,valid_mean):
@@ -396,7 +414,9 @@ class Trainer():
         elif self.cfg.optimizer == "ZeroRedundancyOptimizer":
             self.optimizer = torch.distributed.optim.ZeroRedundancyOptimizer(self.util.parameters(),optimizer_class=torch.optim.Adam,lr=self.cfg.learning_rate)
         if self.cfg.resume_optimizer:
-            self.optimizer.load_state_dict(torch.load(self.util.checkpoint_path)["optimizer_state_dict"])
+            params = torch.load(self.util.checkpoint_path,map_location="cpu")
+            self.optimizer.load_state_dict(params["optimizer_state_dict"])
+            del params
 
     def create_loss(self):
         if self.cfg.loss_fn == "CosineMSE":

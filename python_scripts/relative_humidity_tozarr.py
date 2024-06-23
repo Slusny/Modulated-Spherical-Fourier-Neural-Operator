@@ -34,5 +34,24 @@ base_path = "/mnt/qb/goswami/data/era5"
 print('save zarr')
 r = combine_relative_humidity()
 print("loaded relative humidity")
-r.to_zarr(os.path.join(base_path, 'relative_humidity.zarr'),mode='w')
+zarr_save_path = os.path.join(base_path, 'relative_humidity_1979_to_2018.zarr')
+for idx, year in enumerate(range(1979,2019)):
+    print(f"loading {year}")
+    x = r.sel(time=slice(f"{year}-01-01",f"{year}-12-31"))['r']
+    arr = xr.DataArray(x.to_numpy(),
+        dims=["level","time","latitude","longitude"],
+        coords=dict(
+            level=("level",x.level.to_numpy()),
+            time=("time",x.time.to_numpy()),
+            latitude=("latitude", x.latitude.to_numpy()),
+            longitude=("longitude", x.longitude.to_numpy()),
+        )
+    )
+    if idx == 0:
+        xr.Dataset(data_vars={'r':arr}).chunk({'time': 1, 'level':13, 'latitude':721,'longitude':1440}).to_zarr(zarr_save_path)
+    else:
+        xr.Dataset(data_vars={'r':arr}).chunk({'time': 1, 'level':13, 'latitude':721,'longitude':1440}).to_zarr(zarr_save_path,mode="a",append_dim="time")
+        
+
+# r.to_zarr(zarr_save_path,mode='w')
 print("done")

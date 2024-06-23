@@ -197,6 +197,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
             model_args = cp["hyperparameters"].copy()
 
             # overwrite checkpoint parameters with given parameters, attention! : ignores default values, only specified ones
+            
             for passed_arg in sys.argv[1:]:
                 if passed_arg.startswith("--"):
                     dest = next(x for x in parser._actions if x.option_strings[0] == passed_arg).dest
@@ -209,7 +210,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
 
             # set flags back to default
             for k,v in vars(args).items():
-                if k in ['train','timestamp','wandb','ddp','enable_amp','time_limit','debug']:
+                if k in ['train','timestamp','wandb','ddp','enable_amp','time_limit','debug','rank','world_size','no_wandb']: 
                     if k == 'enable_amp' and args.train: continue
                     model_args[k] = v
 
@@ -393,747 +394,748 @@ def return_trainer(args):
     return main()
 
 
+parser = argparse.ArgumentParser()
+
+# See https://github.com/pytorch/pytorch/issues/77764
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+
+parser.add_argument(
+    "--test",
+    action="store_true",
+    help="execute test code",
+    )
+parser.add_argument(
+    "--assets",
+    action="store",
+    help="Absolute path to directory containing the weights and other assets of the Model. \
+            Model Name gets appended to asset path. E.g. /path/to/assets/{model}\
+            Default behaviour is to load from assets-sub-directory.",
+    default="/mnt/qb/work2/goswami0/gkd965/Assets"
+)
+parser.add_argument(
+    "--film-weights",
+    action="store",
+    help="Absolute path to weights.tar file containing the weights of the Film-Model.",
+    default=None,
+)
+parser.add_argument(
+    "--sfno-weights",
+    action="store",
+    help="Absolute path to weights.tar file containing the weights of the SFNO-Model.",
+    default=None,
+)
+parser.add_argument(
+    "--assets-sub-directory",
+    action='store',
+    default=None,
+    # help="Load assets from a subdirectory of this module based on the name of the model. \
+    #       Defaults to ./S2S_on_SFNO/Assets/{model}. Gets overwritten by --assets",
+)
+parser.add_argument(
+    "--output-path",
+    help="Path where to write the output of the model if it is run (atmospheric fields in grib or netcdf format). For training data output (e.g. checkpoints) look for save-path. Default ouput-path: S2S_on_SFNO/outputs/{model}",
+    default="/mnt/qb/work2/goswami0/gkd965/outputs",
+    dest="path",
+)
+parser.add_argument(
+    "--num-threads",
+    type=int,
+    default=1,
+    help="Number of threads. Only relevant for some models.",
+)
+parser.add_argument(
+    "--only-gpu",
+    help="Fail if GPU is not available",
+    action="store_true",
+)
+parser.add_argument(
+    "--cpu",
+    help="Use CPU",
+    action="store_true",
+)
+    # Metadata
+parser.add_argument(
+    "--expver",
+    help="Set the experiment version of the model output. Has higher priority than --metadata.",
+)
+parser.add_argument(
+    "--class",
+    help="Set the 'class' metadata of the model output. Has higher priority than --metadata.",
+    metavar="CLASS",
+    dest="class_",
+)
+parser.add_argument(
+    "--metadata",
+    help="Set additional metadata metadata in the model output",
+    metavar="KEY=VALUE",
+    action="append",
+)
+parser.add_argument(
+    "--model-args",
+    help="specific model arguments for initialization of the model",
+    action="store",
+    default=None,
+)
+    # Utilities
+parser.add_argument(
+    "--assets-list",
+    help="List the assets used by the model",
+    action="store_true",
+)
+parser.add_argument(
+    "--fields",
+    help="Show the fields needed as input for the model",
+    action="store_true",
+)
+parser.add_argument(
+    "--jobID",
+    help="log the slurm JobID",
+    action="store",
+    default=None,
+)
+parser.add_argument(
+    "--save-data",
+    action="store_true",
+)
+
+parser.add_argument(
+    "--time-limit",
+    action="store",
+    default=None,
+    help="time limit in slurm, to save a model before it ends",
+)
+
+# Data
+data = parser.add_argument_group('Data and Data Sources')
+data.add_argument(
+    "--download-assets",
+    help="Download assets (weights and means/std from ecmwf for pretrained models) if they do not exists.",
+    action="store_true",
+)
+data.add_argument(
+    "--input",
+    default="none",
+    help="Source to use for downloading data, local file or cluster(uni tuebingen) specific data structure",
+    choices=available_inputs(),
+)
+data.add_argument(
+    "--input-store",
+    default=None,
+    help="If you download data from cds or mars and want to store it somewhere else, specify a path here. Default behaviour is to only temporary cache the data. The name of the file will be ClimateInputData_{YYYYMMDDHH}.grib at specified path",
+    action="store"
+)
+data.add_argument(
+    "--file",
+    help="Specify path to file with input weather data. Sets source=file automatically",
+)
+    # Mars requests options
+data.add_argument(
+    "--archive-requests",
+    help=(
+        "Save mars archive requests to FILE. Legacy option, only for mars requests."
+        "Use --requests-extra to extend or overide the requests. "
+    ),
+    metavar="FILE",
+)
+data.add_argument(
+    "--retrieve-requests",
+    help=(
+        "Print mars requests to stdout."
+        "Use --requests-extra to extend or overide the requests. "
+    ),
+    action="store_true",
+)
+data.add_argument(
+    "--requests-extra",
+    help=(
+        "Extends the retrieve or archive requests with a list of key1=value1,key2=value."
+    ),
+)
+data.add_argument(
+    "--json",
+    action="store_true",
+    help=("Dump the requests in JSON format."),
+)
+data.add_argument(
+    "--coarse-level",
+    action="store",
+    default=4,
+    help=("factor by which the sst data gets reduced in lat, long dimensions"),
+)
+data.add_argument(
+    "--cls",
+    action="store",
+    default=None,
+    help=("path to numpy file containing cls tokens from MAE model"),
+)
+data.add_argument(
+    "--oni-path",
+    action="store",
+    default=None,
+    help=("path to numpy file containing oni indices"),
+)
+data.add_argument(
+    "--past-sst",
+    action="store_true",
+    help=("by default the sst data is taken from the future. \
+            If conditioned on a single on a single sst image it is from the day for wich a forcast is done. \
+            In the case of the MAE the sst start from the input date to #temporal-steps into the futre.\
+            By setting this flag the sst data is taken from the past."),
+)
+data.add_argument(
+    "--oni",
+    action="store_true",
+    help=("calculate and use the ONI index as ground truth"),
+)
+
+data.add_argument(
+    "--no-shuffle",
+    action="store_true",
+    help=("dont use shuffle in dataloader"),
+)
+
+# Running
+running = parser.add_argument_group('Inference Parameters')
+running.add_argument(
+    "--run",
+    help="run model",
+    action="store_true",
+)
+running.add_argument(
+    "--lead-time",
+    type=int,
+    default=240,
+    help="Length of forecast in hours.",
+)
+running.add_argument(
+    "--date",
+    default="-1",
+    help="For which analysis date to start the inference (default: -1 = yesterday). Format: YYYYMMDD",
+)
+running.add_argument(
+    "--time",
+    type=int,
+    default=12,
+    help="For which analysis time to start the inference (default: 12). Format: HHMM",
+)
+running.add_argument(
+    "--output",
+    default="grib",
+    help="choose output format. Default: grib",
+    choices=available_outputs(),
+)
+running.add_argument(
+    "--output-variables",
+    default="./S2S_on_SFNO/outputs/output-variables.json",
+    help="Specify path to a json file detailing which variables to output. Default: all.",
+)
+running.add_argument(
+    "--dump-provenance",
+    action="store_true",
+    help=("Dump information for tracking provenance."),
+)
+running.add_argument(
+    "--hindcast-reference-year",
+    help="For encoding hincast-like outputs",
+)
+running.add_argument(
+    "--staging-dates",
+    help="For encoding hincast-like outputs",
+)
+
+# Training
+training = parser.add_argument_group('Training Parameters')
+training.add_argument(
+    "--train",
+    help="train model",
+    action="store_true",
+)
+training.add_argument(
+    "--trainingset-start-year",
+    help="specify training dataset by start year",
+    action="store",
+    default=1979,
+    type=int
+)
+training.add_argument(
+    "--trainingset-end-year",
+    help="specify training dataset by end year. No dates from the end year specified and later will be used.",
+    action="store",
+    default=2016,
+    type=int
+)
+training.add_argument(
+    "--validationset-start-year",
+    help="specify validation dataset by start year",
+    action="store",
+    default=2016,
+    type=int
+)
+training.add_argument(
+    "--validationset-end-year",
+    help="specify validation dataset by end year. No dates from the end year specified and later will be used.",
+    action="store",
+    default=2018,
+    type=int
+)
+training.add_argument(
+    "--validation-interval",
+    help="after running ... expochs, validate the model",
+    action="store",
+    default=150,
+    type=int
+)
+training.add_argument(
+    "--save-checkpoint-interval",
+    help="saving every x validation. E.g. if validation-intervall is 100 and save-checkpoint-interval is 10, the model is saved every 1000 iterations",
+    action="store",
+    default=10,
+    type=int
+)
+training.add_argument(
+    "--validation-epochs",
+    help="over how many epochs should be validated",
+    action="store",
+    default=20,
+    type=int
+)
+training.add_argument(
+    "--training-epochs",
+    help="over how many epochs should be trained",
+    action="store",
+    default=20,
+    type=int
+)
+training.add_argument(
+    "--multi-step-validation",
+    help="how many consecutive datapoints should be loaded to used to calculate an autoregressive validation loss ",
+    action="store",
+    default=0,
+    type=int
+)
+training.add_argument(
+    "--multi-step-training",
+    help="calculate loss over multiple autoregressive prediction steps",
+    default=0,
+    type=int,
+    action="store",
+)
+training.add_argument(
+    "--training-step-skip",
+    help="skip the x amount of autoregressive steps in the multi-step training to calculate the loss",
+    default=0,
+    type=int,
+    action="store",
+)
+training.add_argument(
+    "--accumulation-steps",
+    help="accumulate gradients over x steps. Increases batch size by withoutincreasing memory consumption",
+    default=0,
+    type=int,
+    action="store",
+)
+training.add_argument(
+    "--validation-step-skip",
+    help="skip the x amount of autoregressive steps in the multi-step validation to calculate the loss",
+    default=0,
+    type=int,
+    action="store",
+)
+training.add_argument(
+    "--val-loss-threshold",
+    help="increasing the scaleing of the film layer based on the validation loss. If the validation loss is lower than this threshold, the scaleing is increased by 0.05",
+    action="store",
+    default=0.4,
+    type=float
+)
+training.add_argument(
+    "--scaling-horizon",
+    help="how many steps should it take to reach scale=1",
+    action="store",
+    default=2000,
+    type=float
+)
+training.add_argument(
+    "--trainingdata-path",
+    help="path to training data zarr file",
+    action="store",
+    default="/mnt/qb/goswami/data/era5/weatherbench2/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr"
+)
+training.add_argument(
+    "--trainingdata-u100-path",
+    help="path to training data zarr file for u100m",
+    action="store",
+    default="/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/u100m_1959-2022_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr"
+)
+training.add_argument(
+    "--trainingdata-v100-path",
+    help="path to training data zarr file for v100m",
+    action="store",
+    default="/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/v100m_1959-2023-10_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr"
+)
+training.add_argument(
+    "--training-workers",
+    help="number of workers to use in dataloader for training",
+    action="store",
+    default=6,
+    type=int
+)
+training.add_argument(
+    "--batch-size",
+    action="store",
+    default=1,
+    type=int
+)
+training.add_argument(
+    "--batch-size-validation",
+    action="store",
+    default=None,
+    type=int
+)
+# FourCastNet uses 0.0005
+training.add_argument(
+    "--learning-rate",
+    action="store",
+    default=0.001,#2
+    type=float
+)
+# FourCastNet uses Cosine
+training.add_argument(
+    "--scheduler",
+    action="store",
+    default="None",
+    help="which pytorch scheduler to use",
+    dest="scheduler_type",
+    type=str
+)
+training.add_argument(
+    "--scheduler-horizon",
+    action="store",
+    default=2000,
+    help="defines the horizon on which the scheduler should reset the learning rate. In case of CosineAnnealingWarmRestarts this modifies the parameter T_0",
+    type=int
+)
+training.add_argument(
+    "--save-path",
+    action="store",
+    default="/mnt/qb/work2/goswami0/gkd965/checkpoints",
+    type=str,
+    help="path to save checkpoints and training data, not used for running the model"
+)
+training.add_argument(
+    "--checkpointing-mlp",
+    action="store_true",
+    help="Trades compute for memory. Checkpoints MLPs in SFNO (encoder,decoder and MLP in SFNO-Block). Only partly computes the forward path and recomputes missing parts during backward pass. See pytroch checkpointing. Needed to perform multistep training. pure sfno alone already consumes 28GB VRAM"
+)
+training.add_argument(
+    "--checkpointing-block",
+    action="store_true",
+    help="Trades compute for memory. Checkpoints SFNO-Block. Only partly computes the forward path and recomputes missing parts during backward pass. See pytroch checkpointing. Needed to perform multistep training. pure sfno alone already consumes 28GB VRAM"
+)
+training.add_argument(
+    "--checkpointing-encoder",
+    action="store_true",
+    help="Trades compute for memory. Checkpoints SFNO-encoder. Only partly computes the forward path and recomputes missing parts during backward pass. See pytroch checkpointing. Needed to perform multistep training. pure sfno alone already consumes 28GB VRAM"
+)
+training.add_argument(
+    "--checkpointing-decoder",
+    action="store_true",
+    help="Trades compute for memory. Checkpoints SFNO-decoder. Only partly computes the forward path and recomputes missing parts during backward pass. See pytroch checkpointing. Needed to perform multistep training. pure sfno alone already consumes 28GB VRAM"
+)
+training.add_argument(
+    "--resume-checkpoint",
+    action="store",
+    default=None,
+    help="Load model from checkpoint and use its configuration to initialize the model"
+)
+training.add_argument(
+    "--no-pretrained-sfno",
+    action="store_true",
+    help="Use pretrained sfno model from ecmwf"
+)
+training.add_argument(
+    "--enable-amp",
+    action="store_true",
+    help="Save RAM with AMP"
+)
+training.add_argument(
+    "--optimizer",
+    action="store",
+    default="Adam",
+    help="Optimizer to use",
+    choices=["Adam","SGD","LBFGS","AdamW"],
+)
+training.add_argument(
+    "--weight-decay",
+    action="store",
+    default=0.001,
+    help="",
+    type=float,
+)
+training.add_argument(
+    "--dropout",
+    action="store",
+    default=0.,
+    help="",
+    type=float,
+)
+training.add_argument(
+    "--loss-fn",
+    action="store",
+    help="Which loss function to use",
+    default="MSE",
+    choices=["MSE","CosineMSE","L2Sphere",'L2Sphere_noSine',"NormalCRPS","L1"],
+)
+training.add_argument(
+    "--loss-reduction",
+    action="store",
+    help="Which loss reduction method to use",
+    default="mean",
+    choices=["mean","none","sum"],
+)
+training.add_argument(
+    "--test-performance",
+    action="store_true",
+    help="run speed test for dataloader and model performance",
+)
+training.add_argument(
+    "--test-dataloader-speed",
+    action="store_true",
+    help="run speed test for dataloader and model performance",
+)
+training.add_argument(
+    "--test-batch-size",
+    action="store_true",
+    help="run speed test for dataloader and model performance",
+)
+training.add_argument(
+    "--num-iterations",
+    action="store",
+    type=int,
+    default=100,
+    help="over how many iterations should the speed test be run",
+)
+training.add_argument(
+    "--batch-size-step",
+    action="store",
+    type=int,
+    default=1,
+    help="when testing for an optimal batch size, how large should be the inital step size",
+)
+training.add_argument(
+    "--save-forecast",
+    action="store_true",
+)
+training.add_argument(
+    "--ddp",
+    action="store_true",
+)
+training.add_argument(
+    "--world-size",
+    action="store",
+    type=int,
+    default=None,
+)
+training.add_argument(
+    "--discount-factor",
+    action="store",
+    type=float,
+    default=0.9,
+)
+training.add_argument(
+    "--set-epoch",
+    action="store",
+    type=int,
+    default=None,
+    help="set the epoch to a specific integer. This is useful if training is resumed. The epoch is used as the seed for the dataloader",
+)
+training.add_argument(
+    "--resume-scheduler",
+    action="store_true",
+)
+training.add_argument(
+    "--resume-optimizer",
+    action="store_true",
+)
+training.add_argument(
+    "--no-scratch",
+    action="store_true",
+)
+training.add_argument(
+    "--retrain-film",
+    action="store_true",
+)
+
+
+
+# Evaluation
+evaluate = parser.add_argument_group('Evaluate Models')
+evaluate.add_argument(
+    "--eval-model",
+    help="evaluate model list of checkpoints for autoregressive forecast",
+    action="store_true",
+)
+evaluate.add_argument(
+    "--eval-sfno",
+    help="evaluate base sfno model",
+    action="store_true",
+)
+evaluate.add_argument(
+    "--eval-checkpoint-num",
+    help="how many checkpoints should be evaluated from --eval-checkpoint-path. The checkpoints are selected equidistantly. -1 evaluates all checkpoints",
+    action="store",
+    type=int,
+    default=1,
+)
+evaluate.add_argument(
+    "--eval-checkpoints",
+    help="Name the epoch for which checkpoints should be loaded. E.g. --eval-checkpoints 500 700 900",
+    nargs='+',
+    default=[],
+)
+evaluate.add_argument(
+    "--eval-checkpoint-path",
+    help="evaluate model list of checkpoints for autoregressive forecast",
+    action="store",
+    type=str
+)
+
+# Logging
+logging_parser = parser.add_argument_group('Logging')
+logging_parser.add_argument(
+    "--debug",
+    action="store_true",
+    help="Turn debugger on (pdb).",
+)
+logging_parser.add_argument(
+    '--wandb', 
+    action='store_true',
+    help='use weights and biases'
+)
+logging_parser.add_argument(
+    '--no-wandb', 
+    action='store_true',
+    help='dont use weights and biases'
+)
+logging_parser.add_argument(
+    '--wandb-resume', 
+    action='store', 
+    default=None,             
+    type=str, 
+    help='resume existing weights and biases run')
+
+logging_parser.add_argument(
+    '--notes', 
+    action='store', 
+    default=None,             
+    type=str, 
+    help='notes for wandb')
+
+logging_parser.add_argument(
+    '--wandb-project', 
+    action='store', 
+    default=None,             
+    type=str, 
+    help='which project to log to. if none given defaults to {model}-{model-version}')
+
+logging_parser.add_argument(
+    '--tags', 
+    action='store', 
+    default=None,             
+    type=str, 
+    help='tags for wandb')
+logging_parser.add_argument(
+    '--advanced-logging', 
+    action='store_true',
+    help='Log more values like the gamma, beta activations. Consumes more GPU memory.'
+)
+logging_parser.add_argument(
+    '--log-file', 
+    action='store',
+    default=None,
+    help='Log stdout/err to file (for module logging, some logs are printed so a redirect > log_file )'
+)
+# Architecture
+architecture_parser = parser.add_argument_group('Architecture')
+architecture_parser.add_argument(
+    "--model",
+    action="store",
+    #choices=available_models(),
+    choices=["sfno","fcn","mae"],
+    dest="model_type",
+    help="Specify the model to run"
+)
+architecture_parser.add_argument(
+    "--model-version",
+    default="latest",
+    help="Model versions: \n    SFNO: [latest, film]\n    Fourcastnet: [0, 1]\n    MAE: [latest, lin-probe]",
+)
+architecture_parser.add_argument(
+    "--film-gen",
+    default=None,
+    type=str,
+    dest="film_gen_type",
+    help="Which type of film generator to use in the filmed model.",
+    choices=["none","gcn","gcn_custom","transformer","mae"]
+)
+architecture_film_parser = parser.add_argument_group('Architecture Film Gen')
+architecture_film_parser.add_argument(
+    '--film-layers', 
+    action='store',
+    type=int,
+    default=1,
+    help='How many sfno blocks should be modulated with a dedicated film layer. Default: 1',
+)
+architecture_film_parser.add_argument(
+    '--model-depth', 
+    action='store',
+    type=int,
+    default=6,
+    help='Number of layers for film generator',
+)
+architecture_film_parser.add_argument(
+    '--temporal-step', 
+    action='store',
+    type=int,
+    default=28,
+    help='How many 6 hr steps should be included in the temporal dimension for the mae model. Needs to be larger than 0',
+)
+architecture_film_parser.add_argument(
+    '--nan-mask-threshold',  
+    action='store',
+    type=float,
+    default=0.5,
+    help='token with a ratio of nan values higher than this threshold are masked',
+)
+architecture_film_parser.add_argument(
+    '--patch-size', 
+    action='store',
+    type=int,
+    nargs="+",
+    default=[28,9,9],
+    help='Define the patch sizes for the MAE (temporal, lat, lon) and Transfomrer (lat,long)',
+)
+architecture_film_parser.add_argument(
+    '--embed-dim', 
+    action='store',
+    type=int,
+    default=512,
+    help='',
+)
+architecture_film_parser.add_argument(
+    '--mlp-dim', 
+    action='store',
+    type=int,
+    default=1024,
+    help='',
+)
+architecture_film_parser.add_argument(
+    '--repeat-film', 
+    action='store_true',
+    help='repeat the same film modulation arcoss all sfno blocks',
+)
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-
-    # See https://github.com/pytorch/pytorch/issues/77764
-    os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
-
-    parser.add_argument(
-        "--test",
-        action="store_true",
-        help="execute test code",
-        )
-    parser.add_argument(
-        "--assets",
-        action="store",
-        help="Absolute path to directory containing the weights and other assets of the Model. \
-              Model Name gets appended to asset path. E.g. /path/to/assets/{model}\
-              Default behaviour is to load from assets-sub-directory.",
-        default="/mnt/qb/work2/goswami0/gkd965/Assets"
-    )
-    parser.add_argument(
-        "--film-weights",
-        action="store",
-        help="Absolute path to weights.tar file containing the weights of the Film-Model.",
-        default=None,
-    )
-    parser.add_argument(
-        "--sfno-weights",
-        action="store",
-        help="Absolute path to weights.tar file containing the weights of the SFNO-Model.",
-        default=None,
-    )
-    parser.add_argument(
-        "--assets-sub-directory",
-        action='store',
-        default=None,
-        # help="Load assets from a subdirectory of this module based on the name of the model. \
-        #       Defaults to ./S2S_on_SFNO/Assets/{model}. Gets overwritten by --assets",
-    )
-    parser.add_argument(
-        "--output-path",
-        help="Path where to write the output of the model if it is run (atmospheric fields in grib or netcdf format). For training data output (e.g. checkpoints) look for save-path. Default ouput-path: S2S_on_SFNO/outputs/{model}",
-        default="/mnt/qb/work2/goswami0/gkd965/outputs",
-        dest="path",
-    )
-    parser.add_argument(
-        "--num-threads",
-        type=int,
-        default=1,
-        help="Number of threads. Only relevant for some models.",
-    )
-    parser.add_argument(
-        "--only-gpu",
-        help="Fail if GPU is not available",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--cpu",
-        help="Use CPU",
-        action="store_true",
-    )
-        # Metadata
-    parser.add_argument(
-        "--expver",
-        help="Set the experiment version of the model output. Has higher priority than --metadata.",
-    )
-    parser.add_argument(
-        "--class",
-        help="Set the 'class' metadata of the model output. Has higher priority than --metadata.",
-        metavar="CLASS",
-        dest="class_",
-    )
-    parser.add_argument(
-        "--metadata",
-        help="Set additional metadata metadata in the model output",
-        metavar="KEY=VALUE",
-        action="append",
-    )
-    parser.add_argument(
-        "--model-args",
-        help="specific model arguments for initialization of the model",
-        action="store",
-        default=None,
-    )
-        # Utilities
-    parser.add_argument(
-        "--assets-list",
-        help="List the assets used by the model",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--fields",
-        help="Show the fields needed as input for the model",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--jobID",
-        help="log the slurm JobID",
-        action="store",
-        default=None,
-    )
-    parser.add_argument(
-        "--save-data",
-        action="store_true",
-    )
-
-    parser.add_argument(
-        "--time-limit",
-        action="store",
-        default=None,
-        help="time limit in slurm, to save a model before it ends",
-    )
-
-    # Data
-    data = parser.add_argument_group('Data and Data Sources')
-    data.add_argument(
-        "--download-assets",
-        help="Download assets (weights and means/std from ecmwf for pretrained models) if they do not exists.",
-        action="store_true",
-    )
-    data.add_argument(
-        "--input",
-        default="none",
-        help="Source to use for downloading data, local file or cluster(uni tuebingen) specific data structure",
-        choices=available_inputs(),
-    )
-    data.add_argument(
-        "--input-store",
-        default=None,
-        help="If you download data from cds or mars and want to store it somewhere else, specify a path here. Default behaviour is to only temporary cache the data. The name of the file will be ClimateInputData_{YYYYMMDDHH}.grib at specified path",
-        action="store"
-    )
-    data.add_argument(
-        "--file",
-        help="Specify path to file with input weather data. Sets source=file automatically",
-    )
-        # Mars requests options
-    data.add_argument(
-        "--archive-requests",
-        help=(
-            "Save mars archive requests to FILE. Legacy option, only for mars requests."
-            "Use --requests-extra to extend or overide the requests. "
-        ),
-        metavar="FILE",
-    )
-    data.add_argument(
-        "--retrieve-requests",
-        help=(
-            "Print mars requests to stdout."
-            "Use --requests-extra to extend or overide the requests. "
-        ),
-        action="store_true",
-    )
-    data.add_argument(
-        "--requests-extra",
-        help=(
-            "Extends the retrieve or archive requests with a list of key1=value1,key2=value."
-        ),
-    )
-    data.add_argument(
-        "--json",
-        action="store_true",
-        help=("Dump the requests in JSON format."),
-    )
-    data.add_argument(
-        "--coarse-level",
-        action="store",
-        default=4,
-        help=("factor by which the sst data gets reduced in lat, long dimensions"),
-    )
-    data.add_argument(
-        "--cls",
-        action="store",
-        default=None,
-        help=("path to numpy file containing cls tokens from MAE model"),
-    )
-    data.add_argument(
-        "--oni-path",
-        action="store",
-        default=None,
-        help=("path to numpy file containing oni indices"),
-    )
-    data.add_argument(
-        "--past-sst",
-        action="store_true",
-        help=("by default the sst data is taken from the future. \
-              If conditioned on a single on a single sst image it is from the day for wich a forcast is done. \
-              In the case of the MAE the sst start from the input date to #temporal-steps into the futre.\
-              By setting this flag the sst data is taken from the past."),
-    )
-    data.add_argument(
-        "--oni",
-        action="store_true",
-        help=("calculate and use the ONI index as ground truth"),
-    )
-
-    data.add_argument(
-        "--no-shuffle",
-        action="store_true",
-        help=("dont use shuffle in dataloader"),
-    )
-
-    # Running
-    running = parser.add_argument_group('Inference Parameters')
-    running.add_argument(
-        "--run",
-        help="run model",
-        action="store_true",
-    )
-    running.add_argument(
-        "--lead-time",
-        type=int,
-        default=240,
-        help="Length of forecast in hours.",
-    )
-    running.add_argument(
-        "--date",
-        default="-1",
-        help="For which analysis date to start the inference (default: -1 = yesterday). Format: YYYYMMDD",
-    )
-    running.add_argument(
-        "--time",
-        type=int,
-        default=12,
-        help="For which analysis time to start the inference (default: 12). Format: HHMM",
-    )
-    running.add_argument(
-        "--output",
-        default="grib",
-        help="choose output format. Default: grib",
-        choices=available_outputs(),
-    )
-    running.add_argument(
-        "--output-variables",
-        default="./S2S_on_SFNO/outputs/output-variables.json",
-        help="Specify path to a json file detailing which variables to output. Default: all.",
-    )
-    running.add_argument(
-        "--dump-provenance",
-        action="store_true",
-        help=("Dump information for tracking provenance."),
-    )
-    running.add_argument(
-        "--hindcast-reference-year",
-        help="For encoding hincast-like outputs",
-    )
-    running.add_argument(
-        "--staging-dates",
-        help="For encoding hincast-like outputs",
-    )
-
-    # Training
-    training = parser.add_argument_group('Training Parameters')
-    training.add_argument(
-        "--train",
-        help="train model",
-        action="store_true",
-    )
-    training.add_argument(
-        "--trainingset-start-year",
-        help="specify training dataset by start year",
-        action="store",
-        default=1979,
-        type=int
-    )
-    training.add_argument(
-        "--trainingset-end-year",
-        help="specify training dataset by end year. No dates from the end year specified and later will be used.",
-        action="store",
-        default=2016,
-        type=int
-    )
-    training.add_argument(
-        "--validationset-start-year",
-        help="specify validation dataset by start year",
-        action="store",
-        default=2016,
-        type=int
-    )
-    training.add_argument(
-        "--validationset-end-year",
-        help="specify validation dataset by end year. No dates from the end year specified and later will be used.",
-        action="store",
-        default=2018,
-        type=int
-    )
-    training.add_argument(
-        "--validation-interval",
-        help="after running ... expochs, validate the model",
-        action="store",
-        default=150,
-        type=int
-    )
-    training.add_argument(
-        "--save-checkpoint-interval",
-        help="saving every x validation. E.g. if validation-intervall is 100 and save-checkpoint-interval is 10, the model is saved every 1000 iterations",
-        action="store",
-        default=10,
-        type=int
-    )
-    training.add_argument(
-        "--validation-epochs",
-        help="over how many epochs should be validated",
-        action="store",
-        default=20,
-        type=int
-    )
-    training.add_argument(
-        "--training-epochs",
-        help="over how many epochs should be trained",
-        action="store",
-        default=20,
-        type=int
-    )
-    training.add_argument(
-        "--multi-step-validation",
-        help="how many consecutive datapoints should be loaded to used to calculate an autoregressive validation loss ",
-        action="store",
-        default=0,
-        type=int
-    )
-    training.add_argument(
-        "--multi-step-training",
-        help="calculate loss over multiple autoregressive prediction steps",
-        default=0,
-        type=int,
-        action="store",
-    )
-    training.add_argument(
-        "--training-step-skip",
-        help="skip the x amount of autoregressive steps in the multi-step training to calculate the loss",
-        default=0,
-        type=int,
-        action="store",
-    )
-    training.add_argument(
-        "--accumulation-steps",
-        help="accumulate gradients over x steps. Increases batch size by withoutincreasing memory consumption",
-        default=0,
-        type=int,
-        action="store",
-    )
-    training.add_argument(
-        "--validation-step-skip",
-        help="skip the x amount of autoregressive steps in the multi-step validation to calculate the loss",
-        default=0,
-        type=int,
-        action="store",
-    )
-    training.add_argument(
-        "--val-loss-threshold",
-        help="increasing the scaleing of the film layer based on the validation loss. If the validation loss is lower than this threshold, the scaleing is increased by 0.05",
-        action="store",
-        default=0.4,
-        type=float
-    )
-    training.add_argument(
-        "--scaling-horizon",
-        help="how many steps should it take to reach scale=1",
-        action="store",
-        default=2000,
-        type=float
-    )
-    training.add_argument(
-        "--trainingdata-path",
-        help="path to training data zarr file",
-        action="store",
-        default="/mnt/qb/goswami/data/era5/weatherbench2/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr"
-    )
-    training.add_argument(
-        "--trainingdata-u100-path",
-        help="path to training data zarr file for u100m",
-        action="store",
-        default="/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/u100m_1959-2022_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr"
-    )
-    training.add_argument(
-        "--trainingdata-v100-path",
-        help="path to training data zarr file for v100m",
-        action="store",
-        default="/mnt/qb/goswami/data/era5/u100m_v100m_721x1440/v100m_1959-2023-10_721x1440_correct_chunk_new_mean_INTERPOLATE.zarr"
-    )
-    training.add_argument(
-        "--training-workers",
-        help="number of workers to use in dataloader for training",
-        action="store",
-        default=6,
-        type=int
-    )
-    training.add_argument(
-        "--batch-size",
-        action="store",
-        default=1,
-        type=int
-    )
-    training.add_argument(
-        "--batch-size-validation",
-        action="store",
-        default=None,
-        type=int
-    )
-    # FourCastNet uses 0.0005
-    training.add_argument(
-        "--learning-rate",
-        action="store",
-        default=0.001,#2
-        type=float
-    )
-    # FourCastNet uses Cosine
-    training.add_argument(
-        "--scheduler",
-        action="store",
-        default="None",
-        help="which pytorch scheduler to use",
-        dest="scheduler_type",
-        type=str
-    )
-    training.add_argument(
-        "--scheduler-horizon",
-        action="store",
-        default=2000,
-        help="defines the horizon on which the scheduler should reset the learning rate. In case of CosineAnnealingWarmRestarts this modifies the parameter T_0",
-        type=int
-    )
-    training.add_argument(
-        "--save-path",
-        action="store",
-        default="/mnt/qb/work2/goswami0/gkd965/checkpoints",
-        type=str,
-        help="path to save checkpoints and training data, not used for running the model"
-    )
-    training.add_argument(
-        "--checkpointing-mlp",
-        action="store_true",
-        help="Trades compute for memory. Checkpoints MLPs in SFNO (encoder,decoder and MLP in SFNO-Block). Only partly computes the forward path and recomputes missing parts during backward pass. See pytroch checkpointing. Needed to perform multistep training. pure sfno alone already consumes 28GB VRAM"
-    )
-    training.add_argument(
-        "--checkpointing-block",
-        action="store_true",
-        help="Trades compute for memory. Checkpoints SFNO-Block. Only partly computes the forward path and recomputes missing parts during backward pass. See pytroch checkpointing. Needed to perform multistep training. pure sfno alone already consumes 28GB VRAM"
-    )
-    training.add_argument(
-        "--checkpointing-encoder",
-        action="store_true",
-        help="Trades compute for memory. Checkpoints SFNO-encoder. Only partly computes the forward path and recomputes missing parts during backward pass. See pytroch checkpointing. Needed to perform multistep training. pure sfno alone already consumes 28GB VRAM"
-    )
-    training.add_argument(
-        "--checkpointing-decoder",
-        action="store_true",
-        help="Trades compute for memory. Checkpoints SFNO-decoder. Only partly computes the forward path and recomputes missing parts during backward pass. See pytroch checkpointing. Needed to perform multistep training. pure sfno alone already consumes 28GB VRAM"
-    )
-    training.add_argument(
-        "--resume-checkpoint",
-        action="store",
-        default=None,
-        help="Load model from checkpoint and use its configuration to initialize the model"
-    )
-    training.add_argument(
-        "--no-pretrained-sfno",
-        action="store_true",
-        help="Use pretrained sfno model from ecmwf"
-    )
-    training.add_argument(
-        "--enable-amp",
-        action="store_true",
-        help="Save RAM with AMP"
-    )
-    training.add_argument(
-        "--optimizer",
-        action="store",
-        default="Adam",
-        help="Optimizer to use",
-        choices=["Adam","SGD","LBFGS","AdamW"],
-    )
-    training.add_argument(
-        "--weight-decay",
-        action="store",
-        default=0.001,
-        help="",
-        type=float,
-    )
-    training.add_argument(
-        "--dropout",
-        action="store",
-        default=0.,
-        help="",
-        type=float,
-    )
-    training.add_argument(
-        "--loss-fn",
-        action="store",
-        help="Which loss function to use",
-        default="MSE",
-        choices=["MSE","CosineMSE","L2Sphere",'L2Sphere_noSine',"NormalCRPS","L1"],
-    )
-    training.add_argument(
-        "--loss-reduction",
-        action="store",
-        help="Which loss reduction method to use",
-        default="mean",
-        choices=["mean","none","sum"],
-    )
-    training.add_argument(
-        "--test-performance",
-        action="store_true",
-        help="run speed test for dataloader and model performance",
-    )
-    training.add_argument(
-        "--test-dataloader-speed",
-        action="store_true",
-        help="run speed test for dataloader and model performance",
-    )
-    training.add_argument(
-        "--test-batch-size",
-        action="store_true",
-        help="run speed test for dataloader and model performance",
-    )
-    training.add_argument(
-        "--num-iterations",
-        action="store",
-        type=int,
-        default=100,
-        help="over how many iterations should the speed test be run",
-    )
-    training.add_argument(
-        "--batch-size-step",
-        action="store",
-        type=int,
-        default=1,
-        help="when testing for an optimal batch size, how large should be the inital step size",
-    )
-    training.add_argument(
-        "--save-forecast",
-        action="store_true",
-    )
-    training.add_argument(
-        "--ddp",
-        action="store_true",
-    )
-    training.add_argument(
-        "--world-size",
-        action="store",
-        type=int,
-        default=None,
-    )
-    training.add_argument(
-        "--discount-factor",
-        action="store",
-        type=float,
-        default=0.9,
-    )
-    training.add_argument(
-        "--set-epoch",
-        action="store",
-        type=int,
-        default=None,
-        help="set the epoch to a specific integer. This is useful if training is resumed. The epoch is used as the seed for the dataloader",
-    )
-    training.add_argument(
-        "--resume-scheduler",
-        action="store_true",
-    )
-    training.add_argument(
-        "--resume-optimizer",
-        action="store_true",
-    )
-    training.add_argument(
-        "--no-scratch",
-        action="store_true",
-    )
-    training.add_argument(
-        "--retrain-film",
-        action="store_true",
-    )
-
-
-
-    # Evaluation
-    evaluate = parser.add_argument_group('Evaluate Models')
-    evaluate.add_argument(
-        "--eval-model",
-        help="evaluate model list of checkpoints for autoregressive forecast",
-        action="store_true",
-    )
-    evaluate.add_argument(
-        "--eval-sfno",
-        help="evaluate base sfno model",
-        action="store_true",
-    )
-    evaluate.add_argument(
-        "--eval-checkpoint-num",
-        help="how many checkpoints should be evaluated from --eval-checkpoint-path. The checkpoints are selected equidistantly. -1 evaluates all checkpoints",
-        action="store",
-        type=int,
-        default=1,
-    )
-    evaluate.add_argument(
-        "--eval-checkpoints",
-        help="Name the epoch for which checkpoints should be loaded. E.g. --eval-checkpoints 500 700 900",
-        nargs='+',
-        default=[],
-    )
-    evaluate.add_argument(
-        "--eval-checkpoint-path",
-        help="evaluate model list of checkpoints for autoregressive forecast",
-        action="store",
-        type=str
-    )
-
-    # Logging
-    logging_parser = parser.add_argument_group('Logging')
-    logging_parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Turn debugger on (pdb).",
-    )
-    logging_parser.add_argument(
-        '--wandb', 
-        action='store_true',
-        help='use weights and biases'
-    )
-    logging_parser.add_argument(
-        '--no-wandb', 
-        action='store_true',
-        help='dont use weights and biases'
-    )
-    logging_parser.add_argument(
-        '--wandb-resume', 
-        action='store', 
-        default=None,             
-        type=str, 
-        help='resume existing weights and biases run')
-
-    logging_parser.add_argument(
-        '--notes', 
-        action='store', 
-        default=None,             
-        type=str, 
-        help='notes for wandb')
-
-    logging_parser.add_argument(
-        '--wandb-project', 
-        action='store', 
-        default=None,             
-        type=str, 
-        help='which project to log to. if none given defaults to {model}-{model-version}')
-    
-    logging_parser.add_argument(
-        '--tags', 
-        action='store', 
-        default=None,             
-        type=str, 
-        help='tags for wandb')
-    logging_parser.add_argument(
-        '--advanced-logging', 
-        action='store_true',
-        help='Log more values like the gamma, beta activations. Consumes more GPU memory.'
-    )
-    logging_parser.add_argument(
-        '--log-file', 
-        action='store',
-        default=None,
-        help='Log stdout/err to file (for module logging, some logs are printed so a redirect > log_file )'
-    )
-    # Architecture
-    architecture_parser = parser.add_argument_group('Architecture')
-    architecture_parser.add_argument(
-        "--model",
-        action="store",
-        #choices=available_models(),
-        choices=["sfno","fcn","mae"],
-        dest="model_type",
-        help="Specify the model to run"
-    )
-    architecture_parser.add_argument(
-        "--model-version",
-        default="latest",
-        help="Model versions: \n    SFNO: [latest, film]\n    Fourcastnet: [0, 1]\n    MAE: [latest, lin-probe]",
-    )
-    architecture_parser.add_argument(
-        "--film-gen",
-        default=None,
-        type=str,
-        dest="film_gen_type",
-        help="Which type of film generator to use in the filmed model.",
-        choices=["none","gcn","gcn_custom","transformer","mae"]
-    )
-    architecture_film_parser = parser.add_argument_group('Architecture Film Gen')
-    architecture_film_parser.add_argument(
-        '--film-layers', 
-        action='store',
-        type=int,
-        default=1,
-        help='How many sfno blocks should be modulated with a dedicated film layer. Default: 1',
-    )
-    architecture_film_parser.add_argument(
-        '--model-depth', 
-        action='store',
-        type=int,
-        default=6,
-        help='Number of layers for film generator',
-    )
-    architecture_film_parser.add_argument(
-        '--temporal-step', 
-        action='store',
-        type=int,
-        default=28,
-        help='How many 6 hr steps should be included in the temporal dimension for the mae model. Needs to be larger than 0',
-    )
-    architecture_film_parser.add_argument(
-        '--nan-mask-threshold',  
-        action='store',
-        type=float,
-        default=0.5,
-        help='token with a ratio of nan values higher than this threshold are masked',
-    )
-    architecture_film_parser.add_argument(
-        '--patch-size', 
-        action='store',
-        type=int,
-        nargs="+",
-        default=[28,9,9],
-        help='Define the patch sizes for the MAE (temporal, lat, lon) and Transfomrer (lat,long)',
-    )
-    architecture_film_parser.add_argument(
-        '--embed-dim', 
-        action='store',
-        type=int,
-        default=512,
-        help='',
-    )
-    architecture_film_parser.add_argument(
-        '--mlp-dim', 
-        action='store',
-        type=int,
-        default=1024,
-        help='',
-    )
-    architecture_film_parser.add_argument(
-        '--repeat-film', 
-        action='store_true',
-        help='repeat the same film modulation arcoss all sfno blocks',
-    )
 
 
     # !! args from parser become model properties (whatch that no conflicting model properties/methods exist)

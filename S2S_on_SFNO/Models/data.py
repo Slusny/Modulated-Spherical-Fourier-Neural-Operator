@@ -52,7 +52,7 @@ class ERA5_galvani(Dataset):
             
             relative_humidity_cds = True, 
 
-            sst_path = None,
+            sst_path = "/mnt/qb/goswami/data/era5/sst_1_deg.zarr",
 
             start_year=2000,
             end_year=2022,
@@ -100,8 +100,8 @@ class ERA5_galvani(Dataset):
         if sst_path is not None:
             self.dataset_sst = xr.open_zarr(sst_path,chunks=None)
         if relative_humidity_cds:
-            self.relative_humidity_data = combine_relative_humidity()
-            # self.relative_humidity_data = xr.open_zarr("/mnt/qb/goswami/data/era5/relative_humidity.zarr",chunks=None)
+            # self.relative_humidity_data = combine_relative_humidity()
+            self.relative_humidity_data = xr.open_zarr("/mnt/qb/goswami/data/era5/relative_humidity_1979_to_2018.zarr",chunks=None)
         if cls:
             self.cls = torch.from_numpy(np.load(cls))
         else:
@@ -202,6 +202,8 @@ class ERA5_galvani(Dataset):
             
             if self.sst_path is None:
                 sst = sst.coarsen(latitude=self.coarse_level,longitude=self.coarse_level,boundary='trim').mean().to_numpy()
+            else:
+                sst = sst.to_numpy()
             return torch.from_numpy(sst)[0] # remove variable dimension -- new, check if breaks oni calculation
 
         if self.sst:

@@ -106,6 +106,32 @@
 // echo DONE!
 
 
+// restart training , if scheduler is modified, we need validtion-iter and accumulation steps in the command
+// # smart tree
+python /home/goswami/gkd965/MasterML/main.py --train --model sfno --model-version film --film-gen mae --resume-scheduler --resume-optimizer --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/smart-tree-11-sID{0213}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl --set-epoch 1 --wandb --wandb-project 2film --wandb-resume a9hg0di7 --ddp --jobID 0315 --scheduler-horizon 108110 --validation-interval 6 --accumulation-steps 16 > /home/goswami/gkd965/jobs/job.2film.resume.0315.out 2> /home/goswami/gkd965/jobs/job.2film.resume.0315.err
+
+// worldly-wildflower-9
+python /home/goswami/gkd965/MasterML/main.py --train --model sfno --model-version film --film-gen mae --resume-scheduler --resume-optimizer --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/worldly-wildflower-9-sID{0113}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl --set-epoch 1 --wandb --wandb-project 2film --wandb-resume a9hg0di7 --ddp --jobID 0114 --scheduler-horizon 108110 --validation-interval 6 --accumulation-steps 16 > /home/goswami/gkd965/jobs/job.2film.resume.0114.out 2> /home/goswami/gkd965/jobs/job.2film.resume.0114.err
+
+
+// blooming-fireband
+python /home/goswami/gkd965/MasterML/main.py --train --model sfno --model-version film --film-gen mae --resume-scheduler --resume-optimizer --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/blooming-firebrand-1-sID{00112}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl --set-epoch 1 --wandb --wandb-project 2film-1step --wandb-resume csst5ncv --ddp --jobID 00113 --scheduler-horizon 54055 --validation-interval 6 --accumulation-steps 16 > /home/goswami/gkd965/jobs/job.21film.resume.00113.out 2> /home/goswami/gkd965/jobs/job.21film.resume.00113.err
+
+//iconic-smoke
+python /home/goswami/gkd965/MasterML/main.py --train --model sfno --model-version film --film-gen mae --resume-scheduler --resume-optimizer --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/iconic-smoke-1-sID{00192}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl --set-epoch 1 --wandb --wandb-project 1film-1step --wandb-resume ign566j9 --ddp --jobID 00193 --scheduler-horizon 54055 --validation-interval 6 --accumulation-steps 16 > /home/goswami/gkd965/jobs/job.11film.resume.00193.out 2> /home/goswami/gkd965/jobs/job.11film.resume.00193.err
+
+//expert-microwave 
+python /home/goswami/gkd965/MasterML/main.py --train --model sfno --model-version film --film-gen mae --resume-scheduler --resume-optimizer --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/expert-microwave-21-sID{0292}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl --set-epoch 1 --wandb --wandb-project 1film --wandb-resume k1g3kc7b --ddp --jobID 0293 --scheduler-horizon 108110 --validation-interval 6 --accumulation-steps 16 > /home/goswami/gkd965/jobs/job.1film.resume.0293.out 2> /home/goswami/gkd965/jobs/job.1film.resume.0293.err
+
+//effortless-dawn
+python /home/goswami/gkd965/MasterML/main.py --train --model sfno --model-version film --film-gen mae --resume-scheduler --resume-optimizer --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/effortless-dawn-20-sID{0192}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl --set-epoch 1 --wandb --wandb-project 1film --wandb-resume vpt8pemd --ddp --jobID 0193 --scheduler-horizon 108110 --validation-interval 6 --accumulation-steps 16 > /home/goswami/gkd965/jobs/job.1film.resume.0193.out 2> /home/goswami/gkd965/jobs/job.1film.resume.0193.err
+
+
+--save-path /mnt/qb/work2/goswami0/gkd965/checkpoints/tmp
+
+-cls /mnt/qb/work2/goswami0/gkd965/checkpoints/mae/glorious-deluge-23/checkpoint_mae_latest_None_iter=0_epoch=8-cls_encoder-1979-2019.npy --train --training-workers 6 --multi-step-training 2 --training-step-skip 3 --advanced-logging --model-depth 6 --film-layers 2 --learning-rate 0.0005 --enable-amp --checkpointing-decoder --scheduler CosineAnnealingLR --scheduler-horizon 270275 --loss-fn L2Sphere_noSine --validation-interval 6 --validation-epochs 2 --multi-step-validation 2 --validation-step-skip 15 --save-checkpoint-interval 20 --training-epochs 5 --accumulation-steps 16 --discount-factor 0.85 --wandb --ddp --retrain-film --wandb-project 2film --jobID 0113 > /home/goswami/gkd965/jobs/job.1Film.GDe.6131.out 2> /home/goswami/gkd965/jobs/job.1Film.GDe.6131.out
+
+
 
 
 
