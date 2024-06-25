@@ -397,7 +397,7 @@ class Trainer():
             self.scheduler = None
         if self.cfg.resume_scheduler:
             # to update the scheduler you need to overwrite T_max, and last_epoch
-            params = torch.load(self.util.checkpoint_path,map_location="cpu")
+            params = torch.load(self.util.checkpoint_path,map_location=self.util.device)
             self.scheduler.load_state_dict(params["scheduler_state_dict"])
             del params
 
@@ -426,7 +426,7 @@ class Trainer():
         elif self.cfg.optimizer == "ZeroRedundancyOptimizer":
             self.optimizer = torch.distributed.optim.ZeroRedundancyOptimizer(self.util.parameters(),optimizer_class=torch.optim.Adam,lr=self.cfg.learning_rate)
         if self.cfg.resume_optimizer:
-            params = torch.load(self.util.checkpoint_path,map_location="cpu")
+            params = torch.load(self.util.checkpoint_path,map_location=self.util.device)
             self.optimizer.load_state_dict(params["optimizer_state_dict"])
             del params
 
@@ -947,7 +947,7 @@ class Trainer():
         '''
 
         renorm = True
-
+        self.util.set_seed(42)  
         self.ready_model()
         self.model.eval()
         
@@ -1001,7 +1001,7 @@ class Trainer():
                     self.mem_log("fin",fin=True)
                     if (i+1) % self.cfg.save_checkpoint_interval == 0 and self.cfg.save_checkpoint_interval > 0 :
                         system_monitor(printout=True,pids=[os.getpid()],names=["python"])
-                        self.save_to_zarr_forecast(saves)
+                        self.save_to_zarr_forecast(iter=saves)
                         saves +=1
                         break
                     
@@ -1012,7 +1012,7 @@ class Trainer():
                 #     self.iter += 1
                 # if len(self.output_data[0]) > 0:
                 #     self.save_to_zarr_forecast(saves)
-                return
+                
 
     def save_to_zarr_forecast(self,iter=0,file_name=None):
         '''

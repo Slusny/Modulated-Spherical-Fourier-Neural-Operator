@@ -126,6 +126,10 @@ python /home/goswami/gkd965/MasterML/main.py --train --model sfno --model-versio
 //effortless-dawn
 python /home/goswami/gkd965/MasterML/main.py --train --model sfno --model-version film --film-gen mae --resume-scheduler --resume-optimizer --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/effortless-dawn-20-sID{0192}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl --set-epoch 1 --wandb --wandb-project 1film --wandb-resume vpt8pemd --ddp --jobID 0193 --scheduler-horizon 108110 --validation-interval 6 --accumulation-steps 16 > /home/goswami/gkd965/jobs/job.1film.resume.0193.out 2> /home/goswami/gkd965/jobs/job.1film.resume.0193.err
 
+//vit
+//effortless-dawn
+python /home/goswami/gkd965/MasterML/main.py --train --model sfno --model-version film --film-gen transformer --resume-scheduler --resume-optimizer --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/devoted-breeze-7-sID{080808}/checkpoint_sfno_film_transformer_iter=0_epoch=1.pkl --set-epoch 1 --wandb --wandb-project vit --wandb-resume d9jmnobs --ddp --jobID 181818 > /home/goswami/gkd965/jobs/job.vit7.x181818.out 2> /home/goswami/gkd965/jobs/job.vit7.x181818.err
+
 
 --save-path /mnt/qb/work2/goswami0/gkd965/checkpoints/tmp
 

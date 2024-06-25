@@ -48,7 +48,7 @@ def ddp_setup(rank, world_size):
     os.environ["WANDB__SERVICE_WAIT"] = "300"
     torch.cuda.set_device(rank)
     # os.environ["CUDA_VISIBLE_DEVICES"]=str(rank) if you set visible device the set device is always 0
-    init_process_group(backend="nccl", rank=rank, world_size=world_size)
+    init_process_group(backend="nccl", rank=rank, world_size=world_size, timeout=datetime.timedelta(hours=2))
 
 
 # LOG = logging.getLogger(__name__)
@@ -210,7 +210,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
 
             # set flags back to default
             for k,v in vars(args).items():
-                if k in ['train','timestamp','wandb','ddp','enable_amp','time_limit','debug','rank','world_size','no_wandb']: 
+                if k in ['train','timestamp','wandb','wandb_resume','wandb_project','ddp','enable_amp','time_limit','debug','rank','world_size','no_wandb']: 
                     if k == 'enable_amp' and args.train: continue
                     model_args[k] = v
 
@@ -937,6 +937,12 @@ training.add_argument(
     default=None,
 )
 training.add_argument(
+    "--set-rank",
+    action="store",
+    type=int,
+    default=0,
+)
+training.add_argument(
     "--discount-factor",
     action="store",
     type=float,
@@ -1159,7 +1165,7 @@ if __name__ == "__main__":
             mp.spawn(main, args=(args,arg_groups,args.world_size), nprocs=args.world_size, join=True)
             destroy_process_group()
         else:
-            main(args=args,arg_groups=arg_groups)
+            main(rank=args.set_rank,args=args,arg_groups=arg_groups)
 
 
 

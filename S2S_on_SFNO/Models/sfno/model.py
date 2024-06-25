@@ -1012,8 +1012,6 @@ class FourCastNetv2_filmed(FourCastNetv2):
             pass
 
         # Set model to eval mode and return
-        model.eval()
-        model.to(self.device)
 
         # free VRAM
         del checkpoint_sfno
@@ -1031,6 +1029,11 @@ class FourCastNetv2_filmed(FourCastNetv2):
                 # if "film_gen" in name:
                     # param.requires_grad = True
                 # param.requires_grad = False 
+
+
+        model.eval()
+        model.to(self.device)
+        model.zero_grad()
 
         return model
     
