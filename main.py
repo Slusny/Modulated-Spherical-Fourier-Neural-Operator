@@ -210,7 +210,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
 
             # set flags back to default
             for k,v in vars(args).items():
-                if k in ['train','timestamp','wandb','wandb_resume','wandb_project','ddp','enable_amp','time_limit','debug','rank','world_size','no_wandb']: 
+                if k in ['train','timestamp','wandb','wandb_resume','wandb_project','ddp','enable_amp','time_limit','set_epoch','debug','rank','world_size','no_wandb','resume_optimizer','resume_scheduler','no-scratch']: 
                     if k == 'enable_amp' and args.train: continue
                     model_args[k] = v
 

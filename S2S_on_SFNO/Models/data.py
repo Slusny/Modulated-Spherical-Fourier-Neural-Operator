@@ -67,8 +67,8 @@ class ERA5_galvani(Dataset):
             skip_step=0,
             run=False,
             dataset_idx_offset=29220,
-            start_idx = None,
-            end_idx = None,
+            fix_start_idx = None,
+            fix_end_idx = None,
 
         ):
         self.model = model
@@ -135,11 +135,17 @@ class ERA5_galvani(Dataset):
             print("For ERA5, 100v, 100u the end dates are",enddate)
             end_year = int(np.datetime_as_string(possible_enddate,"Y"))
 
-        self.start_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(dataset_start, start_year))])
-        if start_idx is not None and end_idx is not None:
-            self.start_idx = self.start_idx + start_idx
-            self.end_idx = self.start_idx + end_idx
+        self.start_idx_year = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(dataset_start, start_year))])
+        if fix_start_idx is not None and fix_end_idx is not None:
+            self.start_idx = self.start_idx_year + fix_start_idx
+            self.end_idx = self.start_idx_year + fix_end_idx
+            end_idx_data = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(dataset_start, end_year))]) -1
+            if self.end_idx > end_idx_data:
+                print("End index {} is larger than the available data".format(self.end_idx))
+                print("End index is set to ",end_idx_data)
+                self.end_idx = end_idx_data
         else:
+            self.start_idx = self.start_idx_year
             self.end_idx = steps_per_day * sum([366 if isleap(year) else 365 for year in list(range(dataset_start, end_year))]) -1
 
         print("Using years: ",start_year," - ", end_year," (total length: ",self.end_idx - self.start_idx,") (availabe date range: ",np.datetime_as_string(possible_startdate,"Y"),"-",np.datetime_as_string(possible_enddate,"Y"),")")

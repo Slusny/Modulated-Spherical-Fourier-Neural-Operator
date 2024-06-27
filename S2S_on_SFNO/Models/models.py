@@ -89,19 +89,20 @@ class Model():
             device=torch.device(self.cfg.rank)
             return device
 
-        device = "cpu"
+        device = torch.device("cpu")
         if torch.backends.mps.is_available() and torch.backends.mps.is_built():
-            device = "mps"
+            device = torch.device("mps")
         if torch.cuda.is_available() and torch.backends.cuda.is_built():
-            device = "cuda"
+            device = torch.device(self.cfg.rank)#"cuda"
         if self.only_gpu:
-            if device == "cpu":
+            if device == torch.device("cpu"):
                 raise RuntimeError("GPU is not available")
         if self.cpu:
-            device = "cpu"
+            device = torch.device("cpu")
         LOG.info(
-            "Using device '%s'. The speed of inference depends greatly on the device.",
-            device.upper(),
+            "Using device '%s':'%s'. The speed of inference depends greatly on the device.",
+            device.type,
+            device.index,
         )  
         return device
 

@@ -901,8 +901,8 @@ class Trainer():
                 path=self.cfg.trainingdata_path, 
                 start_year=self.cfg.validationset_start_year,
                 end_year=self.cfg.validationset_end_year,
-                start_idx=start_idx,
-                end_idx=end_idx,
+                fix_start_idx=start_idx,
+                fix_end_idx=end_idx,
                 temporal_step=self.cfg.temporal_step,
                 cls=self.cfg.cls,
                 oni=oni,
@@ -921,8 +921,8 @@ class Trainer():
                 v100_path=self.cfg.trainingdata_v100_path,
                 start_year=self.cfg.validationset_start_year,
                 end_year=self.cfg.validationset_end_year,
-                start_idx=start_idx,
-                end_idx=end_idx,
+                fix_start_idx=start_idx,
+                fix_end_idx=end_idx,
                 multi_step=self.cfg.multi_step_validation,
                 skip_step=self.cfg.validation_step_skip,
                 sst=sst,
@@ -946,18 +946,23 @@ class Trainer():
         maybe if we forecast a long time, this is too much data to load at once and we would need a second dataloader for the cls tokens
         '''
 
-        renorm = True
+        renorm = False
         self.util.set_seed(42)  
         self.ready_model()
         self.model.eval()
         
         self.cfg.validationset_start_year = self.cfg.validationset_start_year
         start = date(self.cfg.validationset_start_year, 1, 1)
-        end   = date(self.cfg.validationset_end_year, 12, 31)
-        total_steps = (end-start).days*4
-        start_indices = list(range(0, total_steps, total_steps// self.cfg.num_iterations))
-        end_indices = start_indices[1:]
-        end_indices.append(total_steps)
+        end   = date(self.cfg.validationset_end_year-1, 12, 31)
+        total_steps = (end-start).days*4 -1 - self.cfg.multi_step_validation
+        if self.cfg.num_iterations == 1:
+            start_indices = [0]
+            end_indices = [total_steps]
+        else:
+            total_list_of_indices = list(range(0, total_steps, total_steps// self.cfg.num_iterations))
+            start_indices = total_list_of_indices[:-1]
+            end_indices = total_list_of_indices[1:]
+        # end_indices.append(total_steps)
         print('start indices:',start_indices)
         print('end indices:',end_indices)
 
@@ -1001,9 +1006,11 @@ class Trainer():
                     self.mem_log("fin",fin=True)
                     if (i+1) % self.cfg.save_checkpoint_interval == 0 and self.cfg.save_checkpoint_interval > 0 :
                         system_monitor(printout=True,pids=[os.getpid()],names=["python"])
-                        self.save_to_zarr_forecast(iter=saves)
+                        self.save_to_zarr_forecast(iter=saves,renorm=renorm)
                         saves +=1
                         break
+                del dataloader
+                del self.dataset_validation
                     
                 #     if (i+1)%self.cfg.num_iterations == 0 and self.cfg.num_iterations > 0:
                 #         self.save_to_zarr_forecast(saves)
@@ -1014,7 +1021,7 @@ class Trainer():
                 #     self.save_to_zarr_forecast(saves)
                 
 
-    def save_to_zarr_forecast(self,iter=0,file_name=None):
+    def save_to_zarr_forecast(self,iter=0,file_name=None,renorm=True):
         '''
         Take the output_data from a inference run and save it as a netcdf file that conforms with the weatherbench2 forcast format, with coordinates:
         latitude: float64, level: int32, longitude: float64, prediction_timedelta: timedelta64[ns], time: datetime64[ns]
@@ -1025,6 +1032,8 @@ class Trainer():
         wb_ordering_scf = {
             "10m_u_component_of_wind":0,
             "10m_v_component_of_wind":1,
+            "100m_u_component_of_wind":2,
+            "100m_v_component_of_wind":3,
             "2m_temperature":4,
             "surface_pressure":5,
             "mean_sea_level_pressure":6,
@@ -1085,7 +1094,10 @@ class Trainer():
 
         if file_name is None:
             cp_name = self.util.checkpoint_path.split("/")[-1].split(".")[0]
-            file_name = 'forecast_'+cp_name+'_lead_time='+str(self.cfg.multi_step_validation)+"_"+time_str + "_denormalised"
+            if renorm:
+                file_name = 'forecast_'+cp_name+'_lead_time='+str(self.cfg.multi_step_validation)+"_"+time_str + "_denormalised"
+            else:
+                file_name = 'forecast_'+cp_name+'_lead_time='+str(self.cfg.multi_step_validation)+"_"+time_str
         zarr_save_path = os.path.join(self.cfg.path,file_name + '.zarr')
         print("saving zarr to ",zarr_save_path,flush=True)
         if iter ==0 :
@@ -1109,6 +1121,8 @@ class Trainer():
         wb_ordering_scf = {
             "10m_u_component_of_wind":0,
             "10m_v_component_of_wind":1,
+            "100m_u_component_of_wind":2,
+            "100m_v_component_of_wind":3,
             "2m_temperature":4,
             "surface_pressure":5,
             "mean_sea_level_pressure":6,
@@ -1175,6 +1189,7 @@ class Trainer():
             xr.Dataset(data_vars=data_dict).chunk({'time': 1, 'latitude':721,'longitude':1440}).to_zarr(zarr_save_path,mode="a",append_dim="time")
         
         # clean up
+        print("save done",flush=True)
         self.output_data = []
         self.time_dim = []
                 
@@ -1255,13 +1270,13 @@ class Trainer():
     
                 if (i+1) % self.cfg.num_iterations == 0: 
                     system_monitor(printout=True,pids=[os.getpid()],names=["python"])
-                    self.save_to_zarr(saves,file_name="era5_data_normalised_sfno_01.01.2016_31.12.2017")
+                    self.save_to_zarr(saves,file_name="era5_data_normalised_sfno_01.01.2018_31.12.2018")
                     saves +=1
             else:
                 raise NotImplementedError
         print("done dataloader test")
         if self.cfg.output == "numpy": np.save(os.path.join(self.cfg.save_path,"oni.npy"),np.array(dataset))
-        elif self.cfg.output == "zarr" and len(self.output_data) > 0: self.save_to_zarr(saves,file_name="era5_data_normalised_sfno_01.01.2016_31.12.2017")
+        elif self.cfg.output == "zarr" and len(self.output_data) > 0: self.save_to_zarr(saves,file_name="era5_data_normalised_sfno_01.01.2018_31.12.2018")
         return
     
     def test_dataloader_speed(self):

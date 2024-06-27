@@ -150,3 +150,5 @@ echo DONE!
 # to kill a job go to the node where it runs and execute
 # scontrol listpids
 #  kill -INT <pid>
+
+# squeue -o"%.7i %.9P %.8j %.8u %.2t %.10M %.6D %C"

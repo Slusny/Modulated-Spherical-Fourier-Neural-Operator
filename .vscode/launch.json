@@ -131,15 +131,13 @@ python /home/goswami/gkd965/MasterML/main.py --train --model sfno --model-versio
 python /home/goswami/gkd965/MasterML/main.py --train --model sfno --model-version film --film-gen transformer --resume-scheduler --resume-optimizer --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/devoted-breeze-7-sID{080808}/checkpoint_sfno_film_transformer_iter=0_epoch=1.pkl --set-epoch 1 --wandb --wandb-project vit --wandb-resume d9jmnobs --ddp --jobID 181818 > /home/goswami/gkd965/jobs/job.vit7.x181818.out 2> /home/goswami/gkd965/jobs/job.vit7.x181818.err
 
 
+// resume ONES
+python /home/goswami/gkd965/MasterML/main.py --train --model sfno --model-version film --film-gen mae --resume-scheduler --resume-optimizer --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/restful-valley-24-sID{x0_0_0}/checkpoint_sfno_film_mae_iter=345_epoch=0.pkl --set-epoch 1 --wandb --wandb-project 1film --wandb-resume 1cnz0fr1 --ddp --jobID y0_0_0 > /home/goswami/gkd965/jobs/job.ONES.y0_0_0.out 2> /home/goswami/gkd965/jobs/job.ONES.y0_0_0.err
+
+
 --save-path /mnt/qb/work2/goswami0/gkd965/checkpoints/tmp
 
 -cls /mnt/qb/work2/goswami0/gkd965/checkpoints/mae/glorious-deluge-23/checkpoint_mae_latest_None_iter=0_epoch=8-cls_encoder-1979-2019.npy --train --training-workers 6 --multi-step-training 2 --training-step-skip 3 --advanced-logging --model-depth 6 --film-layers 2 --learning-rate 0.0005 --enable-amp --checkpointing-decoder --scheduler CosineAnnealingLR --scheduler-horizon 270275 --loss-fn L2Sphere_noSine --validation-interval 6 --validation-epochs 2 --multi-step-validation 2 --validation-step-skip 15 --save-checkpoint-interval 20 --training-epochs 5 --accumulation-steps 16 --discount-factor 0.85 --wandb --ddp --retrain-film --wandb-project 2film --jobID 0113 > /home/goswami/gkd965/jobs/job.1Film.GDe.6131.out 2> /home/goswami/gkd965/jobs/job.1Film.GDe.6131.out
-
-
-
-
-
-
 
 
 
