@@ -9,6 +9,7 @@ import xarray as xr
 
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
+import math
 
 
 import numpy as np
@@ -881,8 +882,12 @@ class Film_wrapper(nn.Module):
             # init
             for x in self.film_head.net: 
                 if type(x) == torch.nn.modules.linear.Linear:
-                    nn.init.constant_(x.weight, 0)
-                    nn.init.constant_(x.bias, 0)
+                    stdv = 1. / math.sqrt(x.weight.size(1))/self.cfg.scale_weight
+                    x.weight.data.uniform_(-stdv, stdv)
+                    if x.bias is not None:
+                        x.bias.data.uniform_(-stdv, stdv)
+                    # nn.init.constant_(x.weight, 0)
+                    # nn.init.constant_(x.bias, 0)
         
         else:
             self.film_gen = GCN_custom(self.cfg.batch_size,self.device,out_features=num_film_features*self.cfg.film_layers*2, depth=self.cfg.model_depth,embed_dim=self.cfg.embed_dim,assets=os.path.join(self.cfg.assets,"gcn"))# num layers is 1 for now

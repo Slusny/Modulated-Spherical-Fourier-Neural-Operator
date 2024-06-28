@@ -971,6 +971,13 @@ training.add_argument(
     "--retrain-film",
     action="store_true",
 )
+training.add_argument(
+    "--scale-weight",
+    action="store",
+    type=int,
+    default=1,
+    help="",
+)
 
 
 
