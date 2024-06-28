@@ -31,9 +31,13 @@
 # python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version latest --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/sfno --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019
 
 
+
+
+
+
 # #--------------- 1 Film
 # # rich-breeze (D) - (checkpoint)
-# python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/rich-breeze-23-sID{x01l12}/rich-breeze-23-sID{x01l13}/rich-breeze-23-sID{x01l14}/checkpoint_sfno_film_mae_iter=0_epoch=3.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/work2/goswami0/gkd965/checkpoints/rich-breeze-23-sID{x01l12}/rich-breeze-23-sID{x01l13}/rich-breeze-23-sID{x01l14} --num-iterations 12 --batch-size 3 --save-checkpoint-interval 10 --training-workers 6 --validationset-start-year 2018 --validationset-end-year 2018  #--set-rank 1
+python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/rich-breeze-23-sID{x01l12}/rich-breeze-23-sID{x01l13}/rich-breeze-23-sID{x01l14}/checkpoint_sfno_film_mae_iter=0_epoch=3.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/work2/goswami0/gkd965/checkpoints/rich-breeze-23-sID{x01l12}/rich-breeze-23-sID{x01l13}/rich-breeze-23-sID{x01l14} --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 6 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
 # # Ones (R - 211)
 # python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/restful-valley-24-sID{x0_0_0}/restful-valley-24-ONES-sID{y0_0_0}/checkpoint_sfno_film_mae_iter=0_epoch=2.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/1film/ONES --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019
 
@@ -43,7 +47,7 @@
 # #--------------- 2 Film
 
 # #restful-cherry (21Film) (R - 211)
-# python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/copper-fog-3-sID{x00112}/copper-fog-3-sID{x00115}/restful-cherry-7-sID{y00117}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl   --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/11film/restful-cherry --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
+# python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/copper-fog-3-sID{x00112}/copper-fog-3-sID{x00115}/restful-cherry-7-sID{y00117}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl   --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/21film/restful-cherry --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
 
 
 # # fearless-pyramid (R - 211)
@@ -52,55 +56,68 @@
 
 
 
-# #--------------- vit (R - 214)
+# #--------------- vit (R - 214) devoted breeze
 # # python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/devoted-breeze-7-sID{080808}/devoted-breeze-7-sID{181818}/devoted-breeze-7-sID{282828}/checkpoint_sfno_film_transformer_iter=0_epoch=3.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vit/devoted-breeze --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019
-# python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/devoted-breeze-7-sID{080808}/devoted-breeze-7-sID{181818}/devoted-breeze-7-sID{282828}/checkpoint_sfno_film_transformer_iter=360_epoch=2.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vit/devoted-breeze --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019
+python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/devoted-breeze-7-sID{080808}/devoted-breeze-7-sID{181818}/devoted-breeze-7-sID{282828}/checkpoint_sfno_film_transformer_iter=360_epoch=2.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vit/devoted-breeze --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019
 
-# #--------------- gcn (R - 211)
-# python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/lunar-terrain-5-sID{21191}/checkpoint_sfno_film_gcn_iter=798_epoch=0.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/gcn/lunar-terrain --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019
-
-
+# #--------------- gcn (R - 211) lunar-terrain
+python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/lunar-terrain-5-sID{21191}/checkpoint_sfno_film_gcn_iter=798_epoch=0.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/gcn/lunar-terrain --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 3 --validationset-start-year 2018 --validationset-end-year 2019
 
 
 
-# -- vanilla 
-
-# damped
-
-# greatfull field (R - 214)
-python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/grateful-field-13-sID{859123}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vanilla/1film --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
-
-# proud-totem
-python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/proud-totem-8-sID{715721}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vanilla/2film --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
-
-# visionary-sponge 12
-python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/visionary-sponge-7-sID{2641}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vanilla/2film/visionary-sponge --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
-
-# -------------1film
-
-# lunar-mountain (225)
-python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/lunar-mountain-8-sID{659123}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vanilla/1film/lunar-montain --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
-
-# brisk brook (211)
-python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/brisk-brook-7-sID{459123}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vanilla/1film/brisk-brook --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
-
-# fragrant grass (222)
-python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/fragrant-grass-6-sID{31361}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vanilla/1film/fragrant-grass --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
-
-# crimson (210)
-python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/crimson-yogurt-4-sID{54109}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vanilla/1film/crimson --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
 
 
-# -------------2film    
+# # -- vanilla 
 
-# atomic wind (222)
-python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/atomic-wind-2-sID{615721}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vanilla/2film/atomic-wind --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
+# # damped
 
-# wandering lion (211)
-python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/wandering-lion-1-sID{99988}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vanilla/1film/wandering-lion --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
+# # greatfull field (R - 214)
+# python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/grateful-field-13-sID{859123}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vanilla/1film/grateful-field --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
 
-# dauntless rive (255)
-python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/dauntless-river-3-sID{1641}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vanilla/1film/dauntless-river --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
+# # proud-totem
+# python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/proud-totem-8-sID{715721}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vanilla/2film/proud-totem --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# # visionary-sponge 12
+# python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/visionary-sponge-7-sID{2641}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vanilla/2film/visionary-sponge --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
+
+# # -------------1film
+
+# # lunar-mountain (225)
+# python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/lunar-mountain-8-sID{659123}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vanilla/1film/lunar-montain --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
+
+# # brisk brook (211)
+# python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/brisk-brook-7-sID{459123}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vanilla/1film/brisk-brook --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
+
+# # fragrant grass (222)
+# python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/fragrant-grass-6-sID{31361}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vanilla/1film/fragrant-grass --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
+
+# # crimson (210)
+# python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/crimson-yogurt-4-sID{54109}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vanilla/1film/crimson --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
+
+
+# # -------------2film    
+
+# # atomic wind (222)
+# python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/atomic-wind-2-sID{615721}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vanilla/2film/atomic-wind --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
+
+# # wandering lion (211)
+# python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/wandering-lion-1-sID{99988}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vanilla/2film/wandering-lion --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
+
+# # dauntless rive (255)
+# python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/dauntless-river-3-sID{1641}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vanilla/2film/dauntless-river --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
 
 
 
@@ -118,3 +135,13 @@ python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --mode
 
 # ERA5
 # - /mnt/qb/goswami/data/era5/era5_data_normalised_sfno_01.01.2016_31.12.2017.zarr 861GB
+
+
+
+
+# new ones
+# stoic snwoflake
+python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/stoic-snowflake-15-sID{2fONES4}/checkpoint_sfno_film_mae_iter=421_epoch=0.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vanilla/2film/stoic-snowflake --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 3 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
+
+# divine rain
+python /home/goswami/gkd965/MasterML/main.py --save-forecast --model sfno --model-version film --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/divine-rain-14-sID{2fONES}/checkpoint_sfno_film_mae_iter=0_epoch=1.pkl  --multi-step-validation 4 --validation-step-skip 27 --output-path /mnt/qb/goswami/data/era5/weatherbench2/res/vanilla/2film/divine-rain --num-iterations 1 --batch-size 3 --save-checkpoint-interval 12 --training-workers 0 --validationset-start-year 2018 --validationset-end-year 2019  #--set-rank 1
