@@ -4,7 +4,7 @@ import sys
 import os
 sys.path.append('/weatherbench2')
 from weatherbench2 import config
-from weatherbench2.metrics import MSE, RMSE, ACC, Bias, SpatialMAE
+from weatherbench2.metrics import MSE, ACC, Bias, SpatialMAE
 from weatherbench2.evaluation import evaluate_in_memory, evaluate_with_beam
 import argparse
 
@@ -28,7 +28,6 @@ parser.add_argument(
 args = parser.parse_args()
 file_name = args.file_name
 checkpoint_dir = args.checkpoint_dir
-obs_path = args.obs_path
 
 #! ----------------
 # need test dataset 2018
@@ -48,7 +47,9 @@ obs_path = args.obs_path
 #ERA5
 # obs_path = '/mnt/qb/goswami/data/era5/weatherbench2/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr'
 # normalized
-obs_path =  '/mnt/qb/goswami/data/era5/era5_data_normalised_sfno_01.01.2016_31.12.2017.zarr'
+obs_path =  '/mnt/qb/goswami/data/era5/era5_data_normalised_sfno_01.01.2018_31.12.2018.zarr'
+
+# obs_path = args.obs_path
 
 climatology_path = '/mnt/qb/goswami/data/era5/weatherbench2/1990-2019_6h_1440x721.zarr'
 
@@ -195,7 +196,7 @@ data_config = config.Data(selection=selection, paths=paths)
 eval_configs = {
     'eval' : config.Eval(
       metrics={
-          'mse': RMSE(), 
+          'mse': MSE(), 
         #   'special_mse': SpatialMAE(),
         #   'acc': ACC(climatology=climatology),
           'bias': Bias(),
