@@ -1,12 +1,12 @@
 # Modulated-Spherical-Fourier-Neural-Operator
 
-Modulated-Spherical-Fourier-Neural-Operators (MSFNO) are an extension of Spherical-Fourier-Neural-Operators [Bonev et al.](https://arxiv.org/abs/2306.03838) by introducing a linear modulation to the feature maps of a SFNO network.
+Modulated-Spherical-Fourier-Neural-Operators (MSFNO) are an extension of Spherical-Fourier-Neural-Operators by [Bonev et al.](https://arxiv.org/abs/2306.03838)[1]. MSFNO introduces a linear modulation to the feature maps in a SFNO architecture to enable efficient fine-tuning.
 The modulation can be applied to pretrained models and conditioned on new training data allowing a model to be fine-tuned to new tasks while having access to additional, task-relevant data.
 The performance of MSFNO was evaluated by improving long range weather forecast skill (also called S2S-skill: Subseasonal-to-Seasonal) of an SFNO network.
 
 <p align="center">
   <img src="/figures/RSME_2m_temperature_MSFNO.gif">
-  <div>RMSE of the 2m-temperature forecast for a month long rollout</div>
+  <em align="center"> *The figure shows the RMSE for the 2m-temperature field forecasted with MSFNO for a month long rollout* </em>
 </p>
 
 ## Installation
