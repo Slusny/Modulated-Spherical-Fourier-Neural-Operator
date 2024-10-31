@@ -5,7 +5,7 @@ The modulation can be applied to pretrained models and conditioned on new traini
 The performance of MSFNO was evaluated by improving long range weather forecast skill (also called S2S-skill: Subseasonal-to-Seasonal) of an SFNO network.
 
 <p align="center">
-  <img src="/images/RSME_2m_temperature_MSFNO.gif">
+  <img src="/figures/RSME_2m_temperature_MSFNO.gif">
   <div>RMSE of the 2m-temperature forecast for a month long rollout</div>
 </p>
 
@@ -25,7 +25,7 @@ python main.py --download-weights
 ```
 
 ## More about MSFNO
-![Sketch of the MSFNO architecture](/images/MSFNO_Architecture.png)
+![Sketch of the MSFNO architecture](/figures/MSFNO_Architecture.png)
 MSFNO can be described in 4 subdivisions. The SFNO-Network predicts the next weather state autoregressively in 6 hour increments. The input data is encoded into tokens by an encoder. The SFNO network as a whole can be roughly be understood as operating like a transformer network. 
 
 It is comprised out of 12 SFNO-Blocks which utilize fourier transforms and a learned kernel matrix multiplied in frequency space to perform a global convolution and spacial token mixing. The insight here is that a multiplication in frequency space equals a convolution in normal space, which allows for cheaper computation of global convolutions in $\mathcal{O}(n\log{}n)$ time.

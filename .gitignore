@@ -175,3 +175,6 @@ S2S_on_SFNO/Assets/
 
 #Singularity
 *.sif
+
+# vs code
+.vscode/
