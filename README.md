@@ -26,26 +26,29 @@ python main.py --download-weights
 
 ## More about MSFNO
 ![Sketch of the MSFNO architecture](/figures/MSFNO_Architecture.png)
-MSFNO can be described in 4 subdivisions. The SFNO-Network predicts the next weather state autoregressively in 6 hour increments. The input data is encoded into tokens by an encoder. The SFNO network as a whole can be roughly be understood as operating like a transformer network. 
+MSFNO can be described in 4 subdivisions. The SFNO-Network predicts the next weather state autoregressively in 6 hour increments. The input data is encoded into tokens by an encoder. The SFNO network as a whole can be roughly understood as operating like a transformer network. 
 
-It is comprised out of 12 SFNO-Blocks which utilize fourier transforms and a learned kernel matrix multiplied in frequency space to perform a global convolution and spacial token mixing. The insight here is that a multiplication in frequency space equals a convolution in normal space, which allows for cheaper computation of global convolutions in $\mathcal{O}(n\log{}n)$ time.
+It is comprised out of 12 SFNO-Blocks which utilize fourier transforms and a learned kernel matrix multiplied in frequency space to perform a global convolution and spacial token mixing. The insight here is that a multiplication in frequency space equals a convolution in normal space, which allows for cheaper computation of global convolutions in $\mathcal{O}(n\log{}n)$ time. For more information on SFNO see [Bonev et al.](https://arxiv.org/abs/2306.03838)[1]
 
-A FiLM-Layer is introduced before the channel mixing MLP of the SFNO Block. This **F**eaturew**i**se **L**inear **Modulation** is described in detail by 
+A FiLM-Layer is introduced before the channel mixing MLP of the SFNO Block. This **F**eaturew**i**se **L**inear **M**odulation is described in detail by [Perez et al.](https://arxiv.org/abs/1709.07871) [2]. FiLM-layers influence neural network computation via a simple, feature-wise affine transformation: $\operatorname{FiLM}\left(\boldsymbol{F}_{i, c} \mid \gamma_{i, c}, \beta_{i, c}\right)=\left(1+\gamma_{i, c}\right) \boldsymbol{F}_{i, c}+\beta_{i, c}$, where the Features $\boldsymbol{F}_{i, c}$ are transformed by the FiLM-Parameters $\gamma$ and $\beta$.
+
+The FiLM-Parameters are computed by the FiLM-Generator, which can utilize new, out-of-distribution data to modulate the original SFNO network. For each FiLM-layer and each feature dimension a scaling parameter $\gamma$ and shifting parameter $\beta$ is computed by the FiLM-Generator.
 
 ## MFSNO long-term weather forecast
 
+![FiLM Parameters](/figures/FiLM_parameters.png)
+
+<p aling="center">
+  <p float="left">
+    <img src="/figures/SFNO_per_Variable_MSE.png"/>
+    <img src="/figures/MSFNO_per_Variable_MSE.png"/> 
+  </p>
+  <em align="center"> This figure displays </em>
+<\p>
 
 
 ## References
 
-`ai-models-fourcastnet` is an [ai-models](https://github.com/ecmwf-lab/ai-models) plugin to run [NVIDIA's FourCastNet](https://github.com/NVlabs/FourCastNet).
+[1] Bonev B., Kurth T., Hundt C., Pathak, J., Baust M., Kashinath K., Anandkumar A.; Spherical Fourier Neural Operators: Learning Stable Dynamics on the Sphere; arXiv 2306.0383, 2023.
 
-FourCastNet: A Global Data-driven High-resolution Weather Model using Adaptive Fourier Neural Operators
-https://arxiv.org/abs/2202.11214
-
-The FourCastNet code was developed by the authors of the preprint: Jaideep Pathak, Shashank Subramanian, Peter Harrington, Sanjeev Raja, Ashesh Chattopadhyay, Morteza Mardani, Thorsten Kurth, David Hall, Zongyi Li, Kamyar Azizzadenesheli, Pedram Hassanzadeh, Karthik Kashinath, Animashree Anandkumar.
-
-Version 0.1 of FourCastNet is used as default in ai-models.
-https://portal.nersc.gov/project/m4134/FCN_weights_v0.1/
-
-FourCastNet is released under **BSD 3-Clause License**, see [LICENSE_fourcastnet](LICENSE_fourcastnet) for more details.
+[2] Ethan Perez, Florian Strub, Harm de Vries, Vincent Dumoulin, Aaron Courville; FiLM: Visual Reasoning with a General Conditioning Layer, arXiv 1709.07871, 2017.
