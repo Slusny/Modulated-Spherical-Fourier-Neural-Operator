@@ -1,1 +1,0 @@
-python main.py --model mae --run --validationset-start-year 1979 --validationset-end-year 2019 --resume-checkpoint /mnt/qb/work2/goswami0/gkd965/checkpoints/mae/glorious-deluge-23/checkpoint_mae_latest_None_iter=0_epoch=8.pkl --no-shuffle  

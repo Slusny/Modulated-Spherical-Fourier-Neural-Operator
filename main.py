@@ -1,4 +1,11 @@
-
+"""
+File: main.py
+Author: Lennart Slusny
+Date: June 28, 2024
+Description: Execute this script in the console to access and run 
+    the core features of the project through the command-line interface. 
+    Use the --help option for detailed information on available commands.
+"""
 import argparse
 import logging
 import os
@@ -7,36 +14,28 @@ import sys
 import pdb
 from pathlib import Path
 import time
-import wandb
 import traceback
 import torch
-import numpy as np
 import glob
 import re
 import datetime
 import math
 import dask
-# to get eccodes working on Ubuntu 20.04
-# os.environ["LD_PRELOAD"] = '/usr/lib/x86_64-linux-gnu/libffi.so.7'
-# in shell : export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libffi.so.7
-os.putenv("LD_PRELOAD", "/usr/lib/x86_64-linux-gnu/libffi.so.7")
-import ecmwflibs
-import cfgrib
 
-#if shipped as module, include in S2S_on_SFNO and remove absolute import to relative .inputs etc. . Also move main inside -> __main__.py
-from S2S_on_SFNO.inputs import available_inputs
-from S2S_on_SFNO.Models.models import available_models, load_model #########
-from S2S_on_SFNO.utils import Timer
-from S2S_on_SFNO.outputs import available_outputs
-from S2S_on_SFNO.Models.train import Trainer
-from S2S_on_SFNO.utils import Attributes, FinTraining
+from MSFNO.inputs import available_inputs
+from MSFNO.Models.models import load_model 
+from MSFNO.utils import Timer
+from MSFNO.outputs import available_outputs
+from MSFNO.Models.train import Trainer
+from MSFNO.utils import FinTraining
 
 import torch.multiprocessing as mp
-from torch.distributed import init_process_group, destroy_process_group, get_rank, get_world_size
+from torch.distributed import init_process_group, destroy_process_group
 
-
+# global variables
 os.environ["WANDB__SERVICE_WAIT"] = "300"
 
+# setup processes for distributed training
 def ddp_setup(rank, world_size):
     """
     Args:
@@ -47,19 +46,12 @@ def ddp_setup(rank, world_size):
     os.environ["MASTER_PORT"] = "31350"
     os.environ["WANDB__SERVICE_WAIT"] = "300"
     torch.cuda.set_device(rank)
-    # os.environ["CUDA_VISIBLE_DEVICES"]=str(rank) if you set visible device the set device is always 0
     init_process_group(backend="nccl", rank=rank, world_size=world_size, timeout=datetime.timedelta(hours=2))
 
-
-# LOG = logging.getLogger(__name__)
 LOG = logging.getLogger(__name__)
 LOG.addHandler(logging.StreamHandler(sys.stdout)) 
 cuda_available = torch.cuda.is_available()
 print("cuda available? : ",cuda_available,flush=True)
-
-
-# global variables
-do_return_trainer = False
 
 def main(rank=0,args={},arg_groups={},world_size=1):
     
@@ -68,13 +60,13 @@ def main(rank=0,args={},arg_groups={},world_size=1):
 
     args.rank = rank
     args.world_size = world_size
-    # args = Attributes(v)
-    # can also log to file if needed
+
+    # logging Config
     if args.log_file:logging.basicConfig(level=logging.INFO, filename=args.log_file,filemode="a")
-    # use Slurm ID in checkpoint_save path and log to stdout to better find corresponding stdout from slurm job
     if args.jobID is not None: LOG.info("Slurm Job ID: %s", args.jobID)
 
-    if args.debug: #new
+    # start python debugger, disable multiprocess features
+    if args.debug: 
         if not args.ddp: pdb.set_trace()
         torch.autograd.set_detect_anomaly(True)
         args.training_workers = 0
@@ -84,15 +76,11 @@ def main(rank=0,args={},arg_groups={},world_size=1):
 
     if args.ddp:
         print("rank ",rank,flush=True)
-        # training workers need to be set to 0
-        # args.training_workers=0
         ddp_setup(rank,world_size)
 
     # Format Assets path
     if args.assets_sub_directory:
         args.assets = os.path.join(Path(".").absolute(),args.assets_sub_directory)
-    # else:
-    #     args.assets = os.path.join(Path(".").absolute(),args.model_type)
 
 
     if args.requests_extra:
@@ -123,7 +111,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
     # Manipulation on args
     if args.metadata: args.metadata = dict(kv.split("=") for kv in args.metadata)
 
-    # Add extra steps to multi_step_training if we want to skip steps
+    # Add extra steps to multi_step_training if we want to skip steps during training
     if args.training_step_skip > 0:
         if args.multi_step_training > 0:
             args.multi_step_training = args.multi_step_training + args.training_step_skip*(args.multi_step_training)
@@ -173,7 +161,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
     if not os.path.exists(args.path):
         os.makedirs(os.path.dirname(args.path), exist_ok=True)
 
-    #Print args
+    # Print args
     if rank == 0:
         print("Script called with the following parameters:")
         for group,value in arg_groups.items():
@@ -261,7 +249,7 @@ def main(rank=0,args={},arg_groups={},world_size=1):
         model.print_fields()
         return
 
-    # This logic is a bit convoluted, but it is for backwards compatibility.
+    # This logic is a bit convoluted, but it is needed for backwards compatibility.
     if args.retrieve_requests or (args.requests_extra and not args.archive_requests):
         model.print_requests()
         return
@@ -286,10 +274,6 @@ def main(rank=0,args={},arg_groups={},world_size=1):
             LOG.error(traceback.format_exc())
             print("shutting down training")
             trainer.finalise()
-
-    elif do_return_trainer:
-        trainer = Trainer(model,kwargs)
-        return trainer
 
     elif args.test_performance:
         trainer = Trainer(model,kwargs)
@@ -393,6 +377,9 @@ def return_trainer(args):
     for arg in args: sys.argv.append(arg)
     return main()
 
+
+
+# Commnand Line Interface
 
 parser = argparse.ArgumentParser()
 
@@ -1150,12 +1137,6 @@ architecture_film_parser.add_argument(
 
 if __name__ == "__main__":
 
-
-    # !! args from parser become model properties (whatch that no conflicting model properties/methods exist)
-    # !! happens in S2S_on_SFNO/Models/models.py:66
-
-    # this ignores all unknown args
-    # args, unknownargs = parser.parse_known_args()
     args = parser.parse_args()
 
     # get parameters split by groups
@@ -1175,24 +1156,3 @@ if __name__ == "__main__":
             main(rank=args.set_rank,args=args,arg_groups=arg_groups)
 
 
-
-'''
-# Test / Work
-are all kwargs added to model: e.g. film_gen_type is part of model.film_gen_type (yes in Model.models.py:66)
-- loaded model doesn't work 
-- LOG only mean loss value to weight and biases ? To better performance
-- possible issues for model load: dataset doesn't output real data, model isn't saved correctly
-- parallel training
-- do we need grad for all layers?
-# Questions
-Do Transformers need to have a square input
-
-# Issues
-- validation with ddp, mean over all_reduce and then mean over iterations -> mean of means is ok
-- ddp optimizer expects model.parameters() on ddp model but we return parameters from sub models. we could give ddp-model as parameter of the get_parameter function, but actually how it is handled right now should be fine?
--  clone state dict from checkpoint and then delete that checkpoint to gain memory
-
-- seperate batch_size and workers for training and validation
-
-- distributed optimizer
-'''

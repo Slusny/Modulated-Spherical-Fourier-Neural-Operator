@@ -1,2 +1,0 @@
-install python and jupyter extentions on server
-set jupyter.notebookFileRoot to ${workspaceFolder}

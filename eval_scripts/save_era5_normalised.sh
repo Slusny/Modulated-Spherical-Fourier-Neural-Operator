@@ -1,1 +1,0 @@
-python main.py --save-data --model sfno --output-path /mnt/qb/goswami/data/era5  --num-iterations 100 --output zarr --trainingset-start-year 2016 --trainingset-end-year 2018 --no-shuffle --batch-size 10 --training-workers 10
