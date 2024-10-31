@@ -38,10 +38,10 @@ The FiLM-Parameters are computed by the FiLM-Generator, which can utilize new, o
 
 ![FiLM Parameters](/figures/FiLM_parameters.png)
 
-<p align="center">
-  <p float="flex">
-    <img src="/figures/SFNO_per_Variable_MSE.png" width="48%"/>
-    <img src="/figures/MSFNO_per_Variable_MSE.png" width="48%"/> 
+<p align="center" widht="100%">
+  <p align="center" widht="100%">
+    <img src="/figures/SFNO_per_Variable_MSE.png" width="49%"/>
+    <img src="/figures/MSFNO_per_Variable_MSE.png" width="49%"/> 
   </p>
   <em align="center"> This figure displays </em>
 </p>
