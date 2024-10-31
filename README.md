@@ -6,7 +6,7 @@ The performance of MSFNO was evaluated by improving long range weather forecast 
 
 <p align="center">
   <img src="/figures/RSME_2m_temperature_MSFNO.gif">
-  <em align="center"> *The figure shows the RMSE for the 2m-temperature field forecasted with MSFNO for a month long rollout* </em>
+  <em align="center"> The figure shows the RMSE for the 2m-temperature field forecasted with MSFNO for a month long rollout </em>
 </p>
 
 ## Installation
