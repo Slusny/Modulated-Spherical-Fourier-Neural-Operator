@@ -1,6 +1,7 @@
 #!/bin/bash
 ####
-# An example SLURM script.
+# An example SLURM script to evaluate the standard sfno model.
+# Adapt the script to your needs.
 ####
 
 #SBATCH --job-name=gcn

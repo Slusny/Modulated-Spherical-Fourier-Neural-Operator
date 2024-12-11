@@ -17,7 +17,7 @@ MSFNO is trained on a subset of the ERA5 dataset. It can be downloaded from Weat
 gsutil -m cp -n -r "gs://weatherbench2/datasets/era5/1959-2023_01_10-wb13-6h-1440x721_with_derived_variables.zarr"
 ```
 You can prune the dataset down to only store the required data ([prune_weatherbench_ERA5.sh](/data_process/prune_weatherbench_ERA5.sh)).
-MFSNO needs the additional variables U100 and V100 (wind velocities in 100m) which are not part of Weatherbench2 and need to be downloaded speratly from ECMWFs Coperinucus with the [download_relative_humidity.py](/data_process/download_relative_humidity.py) script.
+MFSNO needs the additional variables u100 and v100 (wind velocities in 100m) which are not part of Weatherbench2 and need to be downloaded speratly from ECMWFs Copernicus with the [download_relative_humidity.py](/data_process/download_relative_humidity.py) script.
 
 The weights for a pretrained SFNO network (provided by ECMWF) can be downloaded using
 ```
@@ -28,7 +28,7 @@ python main.py --download-weights
 ![Sketch of the MSFNO architecture](/figures/MSFNO_Architecture.png)
 MSFNO can be described in 4 subdivisions. The SFNO-Network predicts the next weather state autoregressively in 6 hour increments. The input data is encoded into tokens by an encoder. The SFNO network as a whole can be roughly understood as operating like a transformer network. 
 
-It is comprised out of 12 SFNO-Blocks which utilize fourier transforms and a learned kernel matrix multiplied in frequency space to perform a global convolution and spacial token mixing. The insight here is that a multiplication in frequency space equals a convolution in normal space, which allows for cheaper computation of global convolutions in $\mathcal{O}(n\log{}n)$ time. For more information on SFNO see [Bonev et al.](https://arxiv.org/abs/2306.03838)[1]
+It is comprised out of 12 SFNO-Blocks which utilize fourier transforms and a learned kernel matrix multiplied in frequency space to perform a global convolution and spacial token mixing. The core insight is that a multiplication in frequency space equals a convolution in normal space, which allows for cheaper computation of global convolutions in $\mathcal{O}(n\log{}n)$ time. For more information on SFNO see [Bonev et al.](https://arxiv.org/abs/2306.03838)[1]
 
 A FiLM-Layer is introduced before the channel mixing MLP of the SFNO Block. This **F**eaturew**i**se **L**inear **M**odulation is described in detail by [Perez et al.](https://arxiv.org/abs/1709.07871) [2]. FiLM-layers influence neural network computation via a simple, feature-wise affine transformation: $\operatorname{FiLM}\left(\boldsymbol{F}_{i, c} \mid \gamma_{i, c}, \beta_{i, c}\right)=\left(1+\gamma_{i, c}\right) \boldsymbol{F}_{i, c}+\beta_{i, c}$, where the Features $\boldsymbol{F}_{i, c}$ are transformed by the FiLM-Parameters $\gamma$ and $\beta$.
 
@@ -36,16 +36,18 @@ The FiLM-Parameters are computed by the FiLM-Generator, which can utilize new, o
 
 ## MFSNO long-term weather forecast
 
-![FiLM Parameters](/figures/FiLM_parameters.png)
-
 <p align="center" widht="100%">
   <p align="center" widht="100%">
     <img src="/figures/SFNO_per_Variable_MSE.png" width="49%"/>
     <img src="/figures/MSFNO_per_Variable_MSE.png" width="49%"/> 
   </p>
-  <em align="center"> This figure displays </em>
+  <em align="center"> These figures show the MSE for each atmospheric variable used in SFNO for forecast times of 6 hours nd 7,14,21 and 28 days. On the left side the MSE for the original SFNO is depicted, on the right side the MSE for MSFNO. </em>
 </p>
 
+<p align="center">
+  <img src="/figures/FiLM_parameters.png">
+  <em align="center"> This figure shows a histogram of the FiLM-Parameters which  </em>
+</p>
 
 ## References
 
